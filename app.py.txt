@@ -1,0 +1,73 @@
+import streamlit as st
+import sqlite3
+import pandas as pd
+from datetime import date
+
+# --- 1. PENGATURAN DATABASE ---
+def init_db():
+    conn = sqlite3.connect('rs_sejahtera.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS pasien 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                  nama TEXT, tgl_lahir TEXT, gender TEXT, 
+                  no_hp TEXT, poli TEXT, keluhan TEXT, tgl_daftar TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
+
+def tambah_pasien(nama, tgl, gender, hp, poli, keluhan):
+    conn = sqlite3.connect('rs_sejahtera.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO pasien (nama, tgl_lahir, gender, no_hp, poli, keluhan) VALUES (?,?,?,?,?,?)",
+              (nama, tgl, gender, hp, poli, keluhan))
+    conn.commit()
+    conn.close()
+
+# Inisialisasi DB saat aplikasi jalan
+init_db()
+
+# --- 2. TAMPILAN ANTARMUKA ---
+st.set_page_config(page_title="RS Sejahtera", page_icon="🏥")
+
+# Menu Navigasi Samping
+menu = st.sidebar.selectbox("Menu Utama", ["Pendaftaran", "Data Pasien (Admin)"])
+
+if menu == "Pendaftaran":
+    st.title("🏥 Pendaftaran Pasien Baru")
+    
+    with st.form("form_regis"):
+        col1, col2 = st.columns(2)
+        with col1:
+            nama = st.text_input("Nama Lengkap")
+            tgl_lahir = st.date_input("Tanggal Lahir", min_value=date(1940, 1, 1))
+        with col2:
+            gender = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+            no_hp = st.text_input("Nomor WhatsApp")
+            
+        poli = st.selectbox("Pilih Poli", ["Umum", "Gigi", "Anak", "Mata"])
+        keluhan = st.text_area("Keluhan Utama")
+        
+        submit = st.form_submit_button("Kirim Pendaftaran")
+        
+        if submit:
+            if nama and no_hp:
+                tambah_pasien(nama, str(tgl_lahir), gender, no_hp, poli, keluhan)
+                st.success(f"Berhasil! Pasien {nama} sudah masuk ke sistem.")
+                st.balloons()
+            else:
+                st.warning("Nama dan Nomor HP tidak boleh kosong!")
+
+elif menu == "Data Pasien (Admin)":
+    st.title("📂 Data Pasien Terdaftar")
+    
+    conn = sqlite3.connect('rs_sejahtera.db')
+    df = pd.read_sql_query("SELECT * FROM pasien ORDER BY id DESC", conn)
+    conn.close()
+    
+    if not df.empty:
+        st.dataframe(df, use_container_width=True)
+        
+        # Fitur Download ke Excel/CSV
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("Download Data (CSV)", data=csv, file_name='data_pasien.csv', mime='text/csv')
+    else:
+        st.info("Belum ada data pasien.")
