@@ -4,35 +4,79 @@ import pandas as pd
 from datetime import date
 import base64
 
-# --- 1. KONFIGURASI TAMPILAN ---
-st.set_page_config(page_title="Rekap 10 Penyakit Terbesar", layout="wide")
+# --- 1. CONFIG & WARM THEME STYLE ---
+st.set_page_config(page_title="Rekap Medis - Warm Theme", layout="wide")
 
-def apply_custom_style():
+def apply_warm_theme():
     st.markdown("""
     <style>
-    * { font-family: "Times New Roman", Times, serif !important; }
-    .stApp { background-color: #1e1e1e; color: white; }
-    
-    /* Card Style untuk Input & Tabel */
-    .report-card {
-        background: rgba(40, 40, 40, 0.9);
-        padding: 20px;
-        border-radius: 15px;
-        border: 1px solid #00d4ff;
-        margin-bottom: 20px;
+    /* Font Global Times New Roman */
+    * { 
+        font-family: "Times New Roman", Times, serif !important; 
+    }
+
+    /* Background Warna Hangat (Beige/Cream) */
+    .stApp { 
+        background-color: #F5F5DC; 
     }
     
-    h1, h2, h3 { color: #00d4ff !important; text-shadow: 2px 2px 4px black; }
-    
-    /* Styling Tabel Pandas agar kontras */
-    .dataframe {
-        background-color: #2b2b2b !important;
+    /* Judul Utama - Cokelat Tua agar Kontras */
+    h1, h2, h3 { 
+        color: #4A2c2a !important; 
+        font-weight: bold;
+        text-align: center;
+    }
+
+    /* Card/Blok Input - Warna Cream Lebih Gelap (Tan) */
+    div[data-testid="stForm"], .report-card {
+        background-color: #EADDCA;
+        padding: 25px;
+        border-radius: 15px;
+        border: 2px solid #C19A6B;
+        box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    /* Label Form */
+    label, p, .stMarkdown { 
+        color: #3d2b1f !important; 
+        font-size: 19px !important;
+        font-weight: bold;
+    }
+
+    /* Kotak Isi (Input) - Putih Bersih agar Tulisan Jelas */
+    input, select, textarea {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 1px solid #A67B5B !important;
+        font-size: 17px !important;
+    }
+
+    /* Tombol Simpan - Cokelat Hangat */
+    .stButton>button {
+        background-color: #8B4513 !important;
         color: white !important;
+        font-weight: bold !important;
+        border-radius: 8px;
+        border: none;
+        height: 3.5em;
+        width: 100%;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #5D2906 !important;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    /* Tabel Data */
+    .dataframe {
+        background-color: white !important;
+        color: black !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-apply_custom_style()
+apply_warm_theme()
 
 # --- 2. DATABASE ENGINE ---
 def init_db():
