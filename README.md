@@ -2,27 +2,45 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 
-st.set_page_config(page_title="Pendaftaran Pasien Online", page_icon="🏥")
+# Konfigurasi halaman agar terlihat profesional
+st.set_page_config(page_title="Pendaftaran Klinik", page_icon="🏥")
 
-st.title("🏥 Pendaftaran Pasien Online")
-st.write("Silakan isi formulir di bawah ini untuk pendaftaran.")
-
-with st.form("main_form"):
-    nama = st.text_input("Nama Lengkap")
-    tgl_lahir = st.date_input("Tanggal Lahir", min_value=date(1940, 1, 1))
-    poli = st.selectbox("Poli Tujuan", ["Umum", "Gigi", "Anak", "Penyakit Dalam"])
-    wa = st.text_input("Nomor WhatsApp (Aktif)")
-    keluhan = st.text_area("Keluhan Utama")
+def main():
+    st.title("🏥 Sistem Pendaftaran Pasien")
+    st.write("Silakan lengkapi data di bawah ini untuk mendapatkan nomor antrean.")
     
-    submit = st.form_submit_button("Daftar Sekarang")
+    # Membuat pembatas garis
+    st.divider()
 
-if submit:
-    if nama and wa:
-        st.success(f"Terima kasih {nama}! Pendaftaran Anda telah kami terima.")
-        st.info("Admin kami akan segera menghubungi Anda melalui WhatsApp.")
-        # Link otomatis ke WA Admin (Ganti nomor di bawah dengan nomormu)
-        nomor_admin = "628123456789" 
-        pesan = f"Halo Admin, saya {nama} ingin konfirmasi pendaftaran Poli {poli}."
-        st.markdown(f"[Klik di sini untuk Konfirmasi via WhatsApp](https://wa.me/{nomor_admin}?text={pesan.replace(' ', '%20')})")
-    else:
-        st.error("Mohon isi Nama dan Nomor WhatsApp!")
+    with st.form("form_pasien", clear_on_submit=True):
+        nama = st.text_input("Nama Lengkap Pasien")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            tgl_lahir = st.date_input("Tanggal Lahir", min_value=date(1940, 1, 1))
+            gender = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+        with col2:
+            poli = st.selectbox("Poli Tujuan", ["Umum", "Gigi", "Anak", "Kesehatan Ibu"])
+            whatsapp = st.text_input("Nomor WhatsApp (Aktif)")
+            
+        keluhan = st.text_area("Keluhan atau Alasan Kunjungan")
+        
+        submit = st.form_submit_button("Daftarkan Sekarang")
+
+    if submit:
+        if nama and whatsapp:
+            st.success(f"Pendaftaran Berhasil! Data pasien {nama} telah tersimpan.")
+            st.balloons()
+            
+            # Membuat tombol otomatis ke WhatsApp Admin
+            # Ganti nomor di bawah ini dengan nomor WA klinikmu (gunakan format 62)
+            no_admin = "628123456789" 
+            pesan_wa = f"Halo Admin, saya {nama} baru saja mendaftar di website untuk Poli {poli}. Mohon info nomor antreannya."
+            url_wa = f"https://wa.me/{no_admin}?text={pesan_wa.replace(' ', '%20')}"
+            
+            st.markdown(f'### [👉 Klik di Sini untuk Konfirmasi via WhatsApp]({url_wa})')
+        else:
+            st.error("Gagal: Nama dan Nomor WhatsApp wajib diisi!")
+
+if __name__ == "__main__":
+    main()
