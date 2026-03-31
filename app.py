@@ -5,127 +5,157 @@ from datetime import date
 
 # --- 1. DATABASE SETUP ---
 def init_db():
-    conn = sqlite3.connect('klinik_utama.db')
+    conn = sqlite3.connect('klinik_perusahaan.db')
     c = conn.cursor()
-    # Tabel Pasien Baru & Identitas Lengkap
+    # Tabel Data Induk Pasien
     c.execute('''CREATE TABLE IF NOT EXISTS data_pasien 
                  (nik TEXT PRIMARY KEY, nama TEXT, tempat_lahir TEXT, tgl_lahir TEXT, 
                   gender TEXT, agama TEXT, no_hp TEXT, perusahaan TEXT, 
                   departemen TEXT, jabatan TEXT, blok_mes TEXT, no_kamar TEXT, 
                   riwayat_penyakit TEXT, riwayat_alergi TEXT, area_kerja TEXT, 
-                  golongan_darah TEXT, tgl_daftar DATE)''')
+                  golongan_darah TEXT)''')
     
-    # Tabel Antrean
+    # Tabel Antrean Harian
     c.execute('''CREATE TABLE IF NOT EXISTS antrean 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, nik TEXT, no_urut INTEGER, tgl_antre DATE)''')
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                  nik TEXT, 
+                  no_urut TEXT, 
+                  poli TEXT, 
+                  status TEXT, 
+                  tgl_antre DATE)''')
     conn.commit()
     conn.close()
 
-# Fungsi untuk mengambil nomor antrean berikutnya (1-200)
-def get_next_antrean():
-    conn = sqlite3.connect('klinik_utama.db')
+def get_next_antrean(poli_kode):
+    conn = sqlite3.connect('klinik_perusahaan.db')
     c = conn.cursor()
     today = date.today()
-    c.execute("SELECT MAX(no_urut) FROM antrean WHERE tgl_antre = ?", (today,))
-    result = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM antrean WHERE tgl_antre = ? AND poli LIKE ?", (today, f"{poli_kode}%"))
+    count = c.fetchone()[0]
     conn.close()
-    
-    if result is None or result >= 200:
-        return 1
-    return result + 1
+    if count >= 200: return 1
+    return count + 1
 
 init_db()
 
-# --- 2. ANTARMUKA (UI) ---
-st.set_page_config(page_title="Sistem Klinik Perusahaan", layout="wide")
+# --- 2. TAMPILAN UTAMA ---
+st.set_page_config(page_title="Sistem Klinik Terpadu", layout="wide")
 
-st.title("🏥 Sistem Pendaftaran Klinik Digital")
-st.sidebar.title("Menu Utama")
-mode = st.sidebar.selectbox("Pilih Status Pasien:", ["Pasien Baru", "Pasien Lama", "Admin (Cek Data)"])
+menu = st.sidebar.selectbox("Pilih Akses:", ["Pendaftaran Pasien", "Layar Panggilan (Monitor)", "Ruang Perawat (Panggil Pasien)"])
 
-# --- ALUR PASIEN BARU ---
-if mode == "Pasien Baru":
-    st.subheader("Formulir Pendaftaran Pasien Baru")
-    st.warning("Semua kolom di bawah ini WAJIB diisi.")
-
-    with st.form("form_baru", clear_on_submit=True):
-        col1, col2 = st.columns(2)
+# --- MODUL 1: PENDAFTARAN ---
+if menu == "Pendaftaran Pasien":
+    st.title("🏥 Pendaftaran Klinik")
+    status_pasien = st.radio("Status Pasien:", ["Pasien Baru", "Pasien Lama"], horizontal=True)
+    
+    with st.form("form_pendaftaran"):
+        st.subheader("Data Identitas")
+        c1, c2 = st.columns(2)
         
-        with col1:
-            nama = st.text_input("Nama Lengkap Pasien")
-            nik = st.text_input("NIK / ID Card")
-            tempat_lahir = st.text_input("Tempat Lahir")
-            tgl_lahir = st.date_input("Tanggal Lahir", min_value=date(1950, 1, 1))
-            gender = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
-            agama = st.selectbox("Agama", ["Islam", "Kristen", "Katolik", "Hindu", "Budha", "Khonghucu"])
-            gol_darah = st.selectbox("Golongan Darah", ["A", "B", "AB", "O"])
-            no_hp = st.text_input("Nomor HP Aktif")
-            
-        with col2:
-            perusahaan = st.text_input("Perusahaan")
-            departemen = st.text_input("Departemen")
-            jabatan = st.text_input("Jabatan")
-            blok_mes = st.text_input("Blok Mes")
-            no_kamar = st.text_input("Nomor Kamar")
-            area_kerja = st.text_input("Area Lokasi Kerja")
-            riwayat_penyakit = st.text_area("Riwayat Penyakit")
-            riwayat_alergi = st.text_area("Riwayat Alergi")
+        if status_pasien == "Pasien Baru":
+            with c1:
+                nama = st.text_input("Nama Lengkap")
+                nik = st.text_input("NIK / ID Card")
+                tempat_lahir = st.text_input("Tempat Lahir")
+                tgl_lahir = st.date_input("Tanggal Lahir", min_value=date(1950, 1, 1))
+                gender = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+                agama = st.selectbox("Agama", ["Islam", "Kristen", "Katolik", "Hindu", "Budha", "Khonghucu"])
+                gol_darah = st.selectbox("Golongan Darah", ["A", "B", "AB", "O"])
+                no_hp = st.text_input("Nomor HP")
+            with c2:
+                perusahaan = st.text_input("Perusahaan")
+                departemen = st.text_input("Departemen")
+                jabatan = st.text_input("Jabatan")
+                blok_mes = st.text_input("Blok Mes")
+                no_kamar = st.text_input("Nomor Kamar")
+                area_kerja = st.text_input("Area Lokasi Kerja")
+                riwayat_penyakit = st.text_area("Riwayat Penyakit")
+                riwayat_alergi = st.text_area("Riwayat Alergi")
+        else:
+            nik = st.text_input("Masukkan NIK Pasien Lama")
+            st.info("Sistem akan mengambil data Anda secara otomatis berdasarkan NIK.")
 
-        submit = st.form_submit_button("Simpan & Ambil Antrean")
+        st.divider()
+        st.subheader("Tujuan Poli")
+        poli_tujuan = st.selectbox("Pilih Poli:", ["Poli Umum", "Poli Gigi", "MCU", "UGD", "Rawat Inap"])
+        
+        submit = st.form_submit_button("Ambil Nomor Antrean")
 
     if submit:
-        # Validasi Semua Field Wajib
-        fields = [nama, nik, tempat_lahir, no_hp, perusahaan, departemen, jabatan, blok_mes, no_kamar, area_kerja, riwayat_penyakit, riwayat_alergi]
-        if all(fields):
-            try:
-                conn = sqlite3.connect('klinik_utama.db')
-                c = conn.cursor()
-                # Simpan Data Pasien
-                c.execute("INSERT INTO data_pasien VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                          (nik, nama, tempat_lahir, str(tgl_lahir), gender, agama, no_hp, perusahaan, 
-                           departemen, jabatan, blok_mes, no_kamar, riwayat_penyakit, riwayat_alergi, 
-                           area_kerja, gol_darah, date.today()))
-                
-                # Buat Antrean
-                no_urut = get_next_antrean()
-                c.execute("INSERT INTO antrean (nik, no_urut, tgl_antre) VALUES (?,?,?)", (nik, no_urut, date.today()))
-                
-                conn.commit()
-                conn.close()
-                
-                st.success(f"Pendaftaran Berhasil! Nomor Antrean Anda: {no_urut:02d}")
-                st.balloons()
-            except sqlite3.IntegrityError:
-                st.error("NIK ini sudah terdaftar sebagai Pasien Lama!")
-        else:
-            st.error("Gagal! Mohon lengkapi SELURUH data tanpa terkecuali.")
-
-# --- ALUR PASIEN LAMA ---
-elif mode == "Pasien Lama":
-    st.subheader("Pendaftaran Pasien Lama")
-    cari_nik = st.text_input("Masukkan NIK Anda untuk Verifikasi")
-    
-    if st.button("Cek Data & Ambil Antrean"):
-        conn = sqlite3.connect('klinik_utama.db')
+        conn = sqlite3.connect('klinik_perusahaan.db')
         c = conn.cursor()
-        c.execute("SELECT nama, perusahaan FROM data_pasien WHERE nik = ?", (cari_nik,))
-        user = c.fetchone()
         
-        if user:
-            no_urut = get_next_antrean()
-            c.execute("INSERT INTO antrean (nik, no_urut, tgl_antre) VALUES (?,?,?)", (cari_nik, no_urut, date.today()))
+        # Logika Simpan Data Baru
+        can_proceed = True
+        if status_pasien == "Pasien Baru":
+            fields = [nama, nik, tempat_lahir, no_hp, perusahaan, departemen, jabatan, blok_mes, no_kamar, area_kerja, riwayat_penyakit, riwayat_alergi]
+            if all(fields):
+                try:
+                    c.execute("INSERT INTO data_pasien VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                              (nik, nama, tempat_lahir, str(tgl_lahir), gender, agama, no_hp, perusahaan, 
+                               departemen, jabatan, blok_mes, no_kamar, riwayat_penyakit, riwayat_alergi, area_kerja, gol_darah))
+                except sqlite3.IntegrityError:
+                    st.error("NIK sudah terdaftar!")
+                    can_proceed = False
+            else:
+                st.error("Semua kolom wajib diisi!")
+                can_proceed = False
+
+        # Logika Antrean
+        if can_proceed:
+            kode_poli = {"Poli Umum": "U", "Poli Gigi": "G", "MCU": "M", "UGD": "ER", "Rawat Inap": "RI"}[poli_tujuan]
+            no_urut = get_next_antrean(kode_poli)
+            antrean_label = f"{kode_poli}-{no_urut:02d}"
+            
+            c.execute("INSERT INTO antrean (nik, no_urut, poli, status, tgl_antre) VALUES (?,?,?,?,?)",
+                      (nik, antrean_label, poli_tujuan, "Menunggu", date.today()))
             conn.commit()
-            st.success(f"Selamat Datang Kembali, {user[0]} ({user[1]})")
-            st.info(f"Nomor Antrean Anda Hari Ini: {no_urut:02d}")
-        else:
-            st.error("NIK tidak ditemukan. Silakan daftar sebagai Pasien Baru.")
+            
+            st.success(f"Pendaftaran Berhasil! Nomor Antrean Anda: {antrean_label}")
+            st.metric("NOMOR ANTREAN", antrean_label)
         conn.close()
 
-# --- ADMIN VIEW ---
-else:
-    st.subheader("Data Rekapitulasi Klinik")
-    conn = sqlite3.connect('klinik_utama.db')
-    df = pd.read_sql_query("SELECT a.no_urut, p.nama, p.nik, p.poli_tujuan, a.tgl_antre FROM antrean a JOIN data_pasien p ON a.nik = p.nik WHERE a.tgl_antre = date('now')", conn)
-    st.write("Antrean Hari Ini:")
-    st.table(df)
+# --- MODUL 2: RUANG PERAWAT (PEMANGGILAN) ---
+elif menu == "Ruang Perawat (Panggil Pasien)":
+    st.title("👩‍⚕️ Dashboard Perawat")
+    poli_perawat = st.selectbox("Pilih Poli Anda:", ["Poli Umum", "Poli Gigi", "MCU", "UGD", "Rawat Inap"])
+    
+    conn = sqlite3.connect('klinik_perusahaan.db')
+    # Ambil daftar yang menunggu di poli tersebut
+    df = pd.read_sql_query(f"SELECT a.id, a.no_urut, p.nama, a.status FROM antrean a JOIN data_pasien p ON a.nik = p.nik WHERE a.poli = '{poli_perawat}' AND a.tgl_antre = '{date.today()}' AND a.status = 'Menunggu' ORDER BY a.id ASC", conn)
+    
+    if not df.empty:
+        st.write(f"Pasien Menunggu di {poli_perawat}:")
+        st.table(df[['no_urut', 'nama']])
+        
+        pasien_next = df.iloc[0]
+        if st.button(f"Panggil Antrean {pasien_next['no_urut']}"):
+            c = conn.cursor()
+            # Update status jadi 'Dipanggil'
+            c.execute("UPDATE antrean SET status = 'Dipanggil' WHERE id = ?", (int(pasien_next['id']),))
+            conn.commit()
+            st.rerun()
+    else:
+        st.info(f"Tidak ada pasien menunggu di {poli_perawat}.")
     conn.close()
+
+# --- MODUL 3: LAYAR MONITOR (TV) ---
+elif menu == "Layar Panggilan (Monitor)":
+    st.title("📺 Layar Panggilan Antrean")
+    conn = sqlite3.connect('klinik_perusahaan.db')
+    
+    cols = st.columns(3)
+    polis = ["Poli Umum", "Poli Gigi", "MCU", "UGD", "Rawat Inap"]
+    
+    for i, p in enumerate(polis):
+        with cols[i % 3]:
+            st.subheader(p)
+            res = pd.read_sql_query(f"SELECT no_urut, status FROM antrean WHERE poli = '{p}' AND tgl_antre = '{date.today()}' AND status = 'Dipanggil' ORDER BY id DESC LIMIT 1", conn)
+            if not res.empty:
+                st.markdown(f"<h1 style='text-align: center; color: green;'>{res['no_urut'][0]}</h1>", unsafe_allow_html=True)
+            else:
+                st.markdown("<h1 style='text-align: center; color: gray;'>--</h1>", unsafe_allow_html=True)
+    conn.close()
+    # Auto refresh setiap 10 detik
+    time_to_refresh = st.empty()
+    st.info("Halaman ini akan otomatis memperbarui data jika perawat memanggil pasien.")
