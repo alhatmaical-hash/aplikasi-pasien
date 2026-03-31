@@ -2,84 +2,40 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import date
-import io
+import os
 
-# --- 1. KONFIGURASI TAMPILAN (WARNA HANGAT & TIMES NEW ROMAN) ---
-st.set_page_config(page_title="Rekap 10 Penyakit Terbesar", layout="wide")
+# --- 1. SET LOKASI DATABASE TETAP ---
+# Ini memastikan database selalu ada di folder yang sama dengan skrip
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'klinik_data.db')
 
-def apply_custom_style():
-    st.markdown("""
-    <style>
-    /* Mengatur Font Global */
-    * { 
-        font-family: "Times New Roman", Times, serif !important; 
-    }
+# --- 2. TEMA HANGAT & TIMES NEW ROMAN ---
+st.set_page_config(page_title="Rekap Klinik v3", layout="wide")
 
-    /* Background Warna Hangat (Beige) */
-    .stApp { 
-        background-color: #F5F5DC; 
-    }
-    
-    /* Judul Utama - Cokelat Tua */
-    h1, h2, h3 { 
-        color: #4A2C2A !important; 
-        font-weight: bold;
-        text-align: center;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    }
-
-    /* Card/Blok Konten */
+st.markdown("""
+<style>
+    * { font-family: "Times New Roman", Times, serif !important; }
+    .stApp { background-color: #F5F5DC; }
+    h1, h2, h3 { color: #4A2C2A !important; text-align: center; font-weight: bold; }
     .report-card {
         background-color: #EADDCA;
-        padding: 25px;
+        padding: 20px;
         border-radius: 15px;
         border: 2px solid #C19A6B;
-        box-shadow: 4px 4px 10px rgba(0,0,0,0.05);
         margin-bottom: 20px;
     }
+    label, p { color: #3D2B1F !important; font-weight: bold; }
+    .stButton>button { background-color: #8B4513 !important; color: white !important; width: 100%; }
+</style>
+""", unsafe_allow_html=True)
 
-    /* Teks Label */
-    label, p, .stMarkdown { 
-        color: #3D2B1F !important; 
-        font-size: 18px !important;
-        font-weight: bold;
-    }
-
-    /* Kotak Input & Upload */
-    input, select, textarea, .stFileUploader {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        border: 1px solid #A67B5B !important;
-    }
-
-    /* Tombol Cokelat Hangat */
-    .stButton>button {
-        background-color: #8B4513 !important;
-        color: white !important;
-        font-weight: bold !important;
-        border-radius: 10px;
-        width: 100%;
-        height: 3.5em;
-    }
-    
-    /* Styling Tabel */
-    .dataframe {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        border: 1px solid #C19A6B;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-apply_custom_style()
-
-# --- 2. DATABASE ENGINE ---
+# --- 3. FUNGSI DATABASE ---
 def init_db():
-    conn = sqlite3.connect('klinik_data.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                  tgl_kunjungan DATE, 
+                  tgl_kunjungan TEXT, 
                   nama_pasien TEXT, 
                   diagnosa TEXT, 
                   poli TEXT)''')
@@ -88,49 +44,89 @@ def init_db():
 
 init_db()
 
-# --- 3. MENU NAVIGASI ---
-menu = st.sidebar.radio("MENU UTAMA", ["Upload & Input Data", "Laporan 10 Penyakit", "Filter Kunjungan"])
+# --- 4. NAVIGASI ---
+menu = st.sidebar.radio("MENU", ["Upload Data", "Laporan 10 Penyakit", "Cek Semua Data"])
 
-# --- MODUL 1: UPLOAD & INPUT ---
-if menu == "Upload & Input Data":
-    st.markdown("<h1>📝 INPUT DATA DIAGNOSA</h1>", unsafe_allow_html=True)
+# --- MODUL 1: UPLOAD DATA ---
+if menu == "Upload Data":
+    st.markdown("<h1>📝 UPLOAD & SIMPAN DATA</h1>", unsafe_allow_html=True)
     
-    tab1, tab2 = st.tabs(["📁 Upload Excel/CSV", "✍️ Input Manual"])
+    with st.expander("Klik untuk petunjuk format CSV", expanded=True):
+        st.write("Kolom harus: **tgl_kunjungan**, **nama_pasien**, **diagnosa**, **poli**")
     
-    with tab1:
-        st.markdown('<div class="report-card">', unsafe_allow_html=True)
-        st.subheader("Upload File Rekap Kunjungan")
-        st.info("Pastikan file memiliki kolom: **tgl_kunjungan**, **nama_pasien**, **diagnosa**, **poli**")
+    uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+    
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        # Bersihkan nama kolom (kecilkan huruf & hapus spasi)
+        df.columns = [c.lower().strip() for c in df.columns]
         
-        uploaded_file = st.file_uploader("Pilih file (XLSX atau CSV)", type=["xlsx", "csv"])
-        
-        if uploaded_file:
+        st.write("Pratinjau Data:")
+        st.dataframe(df.head())
+
+        if st.button("PROSES & SIMPAN KE DATABASE"):
             try:
-                if uploaded_file.name.endswith('.csv'):
-                    df_upload = pd.read_csv(uploaded_file)
-                else:
-                    df_upload = pd.read_excel(uploaded_file, engine='openpyxl')
+                # Perbaikan Tanggal Otomatis (Mengubah berbagai format ke YYYY-MM-DD)
+                df['tgl_kunjungan'] = pd.to_datetime(df['tgl_kunjungan']).dt.strftime('%Y-%m-%d')
                 
-                st.write("Pratinjau Data:")
-                st.dataframe(df_upload.head(5), use_container_width=True)
+                # Bersihkan Teks
+                df['diagnosa'] = df['diagnosa'].astype(str).str.upper().str.strip()
+                df['nama_pasien'] = df['nama_pasien'].astype(str).str.strip()
                 
-                if st.button("PROSES & SIMPAN KE DATABASE"):
-                    # Normalisasi data
-                    df_upload['diagnosa'] = df_upload['diagnosa'].str.upper().str.strip()
-                    
-                    conn = sqlite3.connect('klinik_data.db')
-                    df_upload.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
-                    conn.close()
-                    
-                    st.success(f"✅ Berhasil mengimpor {len(df_upload)} data penyakit!")
-                    st.balloons()
+                conn = sqlite3.connect(DB_PATH)
+                df.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
+                conn.close()
+                
+                st.success(f"✅ BERHASIL! {len(df)} data masuk ke: {DB_PATH}")
+                st.balloons()
             except Exception as e:
-                st.error(f"Terjadi kesalahan: {e}")
-        st.markdown('</div>', unsafe_allow_html=True)
+                st.error(f"Eror: {e}. Pastikan kolom 'tgl_kunjungan' ada di file Anda.")
 
-    with tab2:
-        with st.form("manual_entry"):
-            st.subheader("Form Input Manual")
-            c1, c2 = st.columns(2)
-            tgl = c1.date_input("Tanggal", date.today())
-            nama = c1.text_input("Nama Pasien")
+# --- MODUL 2: LAPORAN 10 PENYAKIT ---
+elif menu == "Laporan 10 Penyakit":
+    st.markdown("<h1>📊 TOP 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
+    
+    c1, c2 = st.columns(2)
+    tgl_a = c1.date_input("Dari Tanggal", date(2024,1,1))
+    tgl_b = c2.date_input("Sampai Tanggal", date.today())
+
+    conn = sqlite3.connect(DB_PATH)
+    # Query menggunakan filter tanggal
+    query = f"""
+        SELECT diagnosa, COUNT(*) as jumlah 
+        FROM rekap_penyakit 
+        WHERE tgl_kunjungan BETWEEN '{tgl_a}' AND '{tgl_b}'
+        GROUP BY diagnosa 
+        ORDER BY jumlah DESC 
+        LIMIT 10
+    """
+    df_top = pd.read_sql_query(query, conn)
+    conn.close()
+
+    if not df_top.empty:
+        col_t, col_g = st.columns([1, 2])
+        with col_t:
+            st.table(df_top)
+        with col_g:
+            st.bar_chart(df_top.set_index('diagnosa'))
+    else:
+        st.warning("Data tidak muncul? Coba cek menu 'Cek Semua Data' untuk melihat apakah data benar-benar tersimpan.")
+
+# --- MODUL 3: CEK SEMUA DATA (DEBUGGING) ---
+elif menu == "Cek Semua Data":
+    st.markdown("<h1>📂 ISI DATABASE KESELURUHAN</h1>", unsafe_allow_html=True)
+    conn = sqlite3.connect(DB_PATH)
+    df_all = pd.read_sql_query("SELECT * FROM rekap_penyakit", conn)
+    conn.close()
+    
+    if not df_all.empty:
+        st.write(f"Total data tersimpan: {len(df_all)}")
+        st.dataframe(df_all)
+        if st.button("Hapus Semua Data (Reset)"):
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute("DELETE FROM rekap_penyakit")
+            conn.commit()
+            conn.close()
+            st.rerun()
+    else:
+        st.info("Database kosong.")
