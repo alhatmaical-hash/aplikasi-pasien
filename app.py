@@ -20,13 +20,13 @@ def apply_custom_design():
         font-family: 'Times New Roman', Times, serif !important;
     }
 
-    /* Container Form (Glassmorphism) agar teks sangat menonjol */
+    /* Container Form (Glassmorphism) */
     div[data-testid="stForm"], .main-box {
         background-color: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(10px);
         padding: 30px;
         border-radius: 15px;
-        border: 2px solid #00D4FF; /* Border Biru Cyan agar tegas */
+        border: 2px solid #00D4FF; 
     }
 
     /* Teks Putih Terang & Jelas */
@@ -37,7 +37,7 @@ def apply_custom_design():
 
     /* Warna Label Input */
     .stTextInput label, .stSelectbox label, .stTextArea label, .stDateInput label {
-        color: #00D4FF !important; /* Warna Cyan agar mudah dibaca */
+        color: #00D4FF !important; 
         font-size: 18px !important;
         font-weight: bold !important;
     }
@@ -59,16 +59,40 @@ def apply_custom_design():
         font-weight: bold !important;
     }
     
-    /* Box Nomor Antrean */
+    /* ======================================================= */
+    /* PERUBAHAN DISINI: Box Nomor Antrean Dibuat Warna Gelap */
+    /* ======================================================= */
     .ticket {
-        background: #FFFFFF;
-        color: #000000 !important;
-        padding: 25px;
+        background: #1A1A1A !important; /* Warna Hitam Pekat */
+        color: #FFFFFF !important;
+        padding: 30px;
         border-radius: 15px;
         text-align: center;
-        border-left: 15px solid #00D4FF;
+        border: 2px solid #00D4FF;
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.4); /* Efek Menyala Biru */
         margin-top: 20px;
     }
+    
+    /* Angka Nomor Antrean dibuat Menyala Kuning Emas */
+    .ticket h1 {
+        font-size: 90px !important;
+        color: #F1C40F !important;
+        text-shadow: 0 0 15px rgba(241, 196, 15, 0.6) !important;
+        margin: 5px 0 !important;
+    }
+    
+    /* Teks detail di dalam tiket */
+    .ticket h2 {
+        color: #00D4FF !important;
+        margin: 0 !important;
+    }
+    
+    .ticket p {
+        color: #E0E0E0 !important;
+        font-size: 18px !important;
+    }
+    /* ======================================================= */
+    
     </style>
     """, unsafe_allow_html=True)
 
