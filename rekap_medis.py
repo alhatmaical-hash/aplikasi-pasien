@@ -2,87 +2,81 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import date
-import base64
+import io
 
-# --- 1. CONFIG & WARM THEME STYLE ---
-st.set_page_config(page_title="Rekap Medis - Warm Theme", layout="wide")
+# --- 1. KONFIGURASI TAMPILAN (WARNA HANGAT & TIMES NEW ROMAN) ---
+st.set_page_config(page_title="Rekap 10 Penyakit Terbesar", layout="wide")
 
-def apply_warm_theme():
+def apply_custom_style():
     st.markdown("""
     <style>
-    /* Font Global Times New Roman */
+    /* Mengatur Font Global */
     * { 
         font-family: "Times New Roman", Times, serif !important; 
     }
 
-    /* Background Warna Hangat (Beige/Cream) */
+    /* Background Warna Hangat (Beige) */
     .stApp { 
         background-color: #F5F5DC; 
     }
     
-    /* Judul Utama - Cokelat Tua agar Kontras */
+    /* Judul Utama - Cokelat Tua */
     h1, h2, h3 { 
-        color: #4A2c2a !important; 
+        color: #4A2C2A !important; 
         font-weight: bold;
         text-align: center;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
     }
 
-    /* Card/Blok Input - Warna Cream Lebih Gelap (Tan) */
-    div[data-testid="stForm"], .report-card {
+    /* Card/Blok Konten */
+    .report-card {
         background-color: #EADDCA;
         padding: 25px;
         border-radius: 15px;
         border: 2px solid #C19A6B;
-        box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
+        box-shadow: 4px 4px 10px rgba(0,0,0,0.05);
         margin-bottom: 20px;
     }
 
-    /* Label Form */
+    /* Teks Label */
     label, p, .stMarkdown { 
-        color: #3d2b1f !important; 
-        font-size: 19px !important;
+        color: #3D2B1F !important; 
+        font-size: 18px !important;
         font-weight: bold;
     }
 
-    /* Kotak Isi (Input) - Putih Bersih agar Tulisan Jelas */
-    input, select, textarea {
+    /* Kotak Input & Upload */
+    input, select, textarea, .stFileUploader {
         background-color: #FFFFFF !important;
         color: #000000 !important;
         border: 1px solid #A67B5B !important;
-        font-size: 17px !important;
     }
 
-    /* Tombol Simpan - Cokelat Hangat */
+    /* Tombol Cokelat Hangat */
     .stButton>button {
         background-color: #8B4513 !important;
         color: white !important;
         font-weight: bold !important;
-        border-radius: 8px;
-        border: none;
-        height: 3.5em;
+        border-radius: 10px;
         width: 100%;
-        transition: 0.3s;
+        height: 3.5em;
     }
-    .stButton>button:hover {
-        background-color: #5D2906 !important;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-
-    /* Tabel Data */
+    
+    /* Styling Tabel */
     .dataframe {
-        background-color: white !important;
-        color: black !important;
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 1px solid #C19A6B;
     }
     </style>
     """, unsafe_allow_html=True)
 
-apply_warm_theme()
+apply_custom_style()
 
 # --- 2. DATABASE ENGINE ---
 def init_db():
-    conn = sqlite3.connect('rekam_medis.db')
+    conn = sqlite3.connect('klinik_data.db')
     c = conn.cursor()
-    # Tabel Kunjungan & Diagnosa
     c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                   tgl_kunjungan DATE, 
@@ -95,86 +89,48 @@ def init_db():
 init_db()
 
 # --- 3. MENU NAVIGASI ---
-menu = st.sidebar.selectbox("PILIH MENU", ["Input Diagnosa Pasien", "Laporan 10 Penyakit Terbesar", "Filter Kunjungan"])
+menu = st.sidebar.radio("MENU UTAMA", ["Upload & Input Data", "Laporan 10 Penyakit", "Filter Kunjungan"])
 
-# --- MODUL 1: INPUT DATA ---
-if menu == "Input Diagnosa Pasien":
-    st.title("📝 Input Diagnosa Harian")
-    with st.form("form_diagnosa"):
+# --- MODUL 1: UPLOAD & INPUT ---
+if menu == "Upload & Input Data":
+    st.markdown("<h1>📝 INPUT DATA DIAGNOSA</h1>", unsafe_allow_html=True)
+    
+    tab1, tab2 = st.tabs(["📁 Upload Excel/CSV", "✍️ Input Manual"])
+    
+    with tab1:
         st.markdown('<div class="report-card">', unsafe_allow_html=True)
-        tgl = st.date_input("Tanggal Kunjungan", date.today())
-        nama = st.text_input("Nama Pasien")
-        # Input Diagnosa (Bisa mengetik bebas atau drop-down)
-        diag = st.selectbox("Diagnosa Penyakit", 
-                            ["ISPA", "Hipertensi", "Diabetes Melitus", "Gastritis", "Cephalgia", 
-                             "Dermatitis", "Myalgia", "Influenza", "Diare", "Asma", "Lain-lain"])
-        if diag == "Lain-lain":
-            diag = st.text_input("Sebutkan Nama Penyakit Lainnya")
-            
-        poli = st.selectbox("Poli Asal", ["Umum", "Gigi", "MCU", "UGD", "Rawat Inap"])
+        st.subheader("Upload File Rekap Kunjungan")
+        st.info("Pastikan file memiliki kolom: **tgl_kunjungan**, **nama_pasien**, **diagnosa**, **poli**")
         
-        submitted = st.form_submit_button("SIMPAN REKAP")
-        if submitted:
-            if nama and diag:
-                conn = sqlite3.connect('rekam_medis.db')
-                c = conn.cursor()
-                c.execute("INSERT INTO rekap_penyakit (tgl_kunjungan, nama_pasien, diagnosa, poli) VALUES (?,?,?,?)",
-                          (tgl, nama, diag.upper(), poli))
-                conn.commit()
-                conn.close()
-                st.success(f"Data {nama} dengan diagnosa {diag} berhasil disimpan!")
-            else:
-                st.warning("Mohon isi Nama dan Diagnosa!")
+        uploaded_file = st.file_uploader("Pilih file (XLSX atau CSV)", type=["xlsx", "csv"])
+        
+        if uploaded_file:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    df_upload = pd.read_csv(uploaded_file)
+                else:
+                    df_upload = pd.read_excel(uploaded_file)
+                
+                st.write("Pratinjau Data:")
+                st.dataframe(df_upload.head(5), use_container_width=True)
+                
+                if st.button("PROSES & SIMPAN KE DATABASE"):
+                    # Normalisasi data
+                    df_upload['diagnosa'] = df_upload['diagnosa'].str.upper().str.strip()
+                    
+                    conn = sqlite3.connect('klinik_data.db')
+                    df_upload.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
+                    conn.close()
+                    
+                    st.success(f"✅ Berhasil mengimpor {len(df_upload)} data penyakit!")
+                    st.balloons()
+            except Exception as e:
+                st.error(f"Terjadi kesalahan: {e}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- MODUL 2: 10 PENYAKIT TERBESAR ---
-elif menu == "Laporan 10 Penyakit Terbesar":
-    st.title("📊 Top 10 Penyakit Terbesar")
-    
-    conn = sqlite3.connect('rekam_medis.db')
-    df = pd.read_sql_query("SELECT diagnosa, COUNT(*) as jumlah FROM rekap_penyakit GROUP BY diagnosa ORDER BY jumlah DESC LIMIT 10", conn)
-    conn.close()
-
-    if not df.empty:
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            st.subheader("Tabel Frekuensi")
-            st.dataframe(df, use_container_width=True)
-        
-        with col2:
-            st.subheader("Grafik Batang")
-            st.bar_chart(df.set_index('diagnosa'))
-    else:
-        st.info("Belum ada data untuk dianalisis.")
-
-# --- MODUL 3: FILTER KUNJUNGAN ---
-elif menu == "Filter Kunjungan":
-    st.title("🔍 Filter & Cari Data Kunjungan")
-    
-    st.markdown('<div class="report-card">', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        start_date = st.date_input("Dari Tanggal", date.today())
-    with c2:
-        end_date = st.date_input("Sampai Tanggal", date.today())
-    
-    filter_diag = st.text_input("Cari Diagnosa Spesifik (Kosongkan jika ingin semua)")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    conn = sqlite3.connect('rekam_medis.db')
-    query = f"SELECT * FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{start_date}' AND '{end_date}'"
-    if filter_diag:
-        query += f" AND diagnosa LIKE '%{filter_diag.upper()}%'"
-    
-    df_filter = pd.read_sql_query(query, conn)
-    conn.close()
-
-    if not df_filter.empty:
-        st.write(f"Ditemukan {len(df_filter)} kunjungan.")
-        st.dataframe(df_filter, use_container_width=True)
-        
-        # Tombol Download Excel/CSV
-        csv = df_filter.to_csv(index=False).encode('utf-8')
-        st.download_button("Export ke CSV", csv, "rekap_kunjungan.csv", "text/csv")
-    else:
-        st.warning("Tidak ada data pada rentang tanggal tersebut.")
+    with tab2:
+        with st.form("manual_entry"):
+            st.subheader("Form Input Manual")
+            c1, c2 = st.columns(2)
+            tgl = c1.date_input("Tanggal", date.today())
+            nama = c1.text_input("Nama Pasien")
