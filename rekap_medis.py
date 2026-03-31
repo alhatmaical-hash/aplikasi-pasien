@@ -126,4 +126,4 @@ elif menu == "Lihat Semua Data":
     
     if not df_all.empty:
         # --- PENOMORAN MULAI DARI 1 ---
-        df_all.index = range(1, len(df_all)
+        df_all.index = range(1, len(df_all) + 1)
