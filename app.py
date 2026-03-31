@@ -73,7 +73,6 @@ def apply_dark_theme(bin_file):
     }}
     </style>
     ''', unsafe_allow_html=True)
-
 apply_custom_design()
 
 # --- 2. DATABASE SETUP ---
