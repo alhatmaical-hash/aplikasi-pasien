@@ -111,5 +111,3 @@ try:
 except:
     st.error("Gambar 'download.jpg' tidak ditemukan! Pastikan file ada di folder aplikasi.")
 
-# --- 3. LOGIKA APLIKASI KLINIK ---
-menu = st.sidebar.radio("MENU KLINIK PRO", ["Pendaftaran", "Panggilan Perawat", "
