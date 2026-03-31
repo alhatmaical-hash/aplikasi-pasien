@@ -125,3 +125,78 @@ if menu == "📝 Pendaftaran Pasien":
 
         st.markdown("---")
         poli_tujuan = st.selectbox("Pilih Poli Tujuan:", ["Poli Umum", "Poli Gigi", "MCU", "UGD", "Rawat In
+
+import streamlit as st
+import sqlite3
+import pandas as pd
+from datetime import date
+import time
+
+# --- 1. CONFIG & CUSTOM CSS (BACKGROUND BIRU & GAMBAR) ---
+st.set_page_config(page_title="Klinik Pratama Digital", layout="wide", page_icon="🏥")
+
+def local_css():
+    st.markdown("""
+    <style>
+    /* Mengatur Background Utama: Biru Medis Professional */
+    .stApp {
+        background: linear-gradient(180deg, #003366 0%, #00509d 50%, #f0f2f6 100%);
+        background-attachment: fixed;
+    }
+    
+    /* Mengatur Kotak Putih Konten */
+    .main-container {
+        background-color: rgba(255, 255, 255, 0.95);
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        margin-top: 20px;
+    }
+    
+    /* Header dengan Gambar Petugas */
+    .header-box {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+    }
+    
+    .header-text {
+        margin-left: 20px;
+        color: #003366;
+    }
+
+    /* Tombol Custom */
+    .stButton>button {
+        background: #00509d;
+        color: white;
+        border-radius: 10px;
+        border: none;
+        height: 3.5em;
+        font-size: 18px;
+        font-weight: bold;
+    }
+    
+    .stButton>button:hover {
+        background: #003366;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+local_css()
+
+# --- 2. DATABASE SETUP ---
+def init_db():
+    conn = sqlite3.connect('klinik_perusahaan_v2.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS data_pasien 
+                 (nik TEXT PRIMARY KEY, nama TEXT, tempat_lahir TEXT, tgl_lahir TEXT, 
+                  gender TEXT, agama TEXT, no_hp TEXT, perusahaan TEXT, 
+                  departemen TEXT, jabatan TEXT, blok_mes TEXT, no_kamar TEXT, 
+                  riwayat_penyakit TEXT, riwayat_alergi TEXT, area_kerja TEXT, 
+                  golongan_darah TEXT)''')
+    c.execute('''CREATE TABLE
