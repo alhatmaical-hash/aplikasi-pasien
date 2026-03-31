@@ -109,7 +109,7 @@ if menu == "Upload & Input Data":
                 if uploaded_file.name.endswith('.csv'):
                     df_upload = pd.read_csv(uploaded_file)
                 else:
-                    df_upload = pd.read_excel(uploaded_file)
+                    df_upload = pd.read_excel(uploaded_file, engine='openpyxl')
                 
                 st.write("Pratinjau Data:")
                 st.dataframe(df_upload.head(5), use_container_width=True)
