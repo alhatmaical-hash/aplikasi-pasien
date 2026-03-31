@@ -2,118 +2,130 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import date
-import time
 
-# --- 1. PENGATURAN DATABASE ---
+# --- 1. DATABASE SETUP ---
 def init_db():
-    conn = sqlite3.connect('data_klinik.db')
+    conn = sqlite3.connect('klinik_utama.db')
     c = conn.cursor()
-    # Membuat tabel jika belum ada
-    c.execute('''CREATE TABLE IF NOT EXISTS pasien 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                  no_antrean TEXT, 
-                  nama TEXT, 
-                  tgl_lahir TEXT, 
-                  gender TEXT, 
-                  no_hp TEXT, 
-                  poli TEXT, 
-                  keluhan TEXT, 
-                  tgl_daftar DATE)''')
+    # Tabel Pasien Baru & Identitas Lengkap
+    c.execute('''CREATE TABLE IF NOT EXISTS data_pasien 
+                 (nik TEXT PRIMARY KEY, nama TEXT, tempat_lahir TEXT, tgl_lahir TEXT, 
+                  gender TEXT, agama TEXT, no_hp TEXT, perusahaan TEXT, 
+                  departemen TEXT, jabatan TEXT, blok_mes TEXT, no_kamar TEXT, 
+                  riwayat_penyakit TEXT, riwayat_alergi TEXT, area_kerja TEXT, 
+                  golongan_darah TEXT, tgl_daftar DATE)''')
+    
+    # Tabel Antrean
+    c.execute('''CREATE TABLE IF NOT EXISTS antrean 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, nik TEXT, no_urut INTEGER, tgl_antre DATE)''')
     conn.commit()
     conn.close()
 
-def simpan_ke_db(antrean, nama, tgl, gender, hp, poli, keluhan):
-    conn = sqlite3.connect('data_klinik.db')
+# Fungsi untuk mengambil nomor antrean berikutnya (1-200)
+def get_next_antrean():
+    conn = sqlite3.connect('klinik_utama.db')
     c = conn.cursor()
-    c.execute("INSERT INTO pasien (no_antrean, nama, tgl_lahir, gender, no_hp, poli, keluhan, tgl_daftar) VALUES (?,?,?,?,?,?,?,?)",
-              (antrean, nama, tgl, gender, hp, poli, keluhan, date.today()))
-    conn.commit()
+    today = date.today()
+    c.execute("SELECT MAX(no_urut) FROM antrean WHERE tgl_antre = ?", (today,))
+    result = c.fetchone()[0]
     conn.close()
+    
+    if result is None or result >= 200:
+        return 1
+    return result + 1
 
-# Jalankan fungsi database
 init_db()
 
-# --- 2. TAMPILAN ANTARMUKA (UI) ---
-st.set_page_config(page_title="Sistem Pendaftaran Klinik", page_icon=" ", layout="wide")
+# --- 2. ANTARMUKA (UI) ---
+st.set_page_config(page_title="Sistem Klinik Perusahaan", layout="wide")
 
-# Sidebar untuk Navigasi
-st.sidebar.title("Menu Klinik")
-pilihan = st.sidebar.radio("Navigasi:", ["Pendaftaran Pasien", "Data Admin (Rekap)"])
+st.title("🏥 Sistem Pendaftaran Klinik Digital")
+st.sidebar.title("Menu Utama")
+mode = st.sidebar.selectbox("Pilih Status Pasien:", ["Pasien Baru", "Pasien Lama", "Admin (Cek Data)"])
 
-# --- HALAMAN PENDAFTARAN ---
-if pilihan == "Pendaftaran Pasien":
-    st.title(" Pendaftaran Pasien Baru")
-    st.write("Silakan isi data diri Anda dengan benar.")
-    
-    with st.form("form_pasien", clear_on_submit=True):
+# --- ALUR PASIEN BARU ---
+if mode == "Pasien Baru":
+    st.subheader("Formulir Pendaftaran Pasien Baru")
+    st.warning("Semua kolom di bawah ini WAJIB diisi.")
+
+    with st.form("form_baru", clear_on_submit=True):
         col1, col2 = st.columns(2)
         
         with col1:
             nama = st.text_input("Nama Lengkap Pasien")
-            tgl_lahir = st.date_input("Tanggal Lahir", min_value=date(1940, 1, 1))
+            nik = st.text_input("NIK / ID Card")
+            tempat_lahir = st.text_input("Tempat Lahir")
+            tgl_lahir = st.date_input("Tanggal Lahir", min_value=date(1950, 1, 1))
             gender = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+            agama = st.selectbox("Agama", ["Islam", "Kristen", "Katolik", "Hindu", "Budha", "Khonghucu"])
+            gol_darah = st.selectbox("Golongan Darah", ["A", "B", "AB", "O"])
+            no_hp = st.text_input("Nomor HP Aktif")
             
         with col2:
-            poli = st.selectbox("Pilih Poli", ["Umum", "Gigi", "Anak", "Mata", "Kandungan"])
-            whatsapp = st.text_input("Nomor WhatsApp (Aktif)")
-            
-        keluhan = st.text_area("Keluhan Utama")
-        
-        submit = st.form_submit_button("Daftar Sekarang")
+            perusahaan = st.text_input("Perusahaan")
+            departemen = st.text_input("Departemen")
+            jabatan = st.text_input("Jabatan")
+            blok_mes = st.text_input("Blok Mes")
+            no_kamar = st.text_input("Nomor Kamar")
+            area_kerja = st.text_input("Area Lokasi Kerja")
+            riwayat_penyakit = st.text_area("Riwayat Penyakit")
+            riwayat_alergi = st.text_area("Riwayat Alergi")
+
+        submit = st.form_submit_button("Simpan & Ambil Antrean")
 
     if submit:
-        if nama and whatsapp:
-            # Membuat Nomor Antrean (Contoh: G-123)
-            kode_p = poli[0].upper() # Ambil huruf depan poli
-            detik = int(time.time()) % 1000 # Ambil 3 angka unik dari waktu
-            antrean_final = f"{kode_p}-{detik:03d}"
-            
-            # Simpan ke Database
-            simpan_ke_db(antrean_final, nama, str(tgl_lahir), gender, whatsapp, poli, keluhan)
-            
-            # Tampilan Sukses
-            st.success("✅ Pendaftaran Berhasil!")
-            st.balloons()
-            
-            # "Kertas" Antrean
-            st.markdown(f"""
-            <div style="border: 2px dashed #4CAF50; padding: 20px; border-radius: 10px; background-color: #f9f9f9;">
-                <h3 style="text-align: center; color: #4CAF50;">TIKET ANTREAN</h3>
-                <h1 style="text-align: center; font-size: 50px;">{antrean_final}</h1>
-                <p style="text-align: center;"><b>Nama:</b> {nama} | <b>Poli:</b> {poli}</p>
-                <p style="text-align: center; font-size: 12px;">Pendaftaran pada: {date.today()}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Link WhatsApp Otomatis ke Admin
-            nomor_admin = "082347353762" # Ganti dengan nomor Anda
-            pesan = f"Halo Admin, saya {nama} baru saja mendaftar online untuk Poli {poli} dengan No. Antrean {antrean_final}."
-            st.markdown(f"[📲 Klik di sini untuk Konfirmasi via WhatsApp](https://wa.me/{nomor_admin}?text={pesan.replace(' ', '%20')})")
+        # Validasi Semua Field Wajib
+        fields = [nama, nik, tempat_lahir, no_hp, perusahaan, departemen, jabatan, blok_mes, no_kamar, area_kerja, riwayat_penyakit, riwayat_alergi]
+        if all(fields):
+            try:
+                conn = sqlite3.connect('klinik_utama.db')
+                c = conn.cursor()
+                # Simpan Data Pasien
+                c.execute("INSERT INTO data_pasien VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                          (nik, nama, tempat_lahir, str(tgl_lahir), gender, agama, no_hp, perusahaan, 
+                           departemen, jabatan, blok_mes, no_kamar, riwayat_penyakit, riwayat_alergi, 
+                           area_kerja, gol_darah, date.today()))
+                
+                # Buat Antrean
+                no_urut = get_next_antrean()
+                c.execute("INSERT INTO antrean (nik, no_urut, tgl_antre) VALUES (?,?,?)", (nik, no_urut, date.today()))
+                
+                conn.commit()
+                conn.close()
+                
+                st.success(f"Pendaftaran Berhasil! Nomor Antrean Anda: {no_urut:02d}")
+                st.balloons()
+            except sqlite3.IntegrityError:
+                st.error("NIK ini sudah terdaftar sebagai Pasien Lama!")
         else:
-            st.error("Gagal: Nama dan Nomor WhatsApp tidak boleh kosong!")
+            st.error("Gagal! Mohon lengkapi SELURUH data tanpa terkecuali.")
 
-# --- HALAMAN ADMIN ---
+# --- ALUR PASIEN LAMA ---
+elif mode == "Pasien Lama":
+    st.subheader("Pendaftaran Pasien Lama")
+    cari_nik = st.text_input("Masukkan NIK Anda untuk Verifikasi")
+    
+    if st.button("Cek Data & Ambil Antrean"):
+        conn = sqlite3.connect('klinik_utama.db')
+        c = conn.cursor()
+        c.execute("SELECT nama, perusahaan FROM data_pasien WHERE nik = ?", (cari_nik,))
+        user = c.fetchone()
+        
+        if user:
+            no_urut = get_next_antrean()
+            c.execute("INSERT INTO antrean (nik, no_urut, tgl_antre) VALUES (?,?,?)", (cari_nik, no_urut, date.today()))
+            conn.commit()
+            st.success(f"Selamat Datang Kembali, {user[0]} ({user[1]})")
+            st.info(f"Nomor Antrean Anda Hari Ini: {no_urut:02d}")
+        else:
+            st.error("NIK tidak ditemukan. Silakan daftar sebagai Pasien Baru.")
+        conn.close()
+
+# --- ADMIN VIEW ---
 else:
-    st.title("📂 Data & Laporan Pasien")
-    
-    conn = sqlite3.connect('data_klinik.db')
-    df = pd.read_sql_query("SELECT * FROM pasien ORDER BY id DESC", conn)
+    st.subheader("Data Rekapitulasi Klinik")
+    conn = sqlite3.connect('klinik_utama.db')
+    df = pd.read_sql_query("SELECT a.no_urut, p.nama, p.nik, p.poli_tujuan, a.tgl_antre FROM antrean a JOIN data_pasien p ON a.nik = p.nik WHERE a.tgl_antre = date('now')", conn)
+    st.write("Antrean Hari Ini:")
+    st.table(df)
     conn.close()
-    
-    if not df.empty:
-        st.subheader("Daftar Seluruh Pasien Terdaftar")
-        st.dataframe(df, use_container_width=True)
-        
-        # Tombol Download Excel/CSV
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Unduh Data Pasien (CSV)",
-            data=csv,
-            file_name=f'rekap_pasien_{date.today()}.csv',
-            mime='text/csv',
-        )
-        
-        st.divider()
-        st.write(f"Total Pasien Terdaftar: **{len(df)} Orang**")
-    else:
-        st.info("Belum ada data pasien yang masuk hari ini.")
