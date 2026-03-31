@@ -83,6 +83,7 @@ if menu == "Upload Data CSV":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- MODUL 2: LAPORAN 10 PENYAKIT (NOMOR MULAI 1) ---
+# --- MODUL 2: LAPORAN 10 PENYAKIT (HILANGKAN INDEKS 0) ---
 elif menu == "Laporan 10 Penyakit":
     st.markdown("<h1>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
     
@@ -103,20 +104,21 @@ elif menu == "Laporan 10 Penyakit":
     conn.close()
 
     if not df_top.empty:
-        # --- LOGIKA PENOMORAN MULAI DARI 1 ---
-        df_top.index = range(1, len(df_top) + 1)
-        df_top.index.name = 'No.'
+        # 1. Buat kolom No dimulai dari 1
+        df_top.insert(0, 'No.', range(1, len(df_top) + 1))
         
         col_t, col_g = st.columns([1, 2])
         with col_t:
             st.markdown("### Daftar Peringkat")
-            st.table(df_top.reset_index()) # reset_index agar No. muncul sebagai kolom biasa
+            # 2. GUNAKAN hide_index=True AGAR ANGKA 0 DI SAMPING NO HILANG
+            st.dataframe(df_top, hide_index=True, use_container_width=True)
+            
         with col_g:
             st.markdown("### Grafik Batang")
-            st.bar_chart(df_top.set_index('Diagnosa Penyakit'))
+            # Menggunakan kolom Diagnosa sebagai index hanya untuk grafik
+            st.bar_chart(df_top.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
     else:
         st.warning("Data tidak ditemukan pada periode ini.")
-
 # --- MODUL 3: LIHAT SEMUA DATA (NOMOR MULAI 1) ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE KESELURUHAN</h1>", unsafe_allow_html=True)
