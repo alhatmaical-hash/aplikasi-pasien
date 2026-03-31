@@ -24,43 +24,6 @@ def set_png_as_page_bg(bin_file):
         background-position: center;
         background-attachment: fixed;
     }}
-    
-    /* Container utama agar tulisan terang dan jelas */
-    .glass-container {{
-        background-color: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(15px);
-        padding: 30px;
-        border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        margin-bottom: 20px;
-    }}
-
-    /* Pengaturan teks agar kontras (Putih dengan Shadow) */
-    h1, h2, h3, p, label {{
-        color: white !important;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    }}
-
-    /* Kotak Input agar tetap terbaca jelas */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {{
-        background-color: rgba(255, 255, 255, 0.9) !important;
-        color: black !important;
-        font-weight: bold !important;
-    }}
-
-    /* Tombol Kuning Emas */
-    .stButton>button {{
-        background-color: #f1c40f !important;
-        color: black !important;
-        border-radius: 10px;
-        font-weight: bold;
-        border: none;
-        width: 100%;
-        height: 3em;
-    }}
-    </style>
-    '''
-    st.markdown(page_bg_img, unsafe_allow_html=True)
 
 # --- 2. DATABASE ENGINE ---
 def init_db():
