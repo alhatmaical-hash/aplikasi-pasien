@@ -2,78 +2,99 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import date
-import base64
+import time
 
-# --- 1. CONFIG & STYLING (DARK BLOCKS) ---
-st.set_page_config(page_title="Klinik Digital - Dark Mode", layout="wide")
+# --- 1. KONFIGURASI TAMPILAN (UI) ---
+st.set_page_config(page_title="Sistem Klinik Digital", layout="wide")
 
-def get_base64_of_bin_file(bin_file):
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-
-def apply_dark_theme(bin_file):
-    bin_str = get_base64_of_bin_file(bin_file)
-    st.markdown(f'''
+def apply_custom_design():
+    st.markdown("""
     <style>
-    /* Font Global */
-    * {{ font-family: "Times New Roman", Times, serif !important; }}
+    /* Mengatur Background Abu-abu Gelap */
+    .stApp {
+        background-color: #2F2F2F;
+    }
 
-    /* Background Utama */
-    .stApp {{
-        background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), 
-                          url("data:image/png;base64,{bin_str}");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }}
+    /* Font Global ke Times New Roman */
+    * {
+        font-family: 'Times New Roman', Times, serif !important;
+    }
 
-    /* BLOK INPUT & FORM - DIBUAT GELAP */
-    div[data-testid="stForm"], .glass-card, .stTabs {{
-        background: rgba(0, 20, 40, 0.85) !important; /* Biru Gelap Transparan */
+    /* Container Form (Glassmorphism) */
+    div[data-testid="stForm"], .main-box {
+        background-color: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(10px);
-        border: 1px solid #00d4ff;
-        border-radius: 15px;
-        padding: 25px;
-        color: white !important;
-    }}
-
-    /* TIKET ANTREAN - DIBUAT GELAP AGAR NO ANTREAN MENYALA */
-    .dark-ticket {{
-        background: rgba(10, 10, 10, 0.9);
-        color: #00d4ff !important;
         padding: 30px;
-        border-radius: 20px;
-        text-align: center;
-        border: 2px solid #00d4ff;
-        box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
-        margin-top: 20px;
-    }}
+        border-radius: 15px;
+        border: 2px solid #00D4FF; 
+    }
 
-    /* Font No Antrean dibuat sangat besar dan terang */
-    .queue-number {{
-        font-size: 100px !important;
-        color: #00ffcc !important;
-        font-weight: bold;
-        text-shadow: 0 0 20px rgba(0, 255, 204, 0.8);
-        margin: 10px 0;
-    }}
+    /* Teks Putih Terang & Jelas */
+    h1, h2, h3, label, p, .stMarkdown {
+        color: #FFFFFF !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    }
 
-    /* Label Text */
-    label, p, h1, h2, h3 {{
-        color: white !important;
-        text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-    }}
-
-    /* Input Fields (Tetap Putih agar mudah diketik, namun border gelap) */
-    input, select, textarea {{
-        background-color: rgba(255, 255, 255, 0.9) !important;
-        color: black !important;
+    /* Warna Label Input */
+    .stTextInput label, .stSelectbox label, .stTextArea label, .stDateInput label {
+        color: #00D4FF !important; 
+        font-size: 18px !important;
         font-weight: bold !important;
-    }}
+    }
+
+    /* Kotak Input Putih agar tulisan hitam kontras */
+    input, select, textarea {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        font-weight: bold !important;
+    }
+
+    /* Tombol Pendaftaran */
+    .stButton>button {
+        background: linear-gradient(90deg, #00D4FF, #00509D) !important;
+        color: white !important;
+        border: none;
+        height: 3.5em;
+        width: 100%;
+        font-weight: bold !important;
+    }
+    
+    /* ======================================================= */
+    /* PERUBAHAN DISINI: Box Nomor Antrean Dibuat Warna Gelap */
+    /* ======================================================= */
+    .ticket {
+        background: #1A1A1A !important; /* Warna Hitam Pekat */
+        color: #FFFFFF !important;
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        border: 2px solid #00D4FF;
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.4); /* Efek Menyala Biru */
+        margin-top: 20px;
+    }
+    
+    /* Angka Nomor Antrean dibuat Menyala Kuning Emas */
+    .ticket h1 {
+        font-size: 90px !important;
+        color: #F1C40F !important;
+        text-shadow: 0 0 15px rgba(241, 196, 15, 0.6) !important;
+        margin: 5px 0 !important;
+    }
+    
+    /* Teks detail di dalam tiket */
+    .ticket h2 {
+        color: #00D4FF !important;
+        margin: 0 !important;
+    }
+    
+    .ticket p {
+        color: #E0E0E0 !important;
+        font-size: 18px !important;
+    }
+    /* ======================================================= */
+    
     </style>
-    ''', unsafe_allow_html=True)
-apply_custom_design()
+    """, unsafe_allow_html=True)
 
 # --- 2. DATABASE SETUP ---
 def init_db():
