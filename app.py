@@ -106,7 +106,7 @@ init_db()
 menu = st.sidebar.radio("MENU ADMIN", ["Pendaftaran Pasien", "Panggilan Admin (PC)", "Monitor Antrean"])
 
 if menu == "Pendaftaran Pasien":
-    st.title("🏥 PENDAFTARAN KLINIK DIGITAL")
+    st.title("🏥 PENDAFTARAN PASIEN KLINIK HARITA FERONIKEL OBI")
     
     status = st.radio("Tipe Kedatangan:", ["Pasien Lama", "Pasien Baru"], horizontal=True)
     
