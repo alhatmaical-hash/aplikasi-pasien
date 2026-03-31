@@ -1,10 +1,10 @@
 import streamlit as st
 from datetime import date
 
-st.set_page_config(page_title="Pendaftaran Klinik", page_icon="🏥")
+st.set_page_config(page_title="Pendaftaran Klinik", page_icon="")
 
 def app():
-    st.title("🏥 Pendaftaran Pasien")
+    st.title(" Pendaftaran Pasien")
     st.write("Isi formulir di bawah ini:")
     
     with st.form("form_pendaftaran"):
