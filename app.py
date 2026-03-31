@@ -3,33 +3,189 @@ import sqlite3
 import pandas as pd
 from datetime import date
 import time
+import base64
 
-# --- 1. CONFIG & UI STYLE ---
-st.set_page_config(page_title="Klinik Digital Pro", layout="wide", page_icon="🏥")
+# --- 1. FUNGSI UNTUK BACKGROUND GAMBAR LOKAL ---
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
 
-def local_css():
-    st.markdown("""
+def set_png_as_page_bg(bin_file):
+    bin_str = get_base64_of_bin_file(bin_file)
+    page_bg_img = f'''
     <style>
-    .stApp {
-        background: linear-gradient(180deg, #003366 0%, #00509d 50%, #f0f2f6 100%);
+    * {{
+        font-family: "Times New Roman", Times, serif !important;
+    }}
+    .stApp {{
+        background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("data:image/png;base64,{bin_str}");
+        background-size: cover;
+        background-position: center;
         background-attachment: fixed;
-    }
-    .main-container {
-        background-color: rgba(255, 255, 255, 0.95);
+    }}
+    
+    /* Container utama agar tulisan terang dan jelas */
+    .glass-container {{
+        background-color: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(15px);
         padding: 30px;
         border-radius: 20px;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-    }
-    .header-box {
-        display: flex; align-items: center; justify-content: center;
-        background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;
-    }
-    .ticket-box {
-        background: #e3f2fd; padding: 25px; border-radius: 15px;
-        text-align: center; border: 3px dashed #00509d; margin-top: 20px;
-    }
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        margin-bottom: 20px;
+    }}
+
+    /* Pengaturan teks agar kontras (Putih dengan Shadow) */
+    h1, h2, h3, p, label {{
+        color: white !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }}
+
+    /* Kotak Input agar tetap terbaca jelas */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {{
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        color: black !important;
+        font-weight: bold !important;
+    }}
+
+    /* Tombol Kuning Emas */
+    .stButton>button {{
+        background-color: #f1c40f !important;
+        color: black !important;
+        border-radius: 10px;
+        font-weight: bold;
+        border: none;
+        width: 100%;
+        height: 3em;
+    }}
     </style>
-    """, unsafe_allow_html=True)
+    '''
+    st.markdown(page_bg_img, unsafe_allow_html=True)
+
+# --- 2. DATABASE ENGINE ---
+def init_db():
+    conn = sqlite3.connect('klinik_digital.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS master_pasien 
+                 (nik TEXT PRIMARY KEY, nama TEXT, tempat_lahir TEXT, tgl_lahir TEXT, 
+                  gender TEXT, agama TEXT, no_hp TEXT, perusahaan TEXT, 
+                  departemen TEXT, jabatan TEXT, blok_mes TEXT, no_kamar TEXT, 
+                  riwayat_penyakit TEXT, riwayat_alergi TEXT, area_kerja TEXT, 
+                  golongan_darah TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS antrean_harian 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, nik TEXT, no_urut TEXT, 
+                  poli TEXT, status TEXT, tgl_antre DATE)''')
+    conn.commit()
+    conn.close()
+
+def get_next_number(poli_nama):
+    conn = sqlite3.connect('klinik_digital.db')
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM antrean_harian WHERE tgl_antre = ? AND poli = ?", (date.today(), poli_nama))
+    count = c.fetchone()[0]
+    conn.close()
+    return (count % 200) + 1
+
+# Inisialisasi
+init_db()
+
+# PASTIKAN FILE GAMBAR ANDA BERNAMA 'download.jpg' DAN SATU FOLDER DENGAN FILE INI
+try:
+    set_png_as_page_bg('download.jpg')
+except:
+    st.sidebar.error("Gambar 'download.jpg' tidak ditemukan di folder!")
+
+# --- 3. UI APLIKASI ---
+st.title("🏥 SISTEM PENDAFTARAN KLINIK TERPADU")
+
+menu = st.sidebar.radio("MENU UTAMA", ["Pendaftaran", "Panggilan Perawat", "Monitor TV"])
+
+if menu == "Pendaftaran":
+    st.markdown('<div class="glass-container">', unsafe_allow_html=True)
+    status = st.radio("Pilih Status Pasien:", ["Pasien Lama (Cari NIK/Nama)", "Pasien Baru"], horizontal=True)
+    
+    nik_final, nama_final, valid = "", "", False
+
+    if status == "Pasien Lama (Cari NIK/Nama)":
+        search = st.text_input("MASUKKAN NIK ATAU NAMA PASIEN:")
+        if search:
+            conn = sqlite3.connect('klinik_digital.db')
+            c = conn.cursor()
+            c.execute("SELECT nik, nama FROM master_pasien WHERE nik = ? OR nama LIKE ?", (search, f'%{search}%'))
+            res = c.fetchone()
+            conn.close()
+            if res:
+                st.success(f"Ditemukan: {res[1]} (NIK: {res[0]})")
+                nik_final, nama_final, valid = res[0], res[1], True
+            else:
+                st.error("Data tidak ditemukan! Mohon daftar sebagai Pasien Baru.")
+    
+    else:
+        st.subheader("📝 REGISTRASI IDENTITAS BARU")
+        c1, c2 = st.columns(2)
+        with c1:
+            nama_n = st.text_input("Nama Lengkap")
+            nik_n = st.text_input("NIK / ID Card")
+            t_lahir = st.text_input("Tempat Lahir")
+            tg_lahir = st.date_input("Tanggal Lahir", min_value=date(1950, 1, 1))
+            gender = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+            no_wa = st.text_input("Nomor WhatsApp")
+        with c2:
+            pt = st.text_input("Perusahaan")
+            dep = st.text_input("Departemen")
+            jab = st.text_input("Jabatan")
+            mes = st.text_input("Blok Mes")
+            kmr = st.text_input("Nomor Kamar")
+            gol = st.selectbox("Golongan Darah", ["A", "B", "AB", "O"])
+        
+        riwayat_p = st.text_area("Riwayat Penyakit")
+        riwayat_a = st.text_area("Riwayat Alergi")
+        area = st.text_input("Area Lokasi Kerja")
+        
+        if nama_n and nik_n:
+            nik_final, nama_final, valid = nik_n, nama_n, True
+
+    if valid:
+        st.markdown("---")
+        poli = st.selectbox("PILIH POLI TUJUAN:", ["Poli Umum", "Poli Gigi", "MCU", "UGD", "Rawat Inap"])
+        if st.button("KONFIRMASI & AMBIL ANTREAN"):
+            conn = sqlite3.connect('klinik_digital.db')
+            c = conn.cursor()
+            try:
+                if status == "Pasien Baru":
+                    c.execute("INSERT INTO master_pasien VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                              (nik_n, nama_n, t_lahir, str(tg_lahir), gender, "Agama", no_wa, pt, dep, jab, mes, kmr, riwayat_p, riwayat_a, area, gol))
+                
+                # Antrean berkelanjutan
+                map_k = {"Poli Umum":"U", "Poli Gigi":"G", "MCU":"M", "UGD":"ER", "Rawat Inap":"RI"}
+                no_urut = get_next_number(poli)
+                antrean = f"{map_k[poli]}-{no_urut:02d}"
+                
+                c.execute("INSERT INTO antrean_harian (nik, no_urut, poli, status, tgl_antre) VALUES (?,?,?,?,?)",
+                          (nik_final, antrean, poli, "Menunggu", date.today()))
+                conn.commit()
+                
+                st.markdown(f"""
+                <div style="background:white; color:black; padding:20px; border-radius:15px; text-align:center;">
+                    <h2 style="color:black !important; text-shadow:none;">NOMOR ANTREAN</h2>
+                    <h1 style="font-size:80px; color:red !important; text-shadow:none;">{antrean}</h1>
+                    <p style="color:black !important; text-shadow:none;">Pasien: {nama_final} | Poli: {poli}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            except sqlite3.IntegrityError:
+                st.error("NIK sudah terdaftar!")
+            finally:
+                conn.close()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- MODUL PERAWAT & MONITOR (Logika Sama) ---
+elif menu == "Panggilan Perawat":
+    st.title("👨‍⚕️ RUANG PANGGILAN PERAWAT")
+    # Tambahkan logika tabel panggilan di sini
+
+elif menu == "Monitor TV":
+    st.title("📺 MONITOR ANTREAN")
+    # Tambahkan logika layar TV di sini
 
 local_css()
 
