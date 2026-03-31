@@ -1,0 +1,29 @@
+import streamlit as st
+from datetime import date
+
+st.set_page_config(page_title="Pendaftaran Klinik", page_icon="🏥")
+
+def app():
+    st.title("🏥 Pendaftaran Pasien")
+    st.write("Isi formulir di bawah ini:")
+    
+    with st.form("form_pendaftaran"):
+        nama = st.text_input("Nama Lengkap")
+        tgl = st.date_input("Tanggal Lahir", min_value=date(1940, 1, 1))
+        poli = st.selectbox("Pilih Poli", ["Umum", "Gigi", "Anak"])
+        wa = st.text_input("Nomor WhatsApp")
+        keluhan = st.text_area("Keluhan")
+        
+        submit = st.form_submit_button("Daftar")
+        
+    if submit:
+        if nama and wa:
+            st.success(f"Berhasil! Pasien {nama} terdaftar.")
+            st.info("Silakan konfirmasi ke Admin.")
+            link = f"https://wa.me/628123456789?text=Halo%20saya%20{nama}%20ingin%20periksa"
+            st.markdown(f"[KLIK DI SINI UNTUK WHATSAPP]({link})")
+        else:
+            st.error("Nama dan WA wajib diisi!")
+
+if __name__ == "__main__":
+    app()
