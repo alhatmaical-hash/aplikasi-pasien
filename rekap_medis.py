@@ -98,6 +98,7 @@ if menu == "Upload Data CSV":
             st.success("✅ Data berhasil disimpan!")
 
 # --- 7. MODUL: LAPORAN 10 PENYAKIT ---
+# --- 7. MODUL: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
     st.markdown("<h1>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
     
@@ -109,39 +110,55 @@ elif menu == "Laporan 10 Penyakit":
     t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="l2")
 
     conn = sqlite3.connect(DB_PATH)
-    query = f"SELECT diagnosa, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY diagnosa ORDER BY jumlah DESC LIMIT 10"
+    query = f"""
+        SELECT diagnosa AS 'Diagnosa Penyakit', COUNT(*) AS 'Jumlah Kasus' 
+        FROM rekap_penyakit 
+        WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' 
+        GROUP BY diagnosa 
+        ORDER BY [Jumlah Kasus] DESC 
+        LIMIT 10
+    """
     df_top = pd.read_sql_query(query, conn)
-    conn.close()
-
+    
     if not df_top.empty:
-        st.bar_chart(df_top.set_index('diagnosa'))
-        st.dataframe(df_top, use_container_width=True)
+        # --- PROSES PENOMORAN & CHECKBOX ---
+        # 1. Tambahkan kolom No. urut 1, 2, 3...
+        df_top.insert(0, 'No.', range(1, len(df_top) + 1))
+        # 2. Tambahkan kolom Pilih untuk fitur hapus
+        df_top.insert(0, 'Pilih', False)
+        
+        col_t, col_g = st.columns([1.2, 2])
+        
+        with col_t:
+            st.markdown("### Daftar Peringkat")
+            # Tampilkan tabel dengan nomor urut
+            edited_df = st.data_editor(
+                df_top, 
+                hide_index=True, 
+                use_container_width=True,
+                disabled=["No.", "Diagnosa Penyakit", "Jumlah Kasus"] # Agar data tidak bisa diedit asal
+            )
+            
+            # Tombol Hapus Spesifik Diagnosa
+            if st.button("🗑️ HAPUS TERPILIH", key="btn_hapus_diag"):
+                selected_diag = edited_df[edited_df['Pilih'] == True]['Diagnosa Penyakit'].tolist()
+                if selected_diag:
+                    cur = conn.cursor()
+                    for d in selected_diag:
+                        cur.execute("DELETE FROM rekap_penyakit WHERE diagnosa = ? AND tgl_kunjungan BETWEEN ? AND ?", (d, t1, t2))
+                    conn.commit()
+                    st.success(f"✅ Berhasil menghapus diagnosa terpilih!")
+                    st.rerun()
+                else:
+                    st.warning("Centang penyakit yang ingin dihapus.")
+
+        with col_g:
+            st.markdown("### Grafik Batang")
+            st.bar_chart(df_top.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
-
-# --- 8. MODUL: ANALISIS DEPT & PERUSAHAAN ---
-elif menu == "Analisis Dept & Perusahaan":
-    st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
     
-    tgl_awal_db, tgl_akhir_db = get_date_range()
-    
-    c1, c2 = st.columns(2)
-    t1 = c1.date_input("Mulai", value=tgl_awal_db, key="d1")
-    t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="d2")
-
-    conn = sqlite3.connect(DB_PATH)
-    df_data = pd.read_sql_query(f"SELECT departemen, perusahaan FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}'", conn)
     conn.close()
-
-    if not df_data.empty:
-        tab1, tab2 = st.tabs(["Departemen", "Perusahaan"])
-        with tab1:
-            res_dept = df_data['departemen'].value_counts().reset_index()
-            st.dataframe(res_dept, use_container_width=True)
-        with tab2:
-            res_corp = df_data['perusahaan'].value_counts().reset_index()
-            st.dataframe(res_corp, use_container_width=True)
-
 # --- 9. MODUL: LIHAT & HAPUS DATA ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE KESELURUHAN</h1>", unsafe_allow_html=True)
