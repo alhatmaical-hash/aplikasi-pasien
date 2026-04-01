@@ -29,26 +29,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. INISIALISASI DATABASE (UPDATE KOLOM) ---
+# ... (bagian impor dan style CSS tetap sama) ...
+
+# --- 3. INISIALISASI DATABASE (GANTI DENGAN INI) ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # Menambahkan kolom departemen dan perusahaan
-    c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                  tgl_kunjungan TEXT, 
-                  nama_pasien TEXT, 
-                  diagnosa TEXT, 
-                  poli TEXT,
-                  departemen TEXT,
-                  perusahaan TEXT)''')
-    conn.commit()
-    conn.close()
-   def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
     
-    # 1. Pastikan tabel dasar ada
+    # Memastikan tabel dasar ada
     c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                   tgl_kunjungan TEXT, 
@@ -56,21 +44,26 @@ def init_db():
                   diagnosa TEXT, 
                   poli TEXT)''')
     
-    # 2. Tambahkan kolom departemen (Gunakan try agar tidak error jika kolom sudah ada)
+    # Tambah kolom departemen jika belum ada
     try:
         c.execute("ALTER TABLE rekap_penyakit ADD COLUMN departemen TEXT")
     except sqlite3.OperationalError:
-        pass # Kolom sudah ada, abaikan
+        pass 
         
-    # 3. Tambahkan kolom perusahaan
+    # Tambah kolom perusahaan jika belum ada
     try:
         c.execute("ALTER TABLE rekap_penyakit ADD COLUMN perusahaan TEXT")
     except sqlite3.OperationalError:
-        pass # Kolom sudah ada, abaikan
+        pass 
         
     conn.commit()
     conn.close()
 
+# Panggil fungsi ini agar perubahan langsung diterapkan ke file .db
+init_db()
+
+# --- 4. NAVIGASI ---
+# ... (kode selanjutnya) ...
 init_db()
 
 # --- 4. NAVIGASI ---
