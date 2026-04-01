@@ -144,7 +144,7 @@ with st.sidebar.expander("⚙️ PENGATURAN AKUN"):
             st.error("❌ Password lama salah.")
 
     st.write("---")
-   if st.sidebar.button("🔴 KELUAR DARI APLIKASI", use_container_width=True, type="secondary"):
+    if st.sidebar.button("🔴 KELUAR DARI APLIKASI", use_container_width=True, type="secondary"):
         st.session_state["authenticated"] = False
         st.success("Anda telah keluar.")
         st.rerun()
