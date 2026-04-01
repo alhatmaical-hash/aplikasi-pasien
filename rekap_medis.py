@@ -276,16 +276,40 @@ elif menu == "Lihat Semua Data":
 
         st.markdown("<br>", unsafe_allow_html=True) # Jarak antara tabel dan tombol
 
-        # 2. SEJAJARKAN TOMBOL DALAM SATU BARIS (3 KOLOM)
-        # Kolom 1: Checkbox konfirmasi, Kolom 2: Tombol Hapus Terpilih, Kolom 3: Tombol Delete All
+      # --- BAGIAN TOMBOL AKSI SEJAJAR ---
+        st.markdown("<br>", unsafe_allow_html=True)
         col_check, col_btn1, col_btn2 = st.columns([1.5, 1, 1])
         
         with col_check:
-            st.write(" ") # Penyeimbang posisi vertikal
             konfirmasi_semua = st.checkbox("⚠️ AKTIFKAN FITUR HAPUS SEMUA")
             
         with col_btn1:
+            # Pastikan nama variabel ini unik dan dipanggil dengan benar di bawah
             btn_hapus_terpilih = st.button("🗑️ HAPUS TERPILIH", use_container_width=True)
             
         with col_btn2:
-            btn_hapus_se
+            # Tombol ini hanya aktif jika checkbox dicentang
+            btn_hapus_semua = st.button("🔥 DELETE ALL DATA", type="primary", use_container_width=True, disabled=not konfirmasi_semua)
+
+        # --- LOGIKA EKSEKUSI (PASTIKAN SEJAJAR DENGAN BLOK 'WITH') ---
+        if btn_hapus_terpilih:
+            # Ambil data dari edited_df yang sudah didefinisikan di atas
+            ids_to_delete = edited_df[edited_df['Pilih'] == True]['id'].tolist()
+            if ids_to_delete:
+                cur = conn.cursor()
+                query = f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(map(str, ids_to_delete))})"
+                cur.execute(query)
+                conn.commit()
+                st.success(f"✅ {len(ids_to_delete)} baris berhasil dihapus!")
+                st.rerun()
+            else:
+                st.warning("Silakan pilih baris terlebih dahulu!")
+
+        if btn_hapus_semua:
+            if konfirmasi_semua: # Cek ulang keamanan
+                cur = conn.cursor()
+                cur.execute("DELETE FROM rekap_penyakit")
+                cur.execute("DELETE FROM sqlite_sequence WHERE name='rekap_penyakit'")
+                conn.commit()
+                st.success("✅ Database telah dikosongkan secara total!")
+                st.rerun()
