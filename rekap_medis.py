@@ -170,12 +170,10 @@ elif menu == "Analisis Dept & Perusahaan":
     t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="d2")
 
     conn = sqlite3.connect(DB_PATH)
-    # Kita ambil semua data dulu untuk dicek kolomnya
     df_data = pd.read_sql_query(f"SELECT * FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}'", conn)
     conn.close()
 
     if not df_data.empty:
-        # Kecilkan semua nama kolom agar tidak bentrok (Case Insensitive)
         df_data.columns = [c.lower() for c in df_data.columns]
         
         tab1, tab2 = st.tabs(["📊 Per Departemen", "🏢 Per Perusahaan"])
@@ -183,24 +181,42 @@ elif menu == "Analisis Dept & Perusahaan":
         with tab1:
             if 'departemen' in df_data.columns:
                 res_dept = df_data['departemen'].value_counts().reset_index()
-                res_dept.columns = ['Nama Departemen', 'Jumlah Kunjungan']
-                # Tambahkan nomor urut
+                res_dept.columns = ['Nama Departemen', 'Jumlah']
                 res_dept.insert(0, 'No.', range(1, len(res_dept) + 1))
-                st.dataframe(res_dept, use_container_width=True, hide_index=True)
-                st.bar_chart(res_dept.set_index('Nama Departemen')['Jumlah Kunjungan'])
+                
+                # Mengatur konfigurasi kolom agar 'No.' berukuran kecil (required)
+                st.dataframe(
+                    res_dept, 
+                    use_container_width=True, 
+                    hide_index=True,
+                    column_config={
+                        "No.": st.column_config.Column(width="small"),
+                        "Jumlah": st.column_config.Column(width="medium")
+                    }
+                )
+                st.bar_chart(res_dept.set_index('Nama Departemen')['Jumlah'])
             else:
-                st.error("❌ Kolom 'departemen' tidak ditemukan di database. Pastikan CSV Anda memiliki kolom tersebut.")
+                st.error("Kolom 'departemen' tidak ditemukan.")
 
         with tab2:
             if 'perusahaan' in df_data.columns:
                 res_corp = df_data['perusahaan'].value_counts().reset_index()
-                res_corp.columns = ['Nama Perusahaan', 'Jumlah Kunjungan']
-                # Tambahkan nomor urut
+                res_corp.columns = ['Nama Perusahaan', 'Jumlah']
                 res_corp.insert(0, 'No.', range(1, len(res_corp) + 1))
-                st.dataframe(res_corp, use_container_width=True, hide_index=True)
-                st.bar_chart(res_corp.set_index('Nama Perusahaan')['Jumlah Kunjungan'])
+                
+                # Mengatur konfigurasi kolom agar 'No.' berukuran kecil
+                st.dataframe(
+                    res_corp, 
+                    use_container_width=True, 
+                    hide_index=True,
+                    column_config={
+                        "No.": st.column_config.Column(width="small"),
+                        "Jumlah": st.column_config.Column(width="medium")
+                    }
+                )
+                st.bar_chart(res_corp.set_index('Nama Perusahaan')['Jumlah'])
             else:
-                st.error("❌ Kolom 'perusahaan' tidak ditemukan di database. Pastikan CSV Anda memiliki kolom tersebut.")
+                st.error("Kolom 'perusahaan' tidak ditemukan.")
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
 # --- 9. MODUL: LIHAT & HAPUS DATA ---
