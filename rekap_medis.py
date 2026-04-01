@@ -144,10 +144,12 @@ with st.sidebar.expander("⚙️ PENGATURAN AKUN"):
             st.error("❌ Password lama salah.")
 
     st.write("---")
-    if st.sidebar.button("🔴 KELUAR DARI APLIKASI", use_container_width=True, type="secondary"):
-        st.session_state["authenticated"] = False
-        st.success("Anda telah keluar.")
-        st.rerun()
+    st.write("---")
+        
+        # Tombol Keluar dengan tulisan hitam (efek dari CSS di atas)
+        if st.button("🔴 KELUAR DARI APLIKASI", use_container_width=True, type="primary"):
+            st.session_state["authenticated"] = False
+            st.rerun()
 # -----------------------------------------------
 # --- 6. MODUL: UPLOAD DATA ---
 if menu == "Upload Data CSV":
