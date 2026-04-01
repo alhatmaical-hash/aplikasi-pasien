@@ -10,23 +10,24 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-# --- CODING TAMBAHAN UNTUK PASSWORD ---
+# --- LOGIKA PASSWORD DENGAN FITUR UBAH PASSWORD ---
+if "admin_password" not in st.session_state:
+    st.session_state["admin_password"] = "admin123"  # Password awal/default
+
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 if not st.session_state["authenticated"]:
     st.title("🏥 Akses Terbatas - Klinik Apps")
-    password = st.text_input("Masukkan Password Admin untuk Membuka Aplikasi:", type="password")
+    pwd_input = st.text_input("Masukkan Password Admin:", type="password")
     
     if st.button("Masuk"):
-        if password == "admin123":  # SILAKAN GANTI PASSWORD DI SINI
+        if pwd_input == st.session_state["admin_password"]:
             st.session_state["authenticated"] = True
             st.rerun()
         else:
             st.error("Password Salah!")
-    
-    st.stop() # Ini akan menghentikan semua baris kode di bawahnya agar tidak muncul
-# --------------------------------------
+    st.stop()
 # --- 1. SETTING DASAR ---
 DB_PATH = 'klinik_data.db'
 
