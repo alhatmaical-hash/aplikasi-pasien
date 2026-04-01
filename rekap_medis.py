@@ -204,3 +204,49 @@ elif menu == "Lihat Semua Data":
     if not df_all.empty:
         df_all.index = range(1, len(df_all) + 1)
         st.dataframe(df_all, use_container_width=True)
+
+# --- MODUL 4: HAPUS DATA ---
+elif menu == "Hapus Data":
+    st.markdown("<h1>🗑️ MANAJEMEN HAPUS DATA</h1>", unsafe_allow_html=True)
+    st.markdown('<div class="report-card">', unsafe_allow_html=True)
+    
+    st.warning("⚠️ Tindakan ini tidak dapat dibatalkan. Mohon berhati-hati.")
+    
+    opsi_hapus = st.selectbox("Pilih Metode Penghapusan", ["Pilih Metode", "Hapus Berdasarkan Rentang Tanggal", "Hapus Semua Data (Reset)"])
+    
+    if opsi_hapus == "Hapus Berdasarkan Rentang Tanggal":
+        c1, c2 = st.columns(2)
+        h1 = c1.date_input("Dari Tanggal", date(2024, 1, 1), key="h1")
+        h2 = c2.date_input("Sampai Tanggal", date.today(), key="h2")
+        
+        if st.button("HAPUS DATA PERIODE TERPILIH"):
+            conn = sqlite3.connect(DB_PATH)
+            cur = conn.cursor()
+            cur.execute(f"DELETE FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{h1}' AND '{h2}'")
+            conn.commit()
+            rows_deleted = conn.total_changes
+            conn.close()
+            
+            if rows_deleted > 0:
+                st.success(f"✅ Berhasil menghapus {rows_deleted} data.")
+            else:
+                st.info("Tidak ada data yang ditemukan pada rentang tanggal tersebut.")
+
+    elif opsi_hapus == "Hapus Semua Data (Reset)":
+        st.error("Konfirmasi: Apakah Anda yakin ingin menghapus SELURUH isi database?")
+        konfirmasi = st.text_input("Ketik 'YAKIN' untuk melanjutkan")
+        
+        if st.button("KOSONGKAN SEMUA DATA"):
+            if konfirmasi == "YAKIN":
+                conn = sqlite3.connect(DB_PATH)
+                cur = conn.cursor()
+                cur.execute("DELETE FROM rekap_penyakit")
+                # Reset auto-increment ID agar kembali ke 1
+                cur.execute("DELETE FROM sqlite_sequence WHERE name='rekap_penyakit'")
+                conn.commit()
+                conn.close()
+                st.success("✅ Seluruh data telah dihapus dan database telah di-reset.")
+            else:
+                st.warning("Harap ketik 'YAKIN' pada kolom konfirmasi.")
+                
+    st.markdown('</div>', unsafe_allow_html=True)
