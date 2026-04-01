@@ -164,130 +164,50 @@ elif menu == "Laporan 10 Penyakit":
             st.bar_chart(df_top.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
-    if EXPORT_AVAILABLE:
-            st.markdown("### 📥 Unduh Laporan")
-            col_ex, col_pdf = st.columns(2)
-
-            with col_ex:
-                output_excel = io.BytesIO()
-                # Pastikan xlsxwriter sudah terinstal
-                with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
-                    df_report.to_excel(writer, index=False, sheet_name='Laporan')
-                
-                st.download_button(
-                    label="📁 Download Excel",
-                    data=output_excel.getvalue(),
-                    file_name=f"Laporan_{t1}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-
-            with col_pdf:
-                # Logika PDF Sederhana
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("Arial", 'B', 16)
-                pdf.cell(190, 10, "LAPORAN 10 PENYAKIT", ln=True, align='C')
-                pdf.set_font("Arial", size=12)
-                for i, row in df_report.iterrows():
-                    pdf.cell(190, 10, f"{row['No']}. {row['Diagnosa Penyakit']}: {row['Jumlah Kasus']}", ln=True)
-                
-                pdf_output = pdf.output(dest='S').encode('latin-1')
-                st.download_button(
-                    label="📄 Download PDF",
-                    data=pdf_output,
-                    file_name=f"Laporan_{t1}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-        else:
-            # Jika library fpdf/xlsxwriter belum ada, munculkan pesan ini:
-            st.warning("⚠️ Fitur download belum siap. Silakan instal 'fpdf2' dan 'xlsxwriter' di terminal atau requirements.txt.")
     
-    else:
-        st.warning("Data tidak ditemukan.")
     conn.close()
-
-# --- 7. MODUL: LAPORAN 10 PENYAKIT ---
-elif menu == "Laporan 10 Penyakit":
-    st.markdown("<h1>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
+# --- 8. MODUL: ANALISIS DEPT & PERUSAHAAN ---
+elif menu == "Analisis Dept & Perusahaan":
+    st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
     
     tgl_awal_db, tgl_akhir_db = get_date_range()
     
     c1, c2 = st.columns(2)
-    t1 = c1.date_input("Mulai", value=tgl_awal_db, key="l1")
-    t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="l2")
+    t1 = c1.date_input("Mulai", value=tgl_awal_db, key="d1")
+    t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="d2")
 
     conn = sqlite3.connect(DB_PATH)
-    query = f"""
-        SELECT diagnosa AS 'Diagnosa Penyakit', COUNT(*) AS 'Jumlah Kasus' 
-        FROM rekap_penyakit 
-        WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' 
-        GROUP BY diagnosa 
-        ORDER BY [Jumlah Kasus] DESC 
-        LIMIT 10
-    """
-    df_top = pd.read_sql_query(query, conn)
+    # Kita ambil semua data dulu untuk dicek kolomnya
+    df_data = pd.read_sql_query(f"SELECT * FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}'", conn)
     conn.close()
 
-    if not df_top.empty:
-        # Tambahkan Nomor Urut untuk tampilan
-        df_report = df_top.copy()
-        df_report.insert(0, 'No.', range(1, len(df_report) + 1))
+    if not df_data.empty:
+        # Kecilkan semua nama kolom agar tidak bentrok (Case Insensitive)
+        df_data.columns = [c.lower() for c in df_data.columns]
         
-        st.bar_chart(df_report.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
-        st.dataframe(df_report, use_container_width=True, hide_index=True)
+        tab1, tab2 = st.tabs(["📊 Per Departemen", "🏢 Per Perusahaan"])
+        
+        with tab1:
+            if 'departemen' in df_data.columns:
+                res_dept = df_data['departemen'].value_counts().reset_index()
+                res_dept.columns = ['Nama Departemen', 'Jumlah Kunjungan']
+                # Tambahkan nomor urut
+                res_dept.insert(0, 'No.', range(1, len(res_dept) + 1))
+                st.dataframe(res_dept, use_container_width=True, hide_index=True)
+                st.bar_chart(res_dept.set_index('Nama Departemen')['Jumlah Kunjungan'])
+            else:
+                st.error("❌ Kolom 'departemen' tidak ditemukan di database. Pastikan CSV Anda memiliki kolom tersebut.")
 
-        st.markdown("### 📥 Unduh Laporan")
-        col_ex, col_pdf = st.columns(2)
-
-        # --- LOGIKA DOWNLOAD EXCEL ---
-        with col_ex:
-            output_excel = io.BytesIO()
-            with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
-                df_report.to_excel(writer, index=False, sheet_name='Laporan_10_Penyakit')
-            
-            st.download_button(
-                label="📁 Download Excel (.xlsx)",
-                data=output_excel.getvalue(),
-                file_name=f"Laporan_10_Penyakit_{t1}_ke_{t2}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-
-        # --- LOGIKA DOWNLOAD PDF ---
-        with col_pdf:
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", 'B', 16)
-            pdf.cell(190, 10, "LAPORAN 10 PENYAKIT TERBESAR", ln=True, align='C')
-            pdf.set_font("Arial", size=12)
-            pdf.cell(190, 10, f"Periode: {t1} s/d {t2}", ln=True, align='C')
-            pdf.ln(10)
-            
-            # Header Tabel PDF
-            pdf.set_font("Arial", 'B', 12)
-            pdf.cell(15, 10, "No", 1)
-            pdf.cell(130, 10, "Diagnosa Penyakit", 1)
-            pdf.cell(40, 10, "Jumlah", 1)
-            pdf.ln()
-            
-            # Isi Tabel PDF
-            pdf.set_font("Arial", size=12)
-            for i, row in df_report.iterrows():
-                pdf.cell(15, 10, str(row['No.']), 1)
-                pdf.cell(130, 10, str(row['Diagnosa Penyakit']), 1)
-                pdf.cell(40, 10, str(row['Jumlah Kasus']), 1)
-                pdf.ln()
-
-            pdf_output = pdf.output(dest='S').encode('latin-1')
-            st.download_button(
-                label="📄 Download PDF (.pdf)",
-                data=pdf_output,
-                file_name=f"Laporan_10_Penyakit_{t1}_ke_{t2}.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
+        with tab2:
+            if 'perusahaan' in df_data.columns:
+                res_corp = df_data['perusahaan'].value_counts().reset_index()
+                res_corp.columns = ['Nama Perusahaan', 'Jumlah Kunjungan']
+                # Tambahkan nomor urut
+                res_corp.insert(0, 'No.', range(1, len(res_corp) + 1))
+                st.dataframe(res_corp, use_container_width=True, hide_index=True)
+                st.bar_chart(res_corp.set_index('Nama Perusahaan')['Jumlah Kunjungan'])
+            else:
+                st.error("❌ Kolom 'perusahaan' tidak ditemukan di database. Pastikan CSV Anda memiliki kolom tersebut.")
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
 # --- 9. MODUL: LIHAT & HAPUS DATA ---
