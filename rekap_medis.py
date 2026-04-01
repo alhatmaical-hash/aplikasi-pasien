@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 from datetime import date
-import io 
-from fpdf import FPDF 
+
 
 st.set_page_config(
     page_title="Klinik Apps",
