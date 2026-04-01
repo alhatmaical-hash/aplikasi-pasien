@@ -3,12 +3,6 @@ import pandas as pd
 import sqlite3
 from datetime import date
 import io 
-try:
-    from fpdf import FPDF
-    import xlsxwriter
-    EXPORT_AVAILABLE = True
-except ImportError:
-    EXPORT_AVAILABLE = False
 
 st.set_page_config(
     page_title="Klinik Apps",
