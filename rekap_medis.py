@@ -132,12 +132,21 @@ elif menu == "Laporan 10 Penyakit":
         df_report = df_top.copy()
         df_report.insert(0, 'No.', range(1, len(df_report) + 1))
         
-        # --- 1. TABEL DATA (SEKARANG DI ATAS) ---
+        # --- 1. TABEL DATA (DI ATAS) ---
         st.markdown("### 📋 Tabel Peringkat")
         st.dataframe(df_report, use_container_width=True, hide_index=True)
 
-        # --- 2. TOMBOL DOWNLOAD (DI TENGAH) ---
-        st.markdown("### 📥 Unduh Laporan")
+        # --- 2. GRAFIK (DI TENGAH) ---
+        st.markdown("### 📈 Visualisasi")
+        # Menggunakan kolom agar grafik tidak terlalu lebar (proporsional)
+        col_kiri, col_tengah, col_kanan = st.columns([1, 4, 1])
+        with col_tengah:
+            st.bar_chart(df_report.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
+
+        # --- 3. TOMBOL DOWNLOAD (SEKARANG DI PALING BAWAH) ---
+        st.markdown("---") # Garis pemisah tipis
+        st.markdown("### 📥 Simpan Laporan")
+        
         csv_data = df_report.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📄 DOWNLOAD LAPORAN (CSV)",
@@ -146,16 +155,6 @@ elif menu == "Laporan 10 Penyakit":
             mime='text/csv',
             use_container_width=True
         )
-
-        # --- 3. GRAFIK (DI BAWAH & UKURAN DIATUR) ---
-        st.markdown("### 📈 Visualisasi")
-        
-        # Kita buat 3 kolom, tapi grafik diletakkan di kolom tengah agar ukurannya pas (tidak terlalu lebar)
-        # Angka [1, 3, 1] artinya kolom tengah 3x lebih lebar dari kolom samping
-        col_kiri, col_tengah, col_kanan = st.columns([1, 4, 1])
-        
-        with col_tengah:
-            st.bar_chart(df_report.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
 
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
