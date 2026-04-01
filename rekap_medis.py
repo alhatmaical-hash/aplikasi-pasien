@@ -85,7 +85,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 5. NAVIGASI SIDEBAR ---
-st.sidebar.title("🏥 SISTEM REKAP KLINIK")
+st.sidebar.title("🏥 APLIKASI PELAPORAN KLINIK HARITA FERONIKEL OBI")
 menu = st.sidebar.radio("MENU UTAMA", 
     ["Upload Data CSV", "Laporan 10 Penyakit", "Analisis Dept & Perusahaan", "Lihat Semua Data"])
 
