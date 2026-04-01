@@ -178,25 +178,26 @@ if menu == "Upload Data CSV":
     st.markdown("<h1>📤 UPLOAD DATA PASIEN</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
     
-    if uploaded_file is not None:
-        # Membaca file CSV
+  if uploaded_file is not None:
+        # 1. Membaca file CSV
         df = pd.read_csv(uploaded_file)
         
-        # MEMBERSIHKAN NAMA KOLOM (Penting agar cocok dengan Database)
+        # 2. Membersihkan nama kolom agar huruf kecil dan tanpa spasi
         df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
         
         st.write("### 🔍 Pratinjau Data (Cek sebelum simpan):")
         st.dataframe(df.head(), use_container_width=True)
         
-      if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
+        # 3. TOMBOL SIMPAN (PASTIKAN SEJAJAR DENGAN st.write DI ATAS)
+        if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
             try:
                 conn = sqlite3.connect(DB_PATH)
                 
-                # --- LANGKAH PENGAMAN: Urutkan kolom agar sesuai Database ---
-                kolom_db = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company']
+                # Menyelaraskan urutan kolom agar sesuai dengan Database
+                kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company']
                 
-                # Kita hanya ambil kolom yang dibutuhkan saja dari CSV
-                df_to_save = df[kolom_db] 
+                # Memastikan kolom yang diupload ada semua
+                df_to_save = df[kolom_target]
                 
                 # Simpan ke tabel
                 df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
