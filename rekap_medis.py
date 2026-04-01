@@ -141,7 +141,6 @@ elif menu == "Laporan 10 Penyakit":
 
         # --- TOMBOL DOWNLOAD CSV ---
         with col_csv:
-            # Konversi dataframe ke CSV
             csv_data = df_report.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📄 DOWNLOAD CSV",
@@ -153,21 +152,19 @@ elif menu == "Laporan 10 Penyakit":
 
         # --- TOMBOL DOWNLOAD EXCEL ---
         with col_ex:
-            # Gunakan BytesIO untuk menyimpan Excel di memori
             output_excel = io.BytesIO()
-            try:
-                with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
-                    df_report.to_excel(writer, index=False, sheet_name='Laporan')
-                
-                st.download_button(
-                    label="📁 DOWNLOAD EXCEL",
-                    data=output_excel.getvalue(),
-                    file_name=f"Laporan_10_Penyakit_{t1}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-            except ImportError:
-                st.error("Silakan instal library: pip install xlsxwriter")
+            # Bagian ini sekarang langsung menjalankan proses tanpa pesan peringatan instalasi
+            with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
+                df_report.to_excel(writer, index=False, sheet_name='Laporan')
+            
+            st.download_button(
+                label="📁 DOWNLOAD EXCEL",
+                data=output_excel.getvalue(),
+                file_name=f"Laporan_10_Penyakit_{t1}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+            
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
 # --- 8. MODUL: ANALISIS DEPT & PERUSAHAAN ---
