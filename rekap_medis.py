@@ -230,25 +230,36 @@ elif menu == "Analisis Dept & Perusahaan":
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE KESELURUHAN</h1>", unsafe_allow_html=True)
     
-    # --- CSS KHUSUS TOMBOL AGAR LEBIH KENTARA ---
+    # --- CSS UPDATE: TEKS PUTIH & BOLD ---
     st.markdown("""
     <style>
-        div.stButton > button:first-child {
-            height: 3em;
+        /* Pengaturan Umum Tombol */
+        div.stButton > button {
+            height: 3.5em;
             border-radius: 10px;
             font-size: 16px !important;
+            font-weight: bold !important; /* Membuat teks BOLD */
+            color: white !important;      /* Membuat teks PUTIH */
             text-transform: uppercase;
+            width: 100%;
         }
-        /* Tombol Hapus Terpilih (Warna Oranye Tua) */
-        div[data-testid="stVerticalBlock"] > div:nth-child(1) button {
-            border: 2px solid #D2691E !important;
-            color: #D2691E !important;
-        }
-        /* Tombol Delete All (Warna Merah Solid) */
-        .stButton button[kind="primary"] {
-            background-color: #8B0000 !important;
-            color: white !important;
+        
+        /* Tombol Hapus Terpilih (Oranye Tua/Cokelat) */
+        div[data-testid="stHorizontalBlock"] div:nth-child(2) button {
+            background-color: #D2691E !important; 
             border: none !important;
+        }
+
+        /* Tombol Delete All (Merah Terang agar Kontras) */
+        div[data-testid="stHorizontalBlock"] div:nth-child(3) button {
+            background-color: #FF0000 !important;
+            border: none !important;
+        }
+        
+        /* Efek saat tombol diarahkan kursor (Hover) */
+        div.stButton > button:hover {
+            opacity: 0.8;
+            color: white !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -257,7 +268,7 @@ elif menu == "Lihat Semua Data":
     df_all = pd.read_sql_query("SELECT id, tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan FROM rekap_penyakit", conn)
     
     if not df_all.empty:
-        # 1. TAMPILKAN TABEL TERLEBIH DAHULU
+        # Tampilkan Tabel
         df_display = df_all.copy()
         df_display.insert(0, 'No.', range(1, len(df_display) + 1))
         df_display.insert(0, 'Pilih', False)
@@ -274,26 +285,24 @@ elif menu == "Lihat Semua Data":
             disabled=[c for c in df_display.columns if c != "Pilih"] 
         )
 
-        st.markdown("<br>", unsafe_allow_html=True) # Jarak antara tabel dan tombol
-
-      # --- BAGIAN TOMBOL AKSI SEJAJAR ---
         st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- SEJAJARKAN TOMBOL (PASTIKAN NAMA VARIABEL LENGKAP) ---
         col_check, col_btn1, col_btn2 = st.columns([1.5, 1, 1])
         
         with col_check:
             konfirmasi_semua = st.checkbox("⚠️ AKTIFKAN FITUR HAPUS SEMUA")
             
         with col_btn1:
-            # Pastikan nama variabel ini unik dan dipanggil dengan benar di bawah
-            btn_hapus_terpilih = st.button("🗑️ HAPUS TERPILIH", use_container_width=True)
+            # Variabel: btn_hapus_terpilih
+            btn_hapus_terpilih = st.button("🗑️ HAPUS TERPILIH")
             
         with col_btn2:
-            # Tombol ini hanya aktif jika checkbox dicentang
-            btn_hapus_semua = st.button("🔥 DELETE ALL DATA", type="primary", use_container_width=True, disabled=not konfirmasi_semua)
+            # Variabel: btn_hapus_semua
+            btn_hapus_semua = st.button("🔥 DELETE ALL DATA", type="primary", disabled=not konfirmasi_semua)
 
-        # --- LOGIKA EKSEKUSI (PASTIKAN SEJAJAR DENGAN BLOK 'WITH') ---
+        # --- LOGIKA EKSEKUSI (DILUAR BLOK 'WITH') ---
         if btn_hapus_terpilih:
-            # Ambil data dari edited_df yang sudah didefinisikan di atas
             ids_to_delete = edited_df[edited_df['Pilih'] == True]['id'].tolist()
             if ids_to_delete:
                 cur = conn.cursor()
@@ -303,13 +312,18 @@ elif menu == "Lihat Semua Data":
                 st.success(f"✅ {len(ids_to_delete)} baris berhasil dihapus!")
                 st.rerun()
             else:
-                st.warning("Silakan pilih baris terlebih dahulu!")
+                st.warning("Pilih baris yang ingin dihapus terlebih dahulu!")
 
         if btn_hapus_semua:
-            if konfirmasi_semua: # Cek ulang keamanan
+            if konfirmasi_semua:
                 cur = conn.cursor()
                 cur.execute("DELETE FROM rekap_penyakit")
                 cur.execute("DELETE FROM sqlite_sequence WHERE name='rekap_penyakit'")
                 conn.commit()
-                st.success("✅ Database telah dikosongkan secara total!")
+                st.success("✅ Database bersih total!")
                 st.rerun()
+
+    else:
+        st.info("Database kosong.")
+    
+    conn.close()
