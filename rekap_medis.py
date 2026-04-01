@@ -6,7 +6,7 @@ import os
 
 # --- 1. SET LOKASI DATABASE ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'klinik_data.db')
+DB_PATH = os.path.join(BASE_DIR)
 
 # --- 2. TEMA HANGAT ---
 st.set_page_config(page_title="Rekap Klinik v5", layout="wide")
