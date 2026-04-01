@@ -132,7 +132,7 @@ elif menu == "Laporan 10 Penyakit":
     else:
         st.warning("Data tidak ditemukan.")
 
-# --- MODUL BARU: ANALISIS DEPT & PERUSAHAAN ---
+# --- MODUL: ANALISIS DEPT & PERUSAHAAN (VERSI FIX NONE & NOMOR 1) ---
 elif menu == "Analisis Dept & Perusahaan":
     st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
     
@@ -142,39 +142,57 @@ elif menu == "Analisis Dept & Perusahaan":
 
     conn = sqlite3.connect(DB_PATH)
     
-    # Query Departemen
-    df_dept = pd.read_sql_query(f"SELECT departemen, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY departemen ORDER BY jumlah DESC", conn)
-    
-    # Query Perusahaan
-    df_corp = pd.read_sql_query(f"SELECT perusahaan, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY perusahaan ORDER BY jumlah DESC", conn)
+    # Query data mentah terlebih dahulu
+    df_dept_raw = pd.read_sql_query(f"SELECT departemen, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY departemen", conn)
+    df_corp_raw = pd.read_sql_query(f"SELECT perusahaan, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY perusahaan", conn)
     
     conn.close()
 
-    tab1, tab2 = st.tabs(["Kunjungan Per Departemen", "Kunjungan Per Perusahaan"])
+    # --- FUNGSI MEMBERSIHKAN DATA ---
+    def clean_analysis_data(df, col_name):
+        if not df.empty:
+            # 1. Hilangkan nilai None, NaN, atau teks 'NONE'
+            df = df[df[col_name].notna()] 
+            df = df[df[col_name].str.upper() != 'NONE']
+            df = df[df[col_name].str.strip() != '']
+            
+            # 2. Urutkan berdasarkan jumlah terbanyak
+            df = df.sort_values(by='jumlah', ascending=False)
+            
+            # 3. Buat kolom No. mulai dari 1
+            df.insert(0, 'No.', range(1, len(df) + 1))
+            return df
+        return df
+
+    df_dept = clean_analysis_data(df_dept_raw, 'departemen')
+    df_corp = clean_analysis_data(df_corp_raw, 'perusahaan')
+
+    tab1, tab2 = st.tabs(["📊 Kunjungan Per Departemen", "🏢 Kunjungan Per Perusahaan"])
 
     with tab1:
-        col1, col2 = st.columns([1, 2])
         if not df_dept.empty:
+            col1, col2 = st.columns([1, 2])
             with col1:
-                df_dept_view = df_dept.copy()
-                df_dept_view.insert(0, 'No.', range(1, len(df_dept_view) + 1))
-                st.dataframe(df_dept_view, hide_index=True)
+                st.markdown("### Tabel Peringkat")
+                # hide_index=True menghapus indeks bawaan pandas (0,1,2...)
+                st.dataframe(df_dept, hide_index=True, use_container_width=True)
             with col2:
+                st.markdown("### Grafik Batang")
                 st.bar_chart(df_dept.set_index('departemen')['jumlah'])
         else:
-            st.info("Data Departemen tidak tersedia.")
+            st.warning("Tidak ada data departemen untuk periode ini.")
 
     with tab2:
-        col1, col2 = st.columns([1, 2])
         if not df_corp.empty:
+            col1, col2 = st.columns([1, 2])
             with col1:
-                df_corp_view = df_corp.copy()
-                df_corp_view.insert(0, 'No.', range(1, len(df_corp_view) + 1))
-                st.dataframe(df_corp_view, hide_index=True)
+                st.markdown("### Tabel Peringkat")
+                st.dataframe(df_corp, hide_index=True, use_container_width=True)
             with col2:
+                st.markdown("### Grafik Batang")
                 st.bar_chart(df_corp.set_index('perusahaan')['jumlah'])
         else:
-            st.info("Data Perusahaan tidak tersedia.")
+            st.warning("Tidak ada data perusahaan untuk periode ini.")
 
 # --- MODUL 3: LIHAT SEMUA DATA ---
 elif menu == "Lihat Semua Data":
