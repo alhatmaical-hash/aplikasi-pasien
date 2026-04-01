@@ -102,21 +102,33 @@ st.markdown("""
     .main { background-color: #f5f5f5; }
     h1 { color: #2e7d32; text-align: center; font-weight: bold; }
     
-    /* Style Tombol agar Bold & Putih */
+    /* Style Tombol agar Bold & TULISAN HITAM */
     div.stButton > button {
         font-weight: bold !important;
-        color: white !important;
+        color: black !important; /* Diubah menjadi hitam */
         text-transform: uppercase;
         border-radius: 8px;
         height: 3em;
     }
+
+    /* Memastikan teks di dalam tombol primary (merah) juga hitam */
+    button[kind="primary"] p {
+        color: black !important;
+    }
+    
     /* Warna Tombol Hapus Terpilih */
     div[data-testid="stHorizontalBlock"] div:nth-child(2) button {
         background-color: #D2691E !important;
     }
-    /* Warna Tombol Delete All */
+    
+    /* Warna Tombol Delete All (Merah) */
     div[data-testid="stHorizontalBlock"] div:nth-child(3) button {
         background-color: #FF0000 !important;
+    }
+
+    /* Warna Tombol Keluar di Sidebar (Merah Terang) */
+    button[kind="primary"] {
+        background-color: #FF4B4B !important;
     }
 </style>
 """, unsafe_allow_html=True)
