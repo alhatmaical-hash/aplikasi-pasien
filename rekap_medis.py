@@ -23,9 +23,9 @@ if not st.session_state["authenticated"]:
     # Membuat dua tab: Satu untuk Masuk, satu untuk Atur Password
     tab_login, tab_buat = st.tabs(["🔑 Masuk Sistem", "🆕 Buat/Ganti Password"])
     
-    with tab_login:
+  with tab_login:
         pwd_input = st.text_input("Masukkan Password Admin:", type="password", key="login_pwd")
-        if st.button("MASUK SEKARANG"):
+        if st.button("🚀 MASUK KE SISTEM KLINIK", use_container_width=True, type="primary"):
             if pwd_input == st.session_state["admin_password"]:
                 st.session_state["authenticated"] = True
                 st.rerun()
@@ -145,8 +145,9 @@ with st.sidebar.expander("⚙️ PENGATURAN AKUN"):
             st.error("❌ Password lama salah.")
 
     st.write("---")
-    if st.button("🚪 KELUAR (LOGOUT)", use_container_width=True):
+   if st.sidebar.button("🔴 KELUAR DARI APLIKASI", use_container_width=True, type="secondary"):
         st.session_state["authenticated"] = False
+        st.success("Anda telah keluar.")
         st.rerun()
 # -----------------------------------------------
 # --- 6. MODUL: UPLOAD DATA ---
