@@ -178,7 +178,8 @@ if menu == "Upload Data CSV":
     st.markdown("<h1>📤 UPLOAD DATA PASIEN</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
     
-  if uploaded_file is not None:
+    # Perhatikan: Baris 'if' di bawah ini harus lebih masuk 4 spasi dari 'if menu'
+    if uploaded_file is not None:
         # 1. Membaca file CSV
         df = pd.read_csv(uploaded_file)
         
@@ -188,7 +189,7 @@ if menu == "Upload Data CSV":
         st.write("### 🔍 Pratinjau Data (Cek sebelum simpan):")
         st.dataframe(df.head(), use_container_width=True)
         
-        # 3. TOMBOL SIMPAN (PASTIKAN SEJAJAR DENGAN st.write DI ATAS)
+        # 3. Tombol Simpan (Sejajar dengan st.write di atas)
         if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
             try:
                 conn = sqlite3.connect(DB_PATH)
@@ -196,7 +197,7 @@ if menu == "Upload Data CSV":
                 # Menyelaraskan urutan kolom agar sesuai dengan Database
                 kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company']
                 
-                # Memastikan kolom yang diupload ada semua
+                # Memastikan kolom yang diupload ada semua dan urutannya benar
                 df_to_save = df[kolom_target]
                 
                 # Simpan ke tabel
