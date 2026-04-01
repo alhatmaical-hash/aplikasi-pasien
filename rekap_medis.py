@@ -70,30 +70,41 @@ def get_date_range():
         # Jika terjadi error (misal tabel belum dibuat), gunakan tanggal hari ini
         return date.today(), date.today()
 
-# --- 3. INISIALISASI DATABASE ---
+# --- 3. INISIALISASI DATABASE (VERSI TERBARU) ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    # 1. Membuat tabel dengan struktur kolom bahasa Inggris
     c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                  tgl_kunjungan TEXT, 
-                  nama_pasien TEXT, 
+                  visit_time TEXT, 
+                  patient_name TEXT, 
                   diagnosa TEXT, 
-                  poli TEXT,
-                  departemen TEXT,
-                  perusahaan TEXT)''')
+                  clinic TEXT,
+                  department TEXT,
+                  company TEXT)''')
     
-    # Cek kolom tambahan jika belum ada (antisipasi versi lama)
-    try:
-        c.execute("ALTER TABLE rekap_penyakit ADD COLUMN departemen TEXT")
-    except: pass
-    try:
-        c.execute("ALTER TABLE rekap_penyakit ADD COLUMN perusahaan TEXT")
-    except: pass
+    # 2. Daftar kolom baru yang harus ada
+    kolom_baru = [
+        ('visit_time', 'TEXT'),
+        ('patient_name', 'TEXT'),
+        ('diagnosa', 'TEXT'),
+        ('clinic', 'TEXT'),
+        ('department', 'TEXT'),
+        ('company', 'TEXT')
+    ]
     
+    # 3. Otomatis menambahkan kolom jika database lama masih pakai bahasa Indonesia
+    for kolom, tipe in kolom_baru:
+        try:
+            c.execute(f"ALTER TABLE rekap_penyakit ADD COLUMN {kolom} {tipe}")
+        except:
+            pass # Jika kolom sudah ada, dia akan diam saja (tidak error)
+            
     conn.commit()
     conn.close()
 
+# Jangan lupa panggil fungsinya
 init_db()
 
 # --- 4. STYLE CSS (TOMBOL & TAMPILAN) ---
