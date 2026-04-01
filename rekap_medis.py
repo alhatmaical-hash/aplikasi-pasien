@@ -182,28 +182,29 @@ if menu == "Upload Data CSV":
         # Membaca file CSV
         df = pd.read_csv(uploaded_file)
         
-        # MEMBERSIHKAN NAMA KOLOM (Menghapus spasi & membuat huruf kecil semua)
-        # Ini agar jika di CSV tertulis "Visit Time", akan terbaca sebagai "visit_time"
+        # MEMBERSIHKAN NAMA KOLOM (Penting agar cocok dengan Database)
         df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
         
-        st.write("### Pratinjau Data:")
+        st.write("### 🔍 Pratinjau Data (Cek sebelum simpan):")
         st.dataframe(df.head(), use_container_width=True)
         
-        if st.button("💾 SIMPAN KE DATABASE", use_container_width=True, type="primary"):
+        if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
             try:
                 conn = sqlite3.connect(DB_PATH)
-                # Menyimpan ke database
+                # Simpan ke tabel 'rekap_penyakit'
                 df.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
+                
+                # --- BAGIAN PALING PENTING: COMMIT ---
+                conn.commit() 
                 conn.close()
-                st.success("✅ DATA BERHASIL DISIMPAN KE DATABASE!")
-                st.rerun()
+                
+                st.success("✅ BERHASIL! Data sudah masuk ke database.")
+                # Paksa aplikasi untuk refresh agar data baru muncul di menu lain
+                st.rerun() 
+                
             except Exception as e:
-                st.error("❌ GAGAL SIMPAN!")
-                st.info(f"""
-                **Pastikan Header (Baris Pertama) di file CSV Anda adalah:**
-                `visit_time`, `patient_name`, `diagnosa`, `clinic`, `department`, `company`
-                """)
-                # Baris di bawah ini untuk membantu Anda melihat error teknisnya jika masih gagal
+                st.error("❌ GAGAL MENYIMPAN!")
+                st.info("Pastikan judul kolom di CSV adalah: visit_time, patient_name, diagnosa, clinic, department, company")
                 st.write("Detail Error:", e)
 
 # --- 7. MODUL: LAPORAN 10 PENYAKIT ---
