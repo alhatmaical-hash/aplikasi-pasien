@@ -10,24 +10,44 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-# --- LOGIKA PASSWORD DENGAN FITUR UBAH PASSWORD ---
+# --- LOGIKA PASSWORD DENGAN FITUR BUAT/GANTI PASSWORD ---
 if "admin_password" not in st.session_state:
-    st.session_state["admin_password"] = "admin123"  # Password awal/default
+    st.session_state["admin_password"] = "admin123"  # Password awal
 
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 if not st.session_state["authenticated"]:
     st.title("🏥 Akses Terbatas - Klinik Apps")
-    pwd_input = st.text_input("Masukkan Password Admin:", type="password")
     
-    if st.button("Masuk"):
-        if pwd_input == st.session_state["admin_password"]:
-            st.session_state["authenticated"] = True
-            st.rerun()
-        else:
-            st.error("Password Salah!")
-    st.stop()
+    # Membuat dua tab: Satu untuk Masuk, satu untuk Atur Password
+    tab_login, tab_buat = st.tabs(["🔑 Masuk Sistem", "🆕 Buat/Ganti Password"])
+    
+    with tab_login:
+        pwd_input = st.text_input("Masukkan Password Admin:", type="password", key="login_pwd")
+        if st.button("MASUK SEKARANG"):
+            if pwd_input == st.session_state["admin_password"]:
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("❌ Password Salah!")
+    
+    with tab_buat:
+        st.info("Gunakan menu ini untuk membuat password baru jika Anda tahu password lama.")
+        old_p = st.text_input("Password Lama (Default: admin123)", type="password", key="old_p")
+        new_p = st.text_input("Password Baru yang Diinginkan", type="password", key="new_p")
+        
+        if st.button("SIMPAN & UPDATE PASSWORD"):
+            if old_p == st.session_state["admin_password"]:
+                if new_p:
+                    st.session_state["admin_password"] = new_p
+                    st.success("✅ Password berhasil diperbarui! Silakan kembali ke tab 'Masuk Sistem'.")
+                else:
+                    st.warning("⚠️ Password baru tidak boleh kosong.")
+            else:
+                st.error("❌ Password lama salah. Tidak bisa mengganti password.")
+                
+    st.stop() # Tetap mengunci bagian bawah aplikasi
 # --- 1. SETTING DASAR ---
 DB_PATH = 'klinik_data.db'
 
