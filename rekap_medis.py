@@ -132,39 +132,27 @@ elif menu == "Laporan 10 Penyakit":
         df_report = df_top.copy()
         df_report.insert(0, 'No.', range(1, len(df_report) + 1))
         
-        # Tampilkan Grafik dan Tabel
+        # 1. Tampilkan Grafik
         st.bar_chart(df_report.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
+        
+        # 2. Tampilkan Tabel
         st.dataframe(df_report, use_container_width=True, hide_index=True)
 
+        # --- 3. LETAKKAN KODE DOWNLOAD DI SINI (SETELAH TABEL) ---
         st.markdown("### 📥 Unduh Laporan")
-        col_csv, col_ex = st.columns(2)
+        
+        # Logika CSV (Paling Aman, Anti Error)
+        csv_data = df_report.to_csv(index=False).encode('utf-8')
+        
+        st.download_button(
+            label="📄 DOWNLOAD LAPORAN (CSV)",
+            data=csv_data,
+            file_name=f"Laporan_10_Penyakit_{t1}.csv",
+            mime='text/csv',
+            use_container_width=True
+        )
+        # -------------------------------------------------------
 
-        # --- TOMBOL DOWNLOAD CSV ---
-        with col_csv:
-            csv_data = df_report.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📄 DOWNLOAD CSV",
-                data=csv_data,
-                file_name=f"Laporan_10_Penyakit_{t1}.csv",
-                mime='text/csv',
-                use_container_width=True
-            )
-
-        # --- TOMBOL DOWNLOAD EXCEL ---
-        with col_ex:
-            output_excel = io.BytesIO()
-            # Bagian ini sekarang langsung menjalankan proses tanpa pesan peringatan instalasi
-            with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
-                df_report.to_excel(writer, index=False, sheet_name='Laporan')
-            
-            st.download_button(
-                label="📁 DOWNLOAD EXCEL",
-                data=output_excel.getvalue(),
-                file_name=f"Laporan_10_Penyakit_{t1}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-            
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
 # --- 8. MODUL: ANALISIS DEPT & PERUSAHAAN ---
