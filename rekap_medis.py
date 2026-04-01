@@ -106,7 +106,29 @@ st.markdown("""
 st.sidebar.title("🏥 APLIKASI REKAM MEDIS KHFO")
 menu = st.sidebar.radio("MENU UTAMA", 
     ["Upload Data CSV", "Laporan 10 Penyakit", "Analisis Dept & Perusahaan", "Lihat Semua Data"])
+# --- COPY & PASTE KODE INI DI BAWAH MENU RADIO ---
+st.sidebar.write("---") # Garis pembatas agar rapi
 
+with st.sidebar.expander("⚙️ PENGATURAN AKUN"):
+    st.subheader("Ganti Password")
+    pwd_lama = st.text_input("Password Saat Ini", type="password")
+    pwd_baru = st.text_input("Password Baru", type="password")
+    
+    if st.button("SIMPAN PASSWORD BARU"):
+        if pwd_lama == st.session_state["admin_password"]:
+            if pwd_baru:
+                st.session_state["admin_password"] = pwd_baru
+                st.success("✅ Password berhasil diganti!")
+            else:
+                st.warning("⚠️ Password baru tidak boleh kosong.")
+        else:
+            st.error("❌ Password lama salah.")
+
+    st.write("---")
+    if st.button("🚪 KELUAR (LOGOUT)", use_container_width=True):
+        st.session_state["authenticated"] = False
+        st.rerun()
+# -----------------------------------------------
 # --- 6. MODUL: UPLOAD DATA ---
 if menu == "Upload Data CSV":
     st.markdown("<h1>📤 UPLOAD DATA PASIEN</h1>", unsafe_allow_html=True)
