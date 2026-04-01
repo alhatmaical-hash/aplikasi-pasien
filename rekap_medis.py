@@ -109,7 +109,6 @@ if menu == "Upload Data CSV":
 elif menu == "Laporan 10 Penyakit":
     st.markdown("<h1>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
     
-    # Ambil tanggal otomatis dari CSV
     tgl_awal_db, tgl_akhir_db = get_date_range()
     
     c1, c2 = st.columns(2)
@@ -126,46 +125,51 @@ elif menu == "Laporan 10 Penyakit":
         LIMIT 10
     """
     df_top = pd.read_sql_query(query, conn)
-    
-    if not df_top.empty:
-        # --- PROSES PENOMORAN & CHECKBOX ---
-        # 1. Tambahkan kolom No. urut 1, 2, 3...
-        df_top.insert(0, 'No.', range(1, len(df_top) + 1))
-        # 2. Tambahkan kolom Pilih untuk fitur hapus
-        df_top.insert(0, 'Pilih', False)
-        
-        col_t, col_g = st.columns([1.2, 2])
-        
-        with col_t:
-            st.markdown("### Daftar Peringkat")
-            # Tampilkan tabel dengan nomor urut
-            edited_df = st.data_editor(
-                df_top, 
-                hide_index=True, 
-                use_container_width=True,
-                disabled=["No.", "Diagnosa Penyakit", "Jumlah Kasus"] # Agar data tidak bisa diedit asal
-            )
-            
-            # Tombol Hapus Spesifik Diagnosa
-            if st.button("🗑️ HAPUS TERPILIH", key="btn_hapus_diag"):
-                selected_diag = edited_df[edited_df['Pilih'] == True]['Diagnosa Penyakit'].tolist()
-                if selected_diag:
-                    cur = conn.cursor()
-                    for d in selected_diag:
-                        cur.execute("DELETE FROM rekap_penyakit WHERE diagnosa = ? AND tgl_kunjungan BETWEEN ? AND ?", (d, t1, t2))
-                    conn.commit()
-                    st.success(f"✅ Berhasil menghapus diagnosa terpilih!")
-                    st.rerun()
-                else:
-                    st.warning("Centang penyakit yang ingin dihapus.")
+    conn.close()
 
-        with col_g:
-            st.markdown("### Grafik Batang")
-            st.bar_chart(df_top.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
+    if not df_top.empty:
+        # Tambahkan Nomor Urut
+        df_report = df_top.copy()
+        df_report.insert(0, 'No.', range(1, len(df_report) + 1))
+        
+        # Tampilkan Grafik dan Tabel
+        st.bar_chart(df_report.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
+        st.dataframe(df_report, use_container_width=True, hide_index=True)
+
+        st.markdown("### 📥 Unduh Laporan")
+        col_csv, col_ex = st.columns(2)
+
+        # --- TOMBOL DOWNLOAD CSV ---
+        with col_csv:
+            # Konversi dataframe ke CSV
+            csv_data = df_report.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📄 DOWNLOAD CSV",
+                data=csv_data,
+                file_name=f"Laporan_10_Penyakit_{t1}.csv",
+                mime='text/csv',
+                use_container_width=True
+            )
+
+        # --- TOMBOL DOWNLOAD EXCEL ---
+        with col_ex:
+            # Gunakan BytesIO untuk menyimpan Excel di memori
+            output_excel = io.BytesIO()
+            try:
+                with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
+                    df_report.to_excel(writer, index=False, sheet_name='Laporan')
+                
+                st.download_button(
+                    label="📁 DOWNLOAD EXCEL",
+                    data=output_excel.getvalue(),
+                    file_name=f"Laporan_10_Penyakit_{t1}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            except ImportError:
+                st.error("Silakan instal library: pip install xlsxwriter")
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
-    
-    conn.close()
 # --- 8. MODUL: ANALISIS DEPT & PERUSAHAAN ---
 elif menu == "Analisis Dept & Perusahaan":
     st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
