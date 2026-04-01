@@ -106,9 +106,13 @@ if menu == "Upload Data CSV":
 elif menu == "Laporan 10 Penyakit":
     st.markdown("<h1>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
     
+    # Ambil rentang tanggal otomatis dari data CSV yang tersimpan
+    tgl_min, tgl_max = get_date_range()
+    
     c1, c2 = st.columns(2)
-    t1 = c1.date_input("Mulai", date(2024, 1, 1), key="l1")
-    t2 = c2.date_input("Sampai", date.today(), key="l2")
+    # Nilai value diisi dengan tgl_min dan tgl_max dari database
+    t1 = c1.date_input("Mulai", value=tgl_min, key="l1")
+    t2 = c2.date_input("Sampai", value=tgl_max, key="l2")
 
     conn = sqlite3.connect(DB_PATH)
     query = f"""
@@ -168,10 +172,12 @@ elif menu == "Laporan 10 Penyakit":
 elif menu == "Analisis Dept & Perusahaan":
     st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
     
+    # Ambil rentang tanggal otomatis
+    tgl_min, tgl_max = get_date_range()
+    
     c1, c2 = st.columns(2)
-    t1 = c1.date_input("Mulai", date(2024, 1, 1), key="d1")
-    t2 = c2.date_input("Sampai", date.today(), key="d2")
-
+    t1 = c1.date_input("Mulai", value=tgl_min, key="d1")
+    t2 = c2.date_input("Sampai", value=tgl_max, key="d2")
     conn = sqlite3.connect(DB_PATH)
     
     # Query data mentah terlebih dahulu
