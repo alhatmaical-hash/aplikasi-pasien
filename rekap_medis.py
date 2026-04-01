@@ -6,8 +6,9 @@ from datetime import date
 st.set_page_config(
     page_title="Klinik Apps",
     page_icon="🏥",
-    layout="wide",                  # Membuat aplikasi memenuhi lebar layar HP/Laptop
-    initial_sidebar_state="collapsed" # Menyembunyikan menu di HP agar tidak sempit
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
 # --- 1. SETTING DASAR ---
 DB_PATH = 'klinik_data.db'
