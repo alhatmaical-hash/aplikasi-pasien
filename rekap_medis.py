@@ -1,280 +1,155 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
+import sqlite3
 from datetime import date
-import os
 
-# --- 1. SET LOKASI DATABASE ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'klinik_data.db')
+# --- 1. SETTING DASAR ---
+DB_PATH = 'klinik_data.db'
 
-# --- 2. TEMA HANGAT ---
-st.set_page_config(page_title="Rekap Klinik v5", layout="wide")
+# --- 2. FUNGSI PENDUKUNG (WAJIB DI ATAS AGAR TIDAK NAMEERROR) ---
+def get_date_range():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        # Mengambil tanggal awal dan akhir dari database
+        df_range = pd.read_sql_query("SELECT MIN(tgl_kunjungan) as awal, MAX(tgl_kunjungan) as akhir FROM rekap_penyakit", conn)
+        conn.close()
+        
+        # Jika database masih kosong
+        if df_range['awal'].iloc[0] is None:
+            return date.today(), date.today()
+        
+        # Konversi hasil database ke format tanggal Python
+        awal = pd.to_datetime(df_range['awal'].iloc[0]).date()
+        akhir = pd.to_datetime(df_range['akhir'].iloc[0]).date()
+        return awal, akhir
+    except:
+        # Jika terjadi error (misal tabel belum dibuat), gunakan tanggal hari ini
+        return date.today(), date.today()
 
-st.markdown("""
-<style>
-    * { font-family: "Times New Roman", Times, serif !important; }
-    .stApp { background-color: #F5F5DC; }
-    h1, h2, h3 { color: #4A2C2A !important; text-align: center; font-weight: bold; }
-    .report-card {
-        background-color: #EADDCA;
-        padding: 20px;
-        border-radius: 15px;
-        border: 2px solid #C19A6B;
-        margin-bottom: 20px;
-    }
-    .stTable, .stDataFrame { background-color: #FFFFFF !important; border-radius: 10px; }
-    label, p { color: #3D2B1F !important; font-weight: bold; }
-    .stButton>button { background-color: #8B4513 !important; color: white !important; font-weight: bold; }
-</style>
-""", unsafe_allow_html=True)
-
-# ... (bagian impor dan style CSS tetap sama) ...
-
-# --- 3. INISIALISASI DATABASE (GANTI DENGAN INI) ---
+# --- 3. INISIALISASI DATABASE ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    
-    # Memastikan tabel dasar ada
     c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                   tgl_kunjungan TEXT, 
                   nama_pasien TEXT, 
                   diagnosa TEXT, 
-                  poli TEXT)''')
+                  poli TEXT,
+                  departemen TEXT,
+                  perusahaan TEXT)''')
     
-    # Tambah kolom departemen jika belum ada
+    # Cek kolom tambahan jika belum ada (antisipasi versi lama)
     try:
         c.execute("ALTER TABLE rekap_penyakit ADD COLUMN departemen TEXT")
-    except sqlite3.OperationalError:
-        pass 
-        
-    # Tambah kolom perusahaan jika belum ada
+    except: pass
     try:
         c.execute("ALTER TABLE rekap_penyakit ADD COLUMN perusahaan TEXT")
-    except sqlite3.OperationalError:
-        pass 
-        
+    except: pass
+    
     conn.commit()
     conn.close()
 
-# Panggil fungsi ini agar perubahan langsung diterapkan ke file .db
 init_db()
 
-# --- 4. NAVIGASI ---
-# ... (kode selanjutnya) ...
-init_db()
-
-# --- 4. NAVIGASI ---
-menu = st.sidebar.radio("MENU UTAMA", ["Upload Data CSV", "Laporan 10 Penyakit", "Analisis Dept & Perusahaan", "Lihat Semua Data"])
-
-# --- MODUL 1: UPLOAD DATA ---
-if menu == "Upload Data CSV":
-    st.markdown("<h1>📝 UPLOAD & SIMPAN DATA</h1>", unsafe_allow_html=True)
-    st.markdown('<div class="report-card">', unsafe_allow_html=True)
-    st.info("Pastikan CSV memiliki kolom: tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan")
-    uploaded_file = st.file_uploader("Pilih File CSV", type=["csv"])
+# --- 4. STYLE CSS (TOMBOL & TAMPILAN) ---
+st.markdown("""
+<style>
+    .main { background-color: #f5f5f5; }
+    h1 { color: #2e7d32; text-align: center; font-weight: bold; }
     
-    if uploaded_file:
+    /* Style Tombol agar Bold & Putih */
+    div.stButton > button {
+        font-weight: bold !important;
+        color: white !important;
+        text-transform: uppercase;
+        border-radius: 8px;
+        height: 3em;
+    }
+    /* Warna Tombol Hapus Terpilih */
+    div[data-testid="stHorizontalBlock"] div:nth-child(2) button {
+        background-color: #D2691E !important;
+    }
+    /* Warna Tombol Delete All */
+    div[data-testid="stHorizontalBlock"] div:nth-child(3) button {
+        background-color: #FF0000 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 5. NAVIGASI SIDEBAR ---
+st.sidebar.title("🏥 SISTEM REKAP KLINIK")
+menu = st.sidebar.radio("MENU UTAMA", 
+    ["Upload Data CSV", "Laporan 10 Penyakit", "Analisis Dept & Perusahaan", "Lihat Semua Data"])
+
+# --- 6. MODUL: UPLOAD DATA ---
+if menu == "Upload Data CSV":
+    st.markdown("<h1>📤 UPLOAD DATA PASIEN</h1>", unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
+    
+    if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
-        df.columns = [c.lower().strip() for c in df.columns]
+        st.write("Pratinjau Data:", df.head())
         
-        st.write("Pratinjau Data:")
-        preview_df = df.head().copy()
-        preview_df.index = preview_df.index + 1
-        st.dataframe(preview_df)
-
         if st.button("SIMPAN KE DATABASE"):
-            try:
-                df['tgl_kunjungan'] = pd.to_datetime(df['tgl_kunjungan']).dt.strftime('%Y-%m-%d')
-                # Standarisasi teks jadi UPPERCASE agar grouping konsisten
-                for col in ['diagnosa', 'departemen', 'perusahaan']:
-                    if col in df.columns:
-                        df[col] = df[col].astype(str).str.upper().str.strip()
-                
-                conn = sqlite3.connect(DB_PATH)
-                df.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
-                conn.close()
-                st.success(f"✅ Berhasil menyimpan {len(df)} data!")
-                st.balloons()
-            except Exception as e:
-                st.error(f"Gagal Simpan: {e}")
-    st.markdown('</div>', unsafe_allow_html=True)
+            conn = sqlite3.connect(DB_PATH)
+            df.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
+            conn.close()
+            st.success("✅ Data berhasil disimpan!")
 
-# --- MODUL 2: LAPORAN 10 PENYAKIT ---
+# --- 7. MODUL: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
     st.markdown("<h1>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
     
-    # Ambil rentang tanggal otomatis dari data CSV yang tersimpan
-    tgl_min, tgl_max = get_date_range()
+    # Ambil tanggal otomatis dari CSV
+    tgl_awal_db, tgl_akhir_db = get_date_range()
     
     c1, c2 = st.columns(2)
-    # Nilai value diisi dengan tgl_min dan tgl_max dari database
-    t1 = c1.date_input("Mulai", value=tgl_min, key="l1")
-    t2 = c2.date_input("Sampai", value=tgl_max, key="l2")
+    t1 = c1.date_input("Mulai", value=tgl_awal_db, key="l1")
+    t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="l2")
 
     conn = sqlite3.connect(DB_PATH)
-    query = f"""
-        SELECT diagnosa AS 'Diagnosa Penyakit', COUNT(*) AS 'Jumlah Kasus' 
-        FROM rekap_penyakit 
-        WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}'
-        GROUP BY diagnosa 
-        ORDER BY [Jumlah Kasus] DESC 
-        LIMIT 10
-    """
+    query = f"SELECT diagnosa, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY diagnosa ORDER BY jumlah DESC LIMIT 10"
     df_top = pd.read_sql_query(query, conn)
-    
-    if not df_top.empty:
-        # 1. Tambahkan kolom No (Mulai dari 1)
-        df_top.insert(0, 'No.', range(1, len(df_top) + 1))
-        
-        # 2. Tambahkan kolom Pilih (Checkbox) di posisi paling kiri (index 0)
-        df_top.insert(0, 'Pilih', False)
-        
-        col_t, col_g = st.columns([1.2, 2]) # Mengatur lebar kolom tabel sedikit lebih luas
-        with col_t:
-            st.markdown("### Daftar Peringkat")
-            # Menggunakan data_editor agar interaktif
-            edited_df = st.data_editor(
-                df_top, 
-                hide_index=True, 
-                use_container_width=True,
-                # Mengunci kolom No, Diagnosa, dan Jumlah agar tidak bisa diedit manual
-                disabled=["No.", "Diagnosa Penyakit", "Jumlah Kasus"] 
-            )
-            
-            if st.button("Hapus Diagnosa Terpilih"):
-                # Mencari diagnosa mana yang dicentang
-                selected_diagnosa = edited_df[edited_df['Pilih'] == True]['Diagnosa Penyakit'].tolist()
-                
-                if selected_diagnosa:
-                    cur = conn.cursor()
-                    for diag in selected_diagnosa:
-                        # Menghapus semua data dengan diagnosa tersebut dalam rentang tanggal
-                        cur.execute("DELETE FROM rekap_penyakit WHERE diagnosa = ? AND tgl_kunjungan BETWEEN ? AND ?", 
-                                    (diag, t1, t2))
-                    conn.commit()
-                    st.success(f"✅ Berhasil menghapus data untuk: {', '.join(selected_diagnosa)}")
-                    st.rerun()
-                else:
-                    st.warning("Pilih diagnosa yang ingin dihapus dengan mencentang kolom 'Pilih'.")
-                    
-        with col_g:
-            st.markdown("### Grafik Batang")
-            # Menampilkan grafik tetap menggunakan nama diagnosa sebagai dasar
-            st.bar_chart(df_top.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
-    else:
-        st.warning("Data tidak ditemukan pada periode ini.")
     conn.close()
 
-# --- MODUL: ANALISIS DEPT & PERUSAHAAN (VERSI FIX NONE & NOMOR 1) ---
+    if not df_top.empty:
+        st.bar_chart(df_top.set_index('diagnosa'))
+        st.dataframe(df_top, use_container_width=True)
+    else:
+        st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
+
+# --- 8. MODUL: ANALISIS DEPT & PERUSAHAAN ---
 elif menu == "Analisis Dept & Perusahaan":
     st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
     
-    # Ambil rentang tanggal otomatis
-    tgl_min, tgl_max = get_date_range()
+    tgl_awal_db, tgl_akhir_db = get_date_range()
     
     c1, c2 = st.columns(2)
-    t1 = c1.date_input("Mulai", value=tgl_min, key="d1")
-    t2 = c2.date_input("Sampai", value=tgl_max, key="d2")
+    t1 = c1.date_input("Mulai", value=tgl_awal_db, key="d1")
+    t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="d2")
+
     conn = sqlite3.connect(DB_PATH)
-    
-    # Query data mentah terlebih dahulu
-    df_dept_raw = pd.read_sql_query(f"SELECT departemen, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY departemen", conn)
-    df_corp_raw = pd.read_sql_query(f"SELECT perusahaan, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY perusahaan", conn)
-    
+    df_data = pd.read_sql_query(f"SELECT departemen, perusahaan FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}'", conn)
     conn.close()
 
-    # --- FUNGSI MEMBERSIHKAN DATA ---
-    def clean_analysis_data(df, col_name):
-        if not df.empty:
-            # 1. Hilangkan nilai None, NaN, atau teks 'NONE'
-            df = df[df[col_name].notna()] 
-            df = df[df[col_name].str.upper() != 'NONE']
-            df = df[df[col_name].str.strip() != '']
-            
-            # 2. Urutkan berdasarkan jumlah terbanyak
-            df = df.sort_values(by='jumlah', ascending=False)
-            
-            # 3. Buat kolom No. mulai dari 1
-            df.insert(0, 'No.', range(1, len(df) + 1))
-            return df
-        return df
+    if not df_data.empty:
+        tab1, tab2 = st.tabs(["Departemen", "Perusahaan"])
+        with tab1:
+            res_dept = df_data['departemen'].value_counts().reset_index()
+            st.dataframe(res_dept, use_container_width=True)
+        with tab2:
+            res_corp = df_data['perusahaan'].value_counts().reset_index()
+            st.dataframe(res_corp, use_container_width=True)
 
-    df_dept = clean_analysis_data(df_dept_raw, 'departemen')
-    df_corp = clean_analysis_data(df_corp_raw, 'perusahaan')
-
-    tab1, tab2 = st.tabs(["📊 Kunjungan Per Departemen", "🏢 Kunjungan Per Perusahaan"])
-
-    with tab1:
-        if not df_dept.empty:
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                st.markdown("### Tabel Peringkat")
-                # hide_index=True menghapus indeks bawaan pandas (0,1,2...)
-                st.dataframe(df_dept, hide_index=True, use_container_width=True)
-            with col2:
-                st.markdown("### Grafik Batang")
-                st.bar_chart(df_dept.set_index('departemen')['jumlah'])
-        else:
-            st.warning("Tidak ada data departemen untuk periode ini.")
-
-    with tab2:
-        if not df_corp.empty:
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                st.markdown("### Tabel Peringkat")
-                st.dataframe(df_corp, hide_index=True, use_container_width=True)
-            with col2:
-                st.markdown("### Grafik Batang")
-                st.bar_chart(df_corp.set_index('perusahaan')['jumlah'])
-        else:
-            st.warning("Tidak ada data perusahaan untuk periode ini.")
-
-# --- MODUL 3: LIHAT SEMUA DATA ---
+# --- 9. MODUL: LIHAT & HAPUS DATA ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE KESELURUHAN</h1>", unsafe_allow_html=True)
-    
-    # --- CSS UPDATE: TEKS PUTIH & BOLD ---
-    st.markdown("""
-    <style>
-        /* Pengaturan Umum Tombol */
-        div.stButton > button {
-            height: 3.5em;
-            border-radius: 10px;
-            font-size: 16px !important;
-            font-weight: bold !important; /* Membuat teks BOLD */
-            color: white !important;      /* Membuat teks PUTIH */
-            text-transform: uppercase;
-            width: 100%;
-        }
-        
-        /* Tombol Hapus Terpilih (Oranye Tua/Cokelat) */
-        div[data-testid="stHorizontalBlock"] div:nth-child(2) button {
-            background-color: #D2691E !important; 
-            border: none !important;
-        }
-
-        /* Tombol Delete All (Merah Terang agar Kontras) */
-        div[data-testid="stHorizontalBlock"] div:nth-child(3) button {
-            background-color: #FF0000 !important;
-            border: none !important;
-        }
-        
-        /* Efek saat tombol diarahkan kursor (Hover) */
-        div.stButton > button:hover {
-            opacity: 0.8;
-            color: white !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
     conn = sqlite3.connect(DB_PATH)
     df_all = pd.read_sql_query("SELECT id, tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan FROM rekap_penyakit", conn)
     
     if not df_all.empty:
-        # Tampilkan Tabel
+        # Tabel
         df_display = df_all.copy()
         df_display.insert(0, 'No.', range(1, len(df_display) + 1))
         df_display.insert(0, 'Pilih', False)
@@ -283,53 +158,38 @@ elif menu == "Lihat Semua Data":
             df_display, 
             hide_index=True, 
             use_container_width=True,
-            column_config={
-                "id": None, 
-                "Pilih": st.column_config.CheckboxColumn("Pilih", default=False),
-                "No.": st.column_config.Column(width="small")
-            },
+            column_config={"id": None},
             disabled=[c for c in df_display.columns if c != "Pilih"] 
         )
 
+        # Tombol-tombol di bawah tabel
         st.markdown("<br>", unsafe_allow_html=True)
-
-        # --- SEJAJARKAN TOMBOL (PASTIKAN NAMA VARIABEL LENGKAP) ---
-        col_check, col_btn1, col_btn2 = st.columns([1.5, 1, 1])
+        col_c, col_b1, col_b2 = st.columns([1.5, 1, 1])
         
-        with col_check:
-            konfirmasi_semua = st.checkbox("⚠️ AKTIFKAN FITUR HAPUS SEMUA")
+        with col_c:
+            konfirmasi = st.checkbox("⚠️ AKTIFKAN FITUR HAPUS SEMUA")
             
-        with col_btn1:
-            # Variabel: btn_hapus_terpilih
-            btn_hapus_terpilih = st.button("🗑️ HAPUS TERPILIH")
+        with col_b1:
+            btn_terpilih = st.button("🗑️ HAPUS TERPILIH")
             
-        with col_btn2:
-            # Variabel: btn_hapus_semua
-            btn_hapus_semua = st.button("🔥 DELETE ALL DATA", type="primary", disabled=not konfirmasi_semua)
+        with col_b2:
+            btn_semua = st.button("🔥 DELETE ALL DATA", type="primary", disabled=not konfirmasi)
 
-        # --- LOGIKA EKSEKUSI (DILUAR BLOK 'WITH') ---
-        if btn_hapus_terpilih:
-            ids_to_delete = edited_df[edited_df['Pilih'] == True]['id'].tolist()
-            if ids_to_delete:
+        # Logika Hapus
+        if btn_terpilih:
+            ids = edited_df[edited_df['Pilih'] == True]['id'].tolist()
+            if ids:
                 cur = conn.cursor()
-                query = f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(map(str, ids_to_delete))})"
-                cur.execute(query)
+                cur.execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(map(str, ids))})")
                 conn.commit()
-                st.success(f"✅ {len(ids_to_delete)} baris berhasil dihapus!")
                 st.rerun()
-            else:
-                st.warning("Pilih baris yang ingin dihapus terlebih dahulu!")
-
-        if btn_hapus_semua:
-            if konfirmasi_semua:
-                cur = conn.cursor()
-                cur.execute("DELETE FROM rekap_penyakit")
-                cur.execute("DELETE FROM sqlite_sequence WHERE name='rekap_penyakit'")
-                conn.commit()
-                st.success("✅ Database bersih total!")
-                st.rerun()
-
+                
+        if btn_semua:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM rekap_penyakit")
+            cur.execute("DELETE FROM sqlite_sequence WHERE name='rekap_penyakit'")
+            conn.commit()
+            st.rerun()
     else:
         st.info("Database kosong.")
-    
     conn.close()
