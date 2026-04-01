@@ -44,6 +44,32 @@ def init_db():
                   perusahaan TEXT)''')
     conn.commit()
     conn.close()
+   def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    # 1. Pastikan tabel dasar ada
+    c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                  tgl_kunjungan TEXT, 
+                  nama_pasien TEXT, 
+                  diagnosa TEXT, 
+                  poli TEXT)''')
+    
+    # 2. Tambahkan kolom departemen (Gunakan try agar tidak error jika kolom sudah ada)
+    try:
+        c.execute("ALTER TABLE rekap_penyakit ADD COLUMN departemen TEXT")
+    except sqlite3.OperationalError:
+        pass # Kolom sudah ada, abaikan
+        
+    # 3. Tambahkan kolom perusahaan
+    try:
+        c.execute("ALTER TABLE rekap_penyakit ADD COLUMN perusahaan TEXT")
+    except sqlite3.OperationalError:
+        pass # Kolom sudah ada, abaikan
+        
+    conn.commit()
+    conn.close()
 
 init_db()
 
@@ -167,28 +193,3 @@ elif menu == "Lihat Semua Data":
     if not df_all.empty:
         df_all.index = range(1, len(df_all) + 1)
         st.dataframe(df_all, use_container_width=True)
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    # 1. Pastikan tabel utama ada
-    c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                  tgl_kunjungan TEXT, 
-                  nama_pasien TEXT, 
-                  diagnosa TEXT, 
-                  poli TEXT)''')
-    
-    # 2. Tambahkan kolom departemen jika belum ada
-    try:
-        c.execute("ALTER TABLE rekap_penyakit ADD COLUMN departemen TEXT")
-    except sqlite3.OperationalError:
-        pass  # Kolom sudah ada
-        
-    # 3. Tambahkan kolom perusahaan jika belum ada
-    try:
-        c.execute("ALTER TABLE rekap_penyakit ADD COLUMN perusahaan TEXT")
-    except sqlite3.OperationalError:
-        pass  # Kolom sudah ada
-        
-    conn.commit()
-    conn.close()
