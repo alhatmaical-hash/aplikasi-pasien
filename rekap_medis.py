@@ -122,27 +122,46 @@ elif menu == "Laporan 10 Penyakit":
     df_top = pd.read_sql_query(query, conn)
     
     if not df_top.empty:
-        df_top.insert(0, 'Pilih Hapus', False) # Tambah checkbox
+        # 1. Tambahkan kolom No (Mulai dari 1)
+        df_top.insert(0, 'No.', range(1, len(df_top) + 1))
         
-        col_t, col_g = st.columns([1, 2])
+        # 2. Tambahkan kolom Pilih (Checkbox) di posisi paling kiri (index 0)
+        df_top.insert(0, 'Pilih', False)
+        
+        col_t, col_g = st.columns([1.2, 2]) # Mengatur lebar kolom tabel sedikit lebih luas
         with col_t:
             st.markdown("### Daftar Peringkat")
-            # Menggunakan data_editor agar checkbox bisa diklik
-            edited_df = st.data_editor(df_top, hide_index=True, use_container_width=True)
+            # Menggunakan data_editor agar interaktif
+            edited_df = st.data_editor(
+                df_top, 
+                hide_index=True, 
+                use_container_width=True,
+                # Mengunci kolom No, Diagnosa, dan Jumlah agar tidak bisa diedit manual
+                disabled=["No.", "Diagnosa Penyakit", "Jumlah Kasus"] 
+            )
             
             if st.button("Hapus Diagnosa Terpilih"):
-                selected_diagnosa = edited_df[edited_df['Pilih Hapus'] == True]['Diagnosa Penyakit'].tolist()
+                # Mencari diagnosa mana yang dicentang
+                selected_diagnosa = edited_df[edited_df['Pilih'] == True]['Diagnosa Penyakit'].tolist()
+                
                 if selected_diagnosa:
                     cur = conn.cursor()
                     for diag in selected_diagnosa:
-                        cur.execute(f"DELETE FROM rekap_penyakit WHERE diagnosa = ? AND tgl_kunjungan BETWEEN ? AND ?", (diag, t1, t2))
+                        # Menghapus semua data dengan diagnosa tersebut dalam rentang tanggal
+                        cur.execute("DELETE FROM rekap_penyakit WHERE diagnosa = ? AND tgl_kunjungan BETWEEN ? AND ?", 
+                                    (diag, t1, t2))
                     conn.commit()
-                    st.success(f"Berhasil menghapus data {', '.join(selected_diagnosa)}")
+                    st.success(f"✅ Berhasil menghapus data untuk: {', '.join(selected_diagnosa)}")
                     st.rerun()
+                else:
+                    st.warning("Pilih diagnosa yang ingin dihapus dengan mencentang kolom 'Pilih'.")
+                    
         with col_g:
+            st.markdown("### Grafik Batang")
+            # Menampilkan grafik tetap menggunakan nama diagnosa sebagai dasar
             st.bar_chart(df_top.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
     else:
-        st.warning("Data tidak ditemukan.")
+        st.warning("Data tidak ditemukan pada periode ini.")
     conn.close()
 
 # --- MODUL: ANALISIS DEPT & PERUSAHAAN (VERSI FIX NONE & NOMOR 1) ---
