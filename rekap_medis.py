@@ -114,6 +114,59 @@ elif menu == "Laporan 10 Penyakit":
         st.warning("Data tidak ditemukan.")
 
 # --- MODUL BARU: ANALISIS DEPT & PERUSAHAAN ---
+elif menu == "Analisis Dept & Perusahaan":
+    st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
+    
+    c1, c2 = st.columns(2)
+    t1 = c1.date_input("Mulai", date(2024, 1, 1), key="d1")
+    t2 = c2.date_input("Sampai", date.today(), key="d2")
+
+    conn = sqlite3.connect(DB_PATH)
+    
+    # Query Departemen
+    df_dept = pd.read_sql_query(f"SELECT departemen, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY departemen ORDER BY jumlah DESC", conn)
+    
+    # Query Perusahaan
+    df_corp = pd.read_sql_query(f"SELECT perusahaan, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY perusahaan ORDER BY jumlah DESC", conn)
+    
+    conn.close()
+
+    tab1, tab2 = st.tabs(["Kunjungan Per Departemen", "Kunjungan Per Perusahaan"])
+
+    with tab1:
+        col1, col2 = st.columns([1, 2])
+        if not df_dept.empty:
+            with col1:
+                df_dept_view = df_dept.copy()
+                df_dept_view.insert(0, 'No.', range(1, len(df_dept_view) + 1))
+                st.dataframe(df_dept_view, hide_index=True)
+            with col2:
+                st.bar_chart(df_dept.set_index('departemen')['jumlah'])
+        else:
+            st.info("Data Departemen tidak tersedia.")
+
+    with tab2:
+        col1, col2 = st.columns([1, 2])
+        if not df_corp.empty:
+            with col1:
+                df_corp_view = df_corp.copy()
+                df_corp_view.insert(0, 'No.', range(1, len(df_corp_view) + 1))
+                st.dataframe(df_corp_view, hide_index=True)
+            with col2:
+                st.bar_chart(df_corp.set_index('perusahaan')['jumlah'])
+        else:
+            st.info("Data Perusahaan tidak tersedia.")
+
+# --- MODUL 3: LIHAT SEMUA DATA ---
+elif menu == "Lihat Semua Data":
+    st.markdown("<h1>📂 DATABASE KESELURUHAN</h1>", unsafe_allow_html=True)
+    conn = sqlite3.connect(DB_PATH)
+    df_all = pd.read_sql_query("SELECT tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan FROM rekap_penyakit", conn)
+    conn.close()
+    
+    if not df_all.empty:
+        df_all.index = range(1, len(df_all) + 1)
+        st.dataframe(df_all, use_container_width=True)
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
