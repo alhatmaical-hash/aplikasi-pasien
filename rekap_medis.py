@@ -168,25 +168,32 @@ if menu == "Upload Data CSV":
     uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
     
     if uploaded_file is not None:
+        # Membaca file CSV
         df = pd.read_csv(uploaded_file)
         
-        # MEMBERSIHKAN NAMA KOLOM (Agar tidak error spasi/huruf besar kecil)
-        df.columns = [c.strip().lower() for c in df.columns]
+        # MEMBERSIHKAN NAMA KOLOM (Menghapus spasi & membuat huruf kecil semua)
+        # Ini agar jika di CSV tertulis "Visit Time", akan terbaca sebagai "visit_time"
+        df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
         
-        st.write("Pratinjau Data yang akan diupload:", df.head())
+        st.write("### Pratinjau Data:")
+        st.dataframe(df.head(), use_container_width=True)
         
-        if st.button("SIMPAN KE DATABASE"):
+        if st.button("💾 SIMPAN KE DATABASE", use_container_width=True, type="primary"):
             try:
                 conn = sqlite3.connect(DB_PATH)
-                # Gunakan if_exists='append'
-                # index=False karena kita tidak butuh angka urutan dari pandas
+                # Menyimpan ke database
                 df.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
                 conn.close()
-                st.success("✅ Data berhasil disimpan!")
+                st.success("✅ DATA BERHASIL DISIMPAN KE DATABASE!")
                 st.rerun()
             except Exception as e:
-                st.error(f"❌ Gagal Simpan: Pastikan kolom di CSV adalah: tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan")
-                st.info(f"Detail Error: {e}")
+                st.error("❌ GAGAL SIMPAN!")
+                st.info(f"""
+                **Pastikan Header (Baris Pertama) di file CSV Anda adalah:**
+                `visit_time`, `patient_name`, `diagnosa`, `clinic`, `department`, `company`
+                """)
+                # Baris di bawah ini untuk membantu Anda melihat error teknisnya jika masih gagal
+                st.write("Detail Error:", e)
 
 # --- 7. MODUL: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
