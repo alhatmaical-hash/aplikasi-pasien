@@ -222,51 +222,94 @@ elif menu == "Analisis Dept & Perusahaan":
 # --- 9. MODUL: LIHAT & HAPUS DATA ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE KESELURUHAN</h1>", unsafe_allow_html=True)
+    
+    # --- 1. AREA FILTER (DI ATAS TABEL) ---
+    tgl_awal_db, tgl_akhir_db = get_date_range()
+    
+    with st.expander("🔍 Filter & Pencarian Data", expanded=True):
+        c1, c2, c3 = st.columns([1, 1, 2])
+        with c1:
+            f1 = st.date_input("Dari Tanggal", value=tgl_awal_db, key="f_tgl1")
+        with c2:
+            f2 = st.date_input("Sampai Tanggal", value=tgl_akhir_db, key="f_tgl2")
+        with c3:
+            cari_nama = st.text_input("Cari Nama Pasien", placeholder="Masukkan nama pasien...")
+
     conn = sqlite3.connect(DB_PATH)
-    df_all = pd.read_sql_query("SELECT id, tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan FROM rekap_penyakit", conn)
+    
+    # --- 2. QUERY DENGAN FILTER ---
+    # Menggunakan parameter query untuk keamanan dan fleksibilitas
+    query = """
+        SELECT id, tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan 
+        FROM rekap_penyakit 
+        WHERE (tgl_kunjungan BETWEEN ? AND ?)
+    """
+    params = [f1, f2]
+
+    # Tambahkan filter nama jika kotak pencarian diisi
+    if cari_nama:
+        query += " AND nama_pasien LIKE ?"
+        params.append(f'%{cari_nama}%')
+    
+    df_all = pd.read_sql_query(query, conn, params=params)
     
     if not df_all.empty:
-        # Tabel
+        # --- 3. PERSIAPAN TAMPILAN TABEL ---
         df_display = df_all.copy()
         df_display.insert(0, 'No.', range(1, len(df_display) + 1))
         df_display.insert(0, 'Pilih', False)
         
+        # Tabel Interaktif
         edited_df = st.data_editor(
             df_display, 
             hide_index=True, 
             use_container_width=True,
-            column_config={"id": None},
+            column_config={
+                "id": None, 
+                "Pilih": st.column_config.CheckboxColumn("Pilih", default=False),
+                "No.": st.column_config.Column(width="small"),
+                "tgl_kunjungan": "Tanggal",
+                "nama_pasien": "Nama Pasien"
+            },
             disabled=[c for c in df_display.columns if c != "Pilih"] 
         )
 
-        # Tombol-tombol di bawah tabel
         st.markdown("<br>", unsafe_allow_html=True)
-        col_c, col_b1, col_b2 = st.columns([1.5, 1, 1])
-        
-        with col_c:
-            konfirmasi = st.checkbox("⚠️ AKTIFKAN FITUR HAPUS SEMUA")
-            
-        with col_b1:
-            btn_terpilih = st.button("🗑️ HAPUS TERPILIH")
-            
-        with col_b2:
-            btn_semua = st.button("🔥 DELETE ALL DATA", type="primary", disabled=not konfirmasi)
 
-        # Logika Hapus
-        if btn_terpilih:
-            ids = edited_df[edited_df['Pilih'] == True]['id'].tolist()
-            if ids:
+        # --- 4. TOMBOL AKSI SEJAJAR (DI BAWAH TABEL) ---
+        col_check, col_btn1, col_btn2 = st.columns([1.5, 1, 1])
+        
+        with col_check:
+            konfirmasi_semua = st.checkbox("⚠️ AKTIFKAN FITUR HAPUS SEMUA")
+            
+        with col_btn1:
+            btn_hapus_terpilih = st.button("🗑️ HAPUS TERPILIH")
+            
+        with col_btn2:
+            btn_hapus_semua = st.button("🔥 DELETE ALL DATA", type="primary", disabled=not konfirmasi_semua)
+
+        # --- 5. LOGIKA PENGHAPUSAN ---
+        if btn_hapus_terpilih:
+            ids_to_delete = edited_df[edited_df['Pilih'] == True]['id'].tolist()
+            if ids_to_delete:
                 cur = conn.cursor()
-                cur.execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(map(str, ids))})")
+                query_del = f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(map(str, ids_to_delete))})"
+                cur.execute(query_del)
                 conn.commit()
+                st.success(f"✅ {len(ids_to_delete)} baris berhasil dihapus!")
                 st.rerun()
-                
-        if btn_semua:
+            else:
+                st.warning("Pilih baris yang ingin dihapus terlebih dahulu.")
+
+        if btn_hapus_semua:
             cur = conn.cursor()
             cur.execute("DELETE FROM rekap_penyakit")
             cur.execute("DELETE FROM sqlite_sequence WHERE name='rekap_penyakit'")
             conn.commit()
+            st.success("✅ Database bersih total!")
             st.rerun()
+
     else:
-        st.info("Database kosong.")
+        st.info("Data tidak ditemukan untuk kriteria pencarian tersebut.")
+    
     conn.close()
