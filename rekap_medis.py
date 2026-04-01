@@ -169,13 +169,24 @@ if menu == "Upload Data CSV":
     
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
-        st.write("Pratinjau Data:", df.head())
+        
+        # MEMBERSIHKAN NAMA KOLOM (Agar tidak error spasi/huruf besar kecil)
+        df.columns = [c.strip().lower() for c in df.columns]
+        
+        st.write("Pratinjau Data yang akan diupload:", df.head())
         
         if st.button("SIMPAN KE DATABASE"):
-            conn = sqlite3.connect(DB_PATH)
-            df.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
-            conn.close()
-            st.success("✅ Data berhasil disimpan!")
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                # Gunakan if_exists='append'
+                # index=False karena kita tidak butuh angka urutan dari pandas
+                df.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
+                conn.close()
+                st.success("✅ Data berhasil disimpan!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Gagal Simpan: Pastikan kolom di CSV adalah: tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan")
+                st.info(f"Detail Error: {e}")
 
 # --- 7. MODUL: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
