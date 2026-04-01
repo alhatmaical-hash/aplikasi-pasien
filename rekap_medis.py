@@ -76,12 +76,12 @@ def init_db():
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                  tgl_kunjungan TEXT, 
-                  nama_pasien TEXT, 
-                  diagnosa TEXT, 
-                  poli TEXT,
-                  departemen TEXT,
-                  perusahaan TEXT)''')
+                  Visit Time TEXT, 
+                  Patient Name TEXT, 
+                  Diagnosa TEXT, 
+                  Clinic TEXT,
+                  Department TEXT,
+                  Company TEXT)''')
     
     # Cek kolom tambahan jika belum ada (antisipasi versi lama)
     try:
