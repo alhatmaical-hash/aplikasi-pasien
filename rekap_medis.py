@@ -107,8 +107,8 @@ elif menu == "Laporan 10 Penyakit":
     st.markdown("<h1>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
     
     c1, c2 = st.columns(2)
-    t1 = c1.date_input("Mulai", date(2024, 1, 1))
-    t2 = c2.date_input("Sampai", date.today())
+    t1 = c1.date_input("Mulai", date(2024, 1, 1), key="l1")
+    t2 = c2.date_input("Sampai", date.today(), key="l2")
 
     conn = sqlite3.connect(DB_PATH)
     query = f"""
@@ -120,17 +120,30 @@ elif menu == "Laporan 10 Penyakit":
         LIMIT 10
     """
     df_top = pd.read_sql_query(query, conn)
-    conn.close()
-
+    
     if not df_top.empty:
-        df_top.insert(0, 'No.', range(1, len(df_top) + 1))
+        df_top.insert(0, 'Pilih Hapus', False) # Tambah checkbox
+        
         col_t, col_g = st.columns([1, 2])
         with col_t:
-            st.dataframe(df_top, hide_index=True, use_container_width=True)
+            st.markdown("### Daftar Peringkat")
+            # Menggunakan data_editor agar checkbox bisa diklik
+            edited_df = st.data_editor(df_top, hide_index=True, use_container_width=True)
+            
+            if st.button("Hapus Diagnosa Terpilih"):
+                selected_diagnosa = edited_df[edited_df['Pilih Hapus'] == True]['Diagnosa Penyakit'].tolist()
+                if selected_diagnosa:
+                    cur = conn.cursor()
+                    for diag in selected_diagnosa:
+                        cur.execute(f"DELETE FROM rekap_penyakit WHERE diagnosa = ? AND tgl_kunjungan BETWEEN ? AND ?", (diag, t1, t2))
+                    conn.commit()
+                    st.success(f"Berhasil menghapus data {', '.join(selected_diagnosa)}")
+                    st.rerun()
         with col_g:
             st.bar_chart(df_top.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
     else:
         st.warning("Data tidak ditemukan.")
+    conn.close()
 
 # --- MODUL: ANALISIS DEPT & PERUSAHAAN (VERSI FIX NONE & NOMOR 1) ---
 elif menu == "Analisis Dept & Perusahaan":
