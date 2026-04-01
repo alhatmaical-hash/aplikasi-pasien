@@ -229,56 +229,76 @@ elif menu == "Analisis Dept & Perusahaan":
 # --- MODUL 3: LIHAT SEMUA DATA ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE KESELURUHAN</h1>", unsafe_allow_html=True)
+    
     conn = sqlite3.connect(DB_PATH)
-    df_all = pd.read_sql_query("SELECT tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan FROM rekap_penyakit", conn)
-    conn.close()
+    # Ambil data lengkap termasuk ID database untuk penghapusan yang akurat
+    df_all = pd.read_sql_query("SELECT id, tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan FROM rekap_penyakit", conn)
     
     if not df_all.empty:
-        df_all.index = range(1, len(df_all) + 1)
-        st.dataframe(df_all, use_container_width=True)
-
-# --- MODUL 4: HAPUS DATA ---
-elif menu == "Hapus Data":
-    st.markdown("<h1>🗑️ MANAJEMEN HAPUS DATA</h1>", unsafe_allow_html=True)
-    st.markdown('<div class="report-card">', unsafe_allow_html=True)
-    
-    st.warning("⚠️ Tindakan ini tidak dapat dibatalkan. Mohon berhati-hati.")
-    
-    opsi_hapus = st.selectbox("Pilih Metode Penghapusan", ["Pilih Metode", "Hapus Berdasarkan Rentang Tanggal", "Hapus Semua Data (Reset)"])
-    
-    if opsi_hapus == "Hapus Berdasarkan Rentang Tanggal":
-        c1, c2 = st.columns(2)
-        h1 = c1.date_input("Dari Tanggal", date(2024, 1, 1), key="h1")
-        h2 = c2.date_input("Sampai Tanggal", date.today(), key="h2")
+        # --- BAGIAN TOMBOL AKSI ---
+        col_btn1, col_btn2 = st.columns([1, 1])
         
-        if st.button("HAPUS DATA PERIODE TERPILIH"):
-            conn = sqlite3.connect(DB_PATH)
-            cur = conn.cursor()
-            cur.execute(f"DELETE FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{h1}' AND '{h2}'")
-            conn.commit()
-            rows_deleted = conn.total_changes
-            conn.close()
+        with col_btn1:
+            st.info("💡 Centang baris pada tabel, lalu klik tombol di bawah:")
+            btn_hapus_terpilih = st.button("🗑️ HAPUS BARIS TERPILIH", use_container_width=True)
             
-            if rows_deleted > 0:
-                st.success(f"✅ Berhasil menghapus {rows_deleted} data.")
-            else:
-                st.info("Tidak ada data yang ditemukan pada rentang tanggal tersebut.")
+        with col_btn2:
+            st.warning("⚠️ Zona Bahaya: Hapus Seluruh Data")
+            # Fitur pengaman agar tidak sengaja terhapus
+            konfirmasi_semua = st.checkbox("Saya yakin ingin mengosongkan seluruh database")
+            btn_hapus_semua = st.button("🔥 DELETE ALL DATA", type="primary", use_container_width=True, disabled=not konfirmasi_semua)
 
-    elif opsi_hapus == "Hapus Semua Data (Reset)":
-        st.error("Konfirmasi: Apakah Anda yakin ingin menghapus SELURUH isi database?")
-        konfirmasi = st.text_input("Ketik 'YAKIN' untuk melanjutkan")
+        st.divider()
+
+        # --- PREPARASI DATA UNTUK TABEL ---
+        # Tambahkan nomor urut tampilan
+        df_all.insert(0, 'No.', range(1, len(df_all) + 1))
+        # Tambahkan kolom checkbox di paling kiri
+        df_all.insert(0, 'Pilih', False)
         
-        if st.button("KOSONGKAN SEMUA DATA"):
-            if konfirmasi == "YAKIN":
-                conn = sqlite3.connect(DB_PATH)
+        # Tampilkan tabel interaktif
+        edited_df = st.data_editor(
+            df_all, 
+            hide_index=True, 
+            use_container_width=True,
+            column_config={
+                "id": None, # Sembunyikan kolom ID database agar rapi
+                "Pilih": st.column_config.CheckboxColumn("Pilih", default=False),
+                "No.": st.column_config.Column(width="small")
+            },
+            # Kunci semua kolom agar tidak bisa diketik manual kecuali kolom 'Pilih'
+            disabled=[c for c in df_all.columns if c != "Pilih"] 
+        )
+
+        # --- LOGIKA EKSEKUSI PENGHAPUSAN ---
+        
+        # 1. Logika Hapus Baris Terpilih
+        if btn_hapus_terpilih:
+            ids_to_delete = edited_df[edited_df['Pilih'] == True]['id'].tolist()
+            if ids_to_delete:
                 cur = conn.cursor()
+                # Menghapus data berdasarkan daftar ID yang dicentang
+                query = f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(map(str, ids_to_delete))})"
+                cur.execute(query)
+                conn.commit()
+                st.success(f"✅ Berhasil menghapus {len(ids_to_delete)} baris data!")
+                st.rerun()
+            else:
+                st.warning("Silakan centang minimal satu baris pada tabel terlebih dahulu.")
+
+        # 2. Logika Delete All Data (Bersih Total)
+        if btn_hapus_semua:
+            if konfirmasi_semua:
+                cur = conn.cursor()
+                # Mengosongkan tabel
                 cur.execute("DELETE FROM rekap_penyakit")
-                # Reset auto-increment ID agar kembali ke 1
+                # Mereset urutan ID (Auto Increment) kembali ke angka 1
                 cur.execute("DELETE FROM sqlite_sequence WHERE name='rekap_penyakit'")
                 conn.commit()
-                conn.close()
-                st.success("✅ Seluruh data telah dihapus dan database telah di-reset.")
-            else:
-                st.warning("Harap ketik 'YAKIN' pada kolom konfirmasi.")
-                
-    st.markdown('</div>', unsafe_allow_html=True)
+                st.success("✅ Database telah dikosongkan secara total!")
+                st.rerun()
+
+    else:
+        st.info("Database saat ini kosong. Silakan upload data di menu 'Upload Data CSV'.")
+    
+    conn.close()
