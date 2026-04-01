@@ -188,24 +188,28 @@ if menu == "Upload Data CSV":
         st.write("### 🔍 Pratinjau Data (Cek sebelum simpan):")
         st.dataframe(df.head(), use_container_width=True)
         
-        if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
+      if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
             try:
                 conn = sqlite3.connect(DB_PATH)
-                # Simpan ke tabel 'rekap_penyakit'
-                df.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
                 
-                # --- BAGIAN PALING PENTING: COMMIT ---
+                # --- LANGKAH PENGAMAN: Urutkan kolom agar sesuai Database ---
+                kolom_db = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company']
+                
+                # Kita hanya ambil kolom yang dibutuhkan saja dari CSV
+                df_to_save = df[kolom_db] 
+                
+                # Simpan ke tabel
+                df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
+                
                 conn.commit() 
                 conn.close()
                 
                 st.success("✅ BERHASIL! Data sudah masuk ke database.")
-                # Paksa aplikasi untuk refresh agar data baru muncul di menu lain
                 st.rerun() 
                 
             except Exception as e:
                 st.error("❌ GAGAL MENYIMPAN!")
-                st.info("Pastikan judul kolom di CSV adalah: visit_time, patient_name, diagnosa, clinic, department, company")
-                st.write("Detail Error:", e)
+                st.write(f"Detail Error: {e}")
 
 # --- 7. MODUL: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
