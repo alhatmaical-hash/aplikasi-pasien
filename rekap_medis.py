@@ -3,7 +3,12 @@ import pandas as pd
 import sqlite3
 from datetime import date
 import io 
-from fpdf import FPDF 
+try:
+    from fpdf import FPDF
+    import xlsxwriter
+    EXPORT_AVAILABLE = True
+except ImportError:
+    EXPORT_AVAILABLE = False
 
 st.set_page_config(
     page_title="Klinik Apps",
@@ -165,7 +170,48 @@ elif menu == "Laporan 10 Penyakit":
             st.bar_chart(df_top.set_index('Diagnosa Penyakit')['Jumlah Kasus'])
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
+    if EXPORT_AVAILABLE:
+            st.markdown("### 📥 Unduh Laporan")
+            col_ex, col_pdf = st.columns(2)
+
+            with col_ex:
+                output_excel = io.BytesIO()
+                # Pastikan xlsxwriter sudah terinstal
+                with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
+                    df_report.to_excel(writer, index=False, sheet_name='Laporan')
+                
+                st.download_button(
+                    label="📁 Download Excel",
+                    data=output_excel.getvalue(),
+                    file_name=f"Laporan_{t1}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+
+            with col_pdf:
+                # Logika PDF Sederhana
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", 'B', 16)
+                pdf.cell(190, 10, "LAPORAN 10 PENYAKIT", ln=True, align='C')
+                pdf.set_font("Arial", size=12)
+                for i, row in df_report.iterrows():
+                    pdf.cell(190, 10, f"{row['No']}. {row['Diagnosa Penyakit']}: {row['Jumlah Kasus']}", ln=True)
+                
+                pdf_output = pdf.output(dest='S').encode('latin-1')
+                st.download_button(
+                    label="📄 Download PDF",
+                    data=pdf_output,
+                    file_name=f"Laporan_{t1}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+        else:
+            # Jika library fpdf/xlsxwriter belum ada, munculkan pesan ini:
+            st.warning("⚠️ Fitur download belum siap. Silakan instal 'fpdf2' dan 'xlsxwriter' di terminal atau requirements.txt.")
     
+    else:
+        st.warning("Data tidak ditemukan.")
     conn.close()
 
 # --- 7. MODUL: LAPORAN 10 PENYAKIT ---
