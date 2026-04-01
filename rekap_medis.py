@@ -218,14 +218,14 @@ elif menu == "Laporan 10 Penyakit":
     t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="l2")
 
     conn = sqlite3.connect(DB_PATH)
-    query = f"""
-        SELECT diagnosa AS 'Diagnosa Penyakit', COUNT(*) AS 'Jumlah Kasus' 
-        FROM rekap_penyakit 
-        WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' 
-        GROUP BY diagnosa 
-        ORDER BY [Jumlah Kasus] DESC 
-        LIMIT 10
-    """
+   query = f"""
+    SELECT diagnosa AS 'Diagnosa Penyakit', COUNT(*) AS 'Jumlah Kasus' 
+    FROM rekap_penyakit 
+    WHERE visit_time BETWEEN '{t1}' AND '{t2}' 
+    GROUP BY diagnosa 
+    ORDER BY [Jumlah Kasus] DESC 
+    LIMIT 10
+"""
     df_top = pd.read_sql_query(query, conn)
     conn.close()
 
@@ -271,37 +271,38 @@ elif menu == "Analisis Dept & Perusahaan":
     t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="d2")
 
     conn = sqlite3.connect(DB_PATH)
-    # Kita ambil semua data dulu untuk dicek kolomnya
-    df_data = pd.read_sql_query(f"SELECT * FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}'", conn)
+    # PERUBAHAN DI SINI: tgl_kunjungan diganti menjadi visit_time
+    query = f"SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN '{t1}' AND '{t2}'"
+    df_data = pd.read_sql_query(query, conn)
     conn.close()
 
     if not df_data.empty:
-        # Kecilkan semua nama kolom agar tidak bentrok (Case Insensitive)
+        # Menyeragamkan nama kolom menjadi huruf kecil
         df_data.columns = [c.lower() for c in df_data.columns]
         
         tab1, tab2 = st.tabs(["📊 Per Departemen", "🏢 Per Perusahaan"])
         
         with tab1:
-            if 'departemen' in df_data.columns:
-                res_dept = df_data['departemen'].value_counts().reset_index()
+            # PERUBAHAN DI SINI: 'departemen' diganti menjadi 'department'
+            if 'department' in df_data.columns:
+                res_dept = df_data['department'].value_counts().reset_index()
                 res_dept.columns = ['Nama Departemen', 'Jumlah Kunjungan']
-                # Tambahkan nomor urut
                 res_dept.insert(0, 'No.', range(1, len(res_dept) + 1))
                 st.dataframe(res_dept, use_container_width=True, hide_index=True)
                 st.bar_chart(res_dept.set_index('Nama Departemen')['Jumlah Kunjungan'])
             else:
-                st.error("❌ Kolom 'departemen' tidak ditemukan di database. Pastikan CSV Anda memiliki kolom tersebut.")
+                st.error("❌ Kolom 'department' tidak ditemukan. Pastikan database sudah diperbarui.")
 
         with tab2:
-            if 'perusahaan' in df_data.columns:
-                res_corp = df_data['perusahaan'].value_counts().reset_index()
+            # PERUBAHAN DI SINI: 'perusahaan' diganti menjadi 'company'
+            if 'company' in df_data.columns:
+                res_corp = df_data['company'].value_counts().reset_index()
                 res_corp.columns = ['Nama Perusahaan', 'Jumlah Kunjungan']
-                # Tambahkan nomor urut
                 res_corp.insert(0, 'No.', range(1, len(res_corp) + 1))
                 st.dataframe(res_corp, use_container_width=True, hide_index=True)
                 st.bar_chart(res_corp.set_index('Nama Perusahaan')['Jumlah Kunjungan'])
             else:
-                st.error("❌ Kolom 'perusahaan' tidak ditemukan di database. Pastikan CSV Anda memiliki kolom tersebut.")
+                st.error("❌ Kolom 'company' tidak ditemukan. Pastikan database sudah diperbarui.")
     else:
         st.warning("Data tidak ditemukan pada rentang tanggal tersebut.")
 # --- 9. MODUL: LIHAT & HAPUS DATA ---
@@ -322,18 +323,17 @@ elif menu == "Lihat Semua Data":
 
     conn = sqlite3.connect(DB_PATH)
     
-    # --- 2. QUERY DENGAN FILTER ---
-    # Menggunakan parameter query untuk keamanan dan fleksibilitas
+    # --- 2. QUERY DENGAN FILTER (KOLOM SUDAH BAHASA INGGRIS) ---
     query = """
-        SELECT id, tgl_kunjungan, nama_pasien, diagnosa, poli, departemen, perusahaan 
+        SELECT id, visit_time, patient_name, diagnosa, clinic, department, company 
         FROM rekap_penyakit 
-        WHERE (tgl_kunjungan BETWEEN ? AND ?)
+        WHERE (visit_time BETWEEN ? AND ?)
     """
     params = [f1, f2]
 
     # Tambahkan filter nama jika kotak pencarian diisi
     if cari_nama:
-        query += " AND nama_pasien LIKE ?"
+        query += " AND patient_name LIKE ?"
         params.append(f'%{cari_nama}%')
     
     df_all = pd.read_sql_query(query, conn, params=params)
@@ -350,51 +350,61 @@ elif menu == "Lihat Semua Data":
             hide_index=True, 
             use_container_width=True,
             column_config={
-                "id": None, 
+                "id": None, # Sembunyikan kolom ID database
                 "Pilih": st.column_config.CheckboxColumn("Pilih", default=False),
                 "No.": st.column_config.Column(width="small"),
-                "tgl_kunjungan": "Tanggal",
-                "nama_pasien": "Nama Pasien"
+                "visit_time": "Visit Time",
+                "patient_name": "Patient Name",
+                "diagnosa": "Diagnosa",
+                "clinic": "Clinic",
+                "department": "Department",
+                "company": "Company"
             },
             disabled=[c for c in df_display.columns if c != "Pilih"] 
         )
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # --- 4. TOMBOL AKSI SEJAJAR (DI BAWAH TABEL) ---
+        # --- 4. TOMBOL AKSI SEJAJAR ---
         col_check, col_btn1, col_btn2 = st.columns([1.5, 1, 1])
         
         with col_check:
             konfirmasi_semua = st.checkbox("⚠️ AKTIFKAN FITUR HAPUS SEMUA")
             
         with col_btn1:
-            btn_hapus_terpilih = st.button("🗑️ HAPUS TERPILIH")
+            # Tombol ini akan otomatis berwarna hitam karena CSS yang kita buat sebelumnya
+            btn_hapus_terpilih = st.button("🗑️ HAPUS TERPILIH", use_container_width=True)
             
         with col_btn2:
-            btn_hapus_semua = st.button("🔥 DELETE ALL DATA", type="primary", disabled=not konfirmasi_semua)
+            btn_hapus_semua = st.button("🔥 DELETE ALL DATA", type="primary", disabled=not konfirmasi_semua, use_container_width=True)
 
         # --- 5. LOGIKA PENGHAPUSAN ---
         if btn_hapus_terpilih:
-            ids_to_delete = edited_df[edited_df['Pilih'] == True]['id'].tolist()
-            if ids_to_delete:
+            # Mengambil ID dari baris yang dicentang
+            row_pilih = edited_df[edited_df['Pilih'] == True]
+            if not row_pilih.empty:
+                ids_to_delete = row_pilih['id'].tolist()
                 cur = conn.cursor()
-                query_del = f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(map(str, ids_to_delete))})"
-                cur.execute(query_del)
+                # Menggunakan parameter ? untuk keamanan agar tidak error jika ID banyak
+                placeholder = ','.join(['?'] * len(ids_to_delete))
+                query_del = f"DELETE FROM rekap_penyakit WHERE id IN ({placeholder})"
+                cur.execute(query_del, ids_to_delete)
                 conn.commit()
-                st.success(f"✅ {len(ids_to_delete)} baris berhasil dihapus!")
+                st.success(f"✅ {len(ids_to_delete)} data berhasil dihapus!")
                 st.rerun()
             else:
-                st.warning("Pilih baris yang ingin dihapus terlebih dahulu.")
+                st.warning("Silakan pilih (centang) data yang ingin dihapus.")
 
         if btn_hapus_semua:
             cur = conn.cursor()
             cur.execute("DELETE FROM rekap_penyakit")
+            # Reset urutan ID agar mulai dari 1 lagi
             cur.execute("DELETE FROM sqlite_sequence WHERE name='rekap_penyakit'")
             conn.commit()
-            st.success("✅ Database bersih total!")
+            st.success("✅ Database telah dikosongkan!")
             st.rerun()
 
     else:
-        st.info("Data tidak ditemukan untuk kriteria pencarian tersebut.")
+        st.info("Tidak ada data ditemukan. Pastikan rentang tanggal benar atau coba upload data baru.")
     
     conn.close()
