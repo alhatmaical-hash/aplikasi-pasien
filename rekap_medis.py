@@ -114,27 +114,28 @@ elif menu == "Laporan 10 Penyakit":
         st.warning("Data tidak ditemukan.")
 
 # --- MODUL BARU: ANALISIS DEPT & PERUSAHAAN ---
-elif menu == "Analisis Dept & Perusahaan":
-    st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
-    
-    c1, c2 = st.columns(2)
-    t1 = c1.date_input("Mulai", date(2024, 1, 1), key="d1")
-    t2 = c2.date_input("Sampai", date.today(), key="d2")
-
+def init_db():
     conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # 1. Pastikan tabel utama ada
+    c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                  tgl_kunjungan TEXT, 
+                  nama_pasien TEXT, 
+                  diagnosa TEXT, 
+                  poli TEXT)''')
     
-    # Query Departemen
-    df_dept = pd.read_sql_query(f"SELECT departemen, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY departemen ORDER BY jumlah DESC", conn)
-    
-    # Query Perusahaan
-    df_corp = pd.read_sql_query(f"SELECT perusahaan, COUNT(*) as jumlah FROM rekap_penyakit WHERE tgl_kunjungan BETWEEN '{t1}' AND '{t2}' GROUP BY perusahaan ORDER BY jumlah DESC", conn)
-    
+    # 2. Tambahkan kolom departemen jika belum ada
+    try:
+        c.execute("ALTER TABLE rekap_penyakit ADD COLUMN departemen TEXT")
+    except sqlite3.OperationalError:
+        pass  # Kolom sudah ada
+        
+    # 3. Tambahkan kolom perusahaan jika belum ada
+    try:
+        c.execute("ALTER TABLE rekap_penyakit ADD COLUMN perusahaan TEXT")
+    except sqlite3.OperationalError:
+        pass  # Kolom sudah ada
+        
+    conn.commit()
     conn.close()
-
-    tab1, tab2 = st.tabs(["Kunjungan Per Departemen", "Kunjungan Per Perusahaan"])
-
-    with tab1:
-        col1, col2 = st.columns([1, 2])
-        if not df_dept.empty:
-            with col1:
-                df
