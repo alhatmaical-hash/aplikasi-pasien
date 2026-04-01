@@ -217,15 +217,16 @@ elif menu == "Laporan 10 Penyakit":
     t1 = c1.date_input("Mulai", value=tgl_awal_db, key="l1")
     t2 = c2.date_input("Sampai", value=tgl_akhir_db, key="l2")
 
+    # Bagian di bawah ini harus lurus vertikal
     conn = sqlite3.connect(DB_PATH)
- query = f"""
-       SELECT diagnosa AS 'Diagnosa Penyakit', COUNT(*) AS 'Jumlah Kasus' 
-       FROM rekap_penyakit 
-       WHERE visit_time BETWEEN '{t1}' AND '{t2}' 
-       GROUP BY diagnosa 
-       ORDER BY [Jumlah Kasus] DESC 
-       LIMIT 10
-  """
+    query = f"""
+        SELECT diagnosa AS 'Diagnosa Penyakit', COUNT(*) AS 'Jumlah Kasus' 
+        FROM rekap_penyakit 
+        WHERE visit_time BETWEEN '{t1}' AND '{t2}' 
+        GROUP BY diagnosa 
+        ORDER BY [Jumlah Kasus] DESC 
+        LIMIT 10
+    """
     df_top = pd.read_sql_query(query, conn)
     conn.close()
 
