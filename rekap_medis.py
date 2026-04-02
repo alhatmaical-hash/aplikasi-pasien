@@ -311,7 +311,7 @@ elif menu == "Lihat Semua Data":
             st.markdown("---")
 
             # --- PENYUSUNAN TABEL (KOLOM LENGKAP) ---
-           df_display = pd.DataFrame()
+            df_display = pd.DataFrame()
             df_display['No.'] = range(1, len(df_tampil) + 1)
             df_display['Pilih'] = False
             df_display['Tanggal'] = df_tampil['visit_time']
