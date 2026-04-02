@@ -3,6 +3,7 @@ import pandas as pd
 import sqlite3
 from datetime import date
 import io
+import hashlib
 
 # --- 0. KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -12,40 +13,89 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 1. LOGIKA PASSWORD ---
-if "admin_password" not in st.session_state:
-    st.session_state["admin_password"] = "admin123"
+# --- 1. LOGIKA LOGIN (REVISI: USER & PASSWORD DATABASE) ---
+
+def make_hashes(password):
+    return hashlib.sha256(str.encode(password)).hexdigest()
+
+def check_hashes(password, hashed_text):
+    if make_hashes(password) == hashed_text:
+        return hashed_text
+    return False
+
+def init_user_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('CREATE TABLE IF NOT EXISTS userstable(username TEXT PRIMARY KEY, password TEXT)')
+    # Membuat user admin default jika database masih baru
+    c.execute('SELECT * FROM userstable WHERE username = "admin"')
+    if not c.fetchone():
+        # User: admin, Pass: admin123
+        c.execute('INSERT INTO userstable(username, password) VALUES (?,?)', ('admin', make_hashes('admin123')))
+    conn.commit()
+    conn.close()
+
+def login_user(username, password):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT password FROM userstable WHERE username = ?', (username,))
+    data = c.fetchone()
+    conn.close()
+    if data:
+        return check_hashes(password, data[0])
+    return False
+
+def add_userdata(username, password):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('INSERT INTO userstable(username, password) VALUES (?,?)', (username, make_hashes(password)))
+        conn.commit()
+        conn.close()
+        return True
+    except:
+        return False
+
+# Inisialisasi tabel user
+init_user_db()
 
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
+if "username" not in st.session_state:
+    st.session_state["username"] = ""
 
 if not st.session_state["authenticated"]:
     st.title("🏥 Akses Terbatas - Klinik Apps")
-    tab_login, tab_buat = st.tabs(["🔑 Masuk Sistem", "🆕 Buat/Ganti Password"])
+    tab_login, tab_buat = st.tabs(["🔑 Masuk Sistem", "🆕 Registrasi User Baru"])
     
     with tab_login:
-        pwd_input = st.text_input("Masukkan Password Admin:", type="password", key="login_pwd")
-        if st.button("🚀 MASUK KE SISTEM KLINIK", use_container_width=True, type="primary"):
-            if pwd_input == st.session_state["admin_password"]:
+        user_input = st.text_input("Username:", key="login_user")
+        pwd_input = st.text_input("Password:", type="password", key="login_pwd")
+        
+        if st.button("🚀 MASUK KE SISTEM", use_container_width=True, type="primary"):
+            if login_user(user_input, pwd_input):
                 st.session_state["authenticated"] = True
+                st.session_state["username"] = user_input
+                st.success(f"Selamat Datang {user_input}!")
                 st.rerun()
             else:
-                st.error("❌ Password Salah!")
+                st.error("❌ Username atau Password Salah!")
     
     with tab_buat:
-        old_p = st.text_input("Password Lama", type="password", key="old_p")
-        new_p = st.text_input("Password Baru", type="password", key="new_p")
-        if st.button("SIMPAN & UPDATE PASSWORD"):
-            if old_p == st.session_state["admin_password"]:
-                if new_p:
-                    st.session_state["admin_password"] = new_p
-                    st.success("✅ Berhasil! Silakan kembali ke tab Masuk.")
+        st.subheader("Buat Akun Petugas Baru")
+        new_user = st.text_input("Username Baru", key="reg_user")
+        new_pwd = st.text_input("Password Baru", type="password", key="reg_pwd")
+        confirm_pwd = st.text_input("Konfirmasi Password", type="password", key="reg_confirm")
+        
+        if st.button("✅ DAFTARKAN USER BARU", use_container_width=True):
+            if new_user and new_pwd == confirm_pwd:
+                if add_userdata(new_user, new_pwd):
+                    st.success(f"Akun '{new_user}' berhasil dibuat! Silakan pindah ke tab Masuk.")
                 else:
-                    st.warning("⚠️ Password baru kosong.")
+                    st.error("❌ Username sudah ada atau terjadi kesalahan.")
             else:
-                st.error("❌ Password lama salah.")
+                st.warning("⚠️ Pastikan semua kolom terisi dan password cocok.")
     st.stop()
-
 # --- 2. SETTING DATABASE & FUNGSI ---
 DB_PATH = 'klinik_data.db'
 
