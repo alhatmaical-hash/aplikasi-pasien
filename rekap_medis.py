@@ -219,14 +219,13 @@ elif menu == "Keterangan Istirahat":
     else:
         st.info("Belum ada data istirahat.")
 
-# --- 9. MODUL: LIHAT DATA (VERSI PARIPURNA) ---
+# --- 9. MODUL: LIHAT DATA (VERSI FIX SYNTAX & TABEL LENGKAP) ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE REKAP MEDIS KESELURUHAN</h1>", unsafe_allow_html=True)
     
-    # Mendapatkan rentang tanggal otomatis dari database agar filter tidak kosong
+    # Mendapatkan rentang tanggal otomatis dari database
     t_awal_db, t_akhir_db = get_date_range()
     
-    # --- BAGIAN FILTER & PENCARIAN ---
     with st.expander("🔍 Filter & Statistik Data", expanded=True):
         c1, c2 = st.columns(2)
         f1 = c1.date_input("Mulai Tanggal", value=t_awal_db, key="f_mulai")
@@ -237,8 +236,6 @@ elif menu == "Lihat Semua Data":
         filter_st = c4.selectbox("Filter Status Istirahat:", ["Semua", "Ya", "Tidak"])
 
     conn = sqlite3.connect(DB_PATH)
-    
-    # Query SQL untuk mengambil data dasar
     query = "SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?"
     params = [f1, f2]
     if cari_nama:
@@ -248,24 +245,19 @@ elif menu == "Lihat Semua Data":
     df_raw = pd.read_sql_query(query, conn, params=params)
     
     if not df_raw.empty:
-        # --- PROSES PEMBERSIHAN DATA (AGAR YA/TIDAK & ANGKA PASTI MUNCUL) ---
-        # 1. Bersihkan Kolom Status (Huruf kecil & buang spasi)
+        # 1. Bersihkan Data untuk Filter
         df_raw['status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
-        
-        # 2. Bersihkan Kolom Tipe (Hari/Jam)
         df_raw['type_clean'] = df_raw['rest_type'].fillna('').astype(str).str.strip().str.lower()
-        
-        # 3. Bersihkan Kolom Durasi (Paksa ke Angka)
         df_raw['dur_clean'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
 
-        # Aplikasi Filter Dropdown Status
+        # 2. Aplikasi Filter Dropdown
         if filter_st == "Ya":
             df_raw = df_raw[df_raw['status_clean'].isin(['ya', 'yes', 'y'])]
-        elif filter_st == "Tidak":
+        elif filter_status == "Tidak":
             df_raw = df_raw[df_raw['status_clean'].isin(['tidak', 'no', 't', 'n', ''])]
 
         if not df_raw.empty:
-            # --- MENYUSUN TAMPILAN TABEL (SESUAI DATA UPLOAD) ---
+            # 3. Susun Tabel Tampilan
             df_display = pd.DataFrame()
             df_display['No.'] = range(1, len(df_raw) + 1)
             df_display['Pilih'] = False
@@ -275,8 +267,36 @@ elif menu == "Lihat Semua Data":
             df_display['Clinic'] = df_raw['clinic']
             df_display['Company'] = df_raw['company']
             df_display['Department'] = df_raw['department']
-            df_display['Istirahat (Y/T)'] = df_raw['rest_status'].str.strip().str.capitalize()
+            df_display['Istirahat (Y/T)'] = df_raw['rest_status']
             
-            # Logika Kolom Hari & Jam (PASTI MUNCUL JIKA STATUS YA)
-            def hitung_hari(row):
-                if row['status_clean'] in ['ya
+            # 4. Logika Durasi (Gunakan lambda yang aman)
+            df_display['Istirahat Hari'] = df_raw.apply(
+                lambda x: f"{int(x['dur_clean'])}" if (x['status_clean'] in ['ya', 'yes', 'y'] and 'hari' in x['type_clean'] and x['dur_clean'] > 0) else "-", axis=1
+            )
+            df_display['Istirahat Jam'] = df_raw.apply(
+                lambda x: f"{int(x['dur_clean'])}" if (x['status_clean'] in ['ya', 'yes', 'y'] and 'jam' in x['type_clean'] and x['dur_clean'] > 0) else "-", axis=1
+            )
+            
+            df_display['db_id'] = df_raw['id']
+
+            st.success(f"📊 Menampilkan {len(df_display)} data ditemukan.")
+
+            # 5. Render Tabel
+            edited_df = st.data_editor(
+                df_display, 
+                hide_index=True, 
+                use_container_width=True,
+                column_config={
+                    "db_id": None, 
+                    "Pilih": st.column_config.CheckboxColumn("Hapus?", default=False),
+                    "No.": st.column_config.Column(width="small"),
+                },
+                disabled=[c for c in df_display.columns if c != "Pilih"]
+            )
+
+            # 6. Tombol Aksi
+            st.markdown("---")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("🗑️ HAPUS TERPILIH", use_container_width=True):
+                    ids = edited_df[edited_df['Pilih'] == True
