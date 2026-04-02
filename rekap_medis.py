@@ -6,6 +6,7 @@ import io
 import hashlib
 
 # --- 0. KONFIGURASI HALAMAN ---
+DB_PATH = 'klinik_data.db'
 st.set_page_config(
     page_title="Klinik Apps",
     page_icon="🏥",
@@ -100,7 +101,7 @@ if not st.session_state["authenticated"]:
                 st.warning("⚠️ Periksa kembali input Anda.")
     st.stop()
 # --- 2. SETTING DATABASE & FUNGSI ---
-DB_PATH = 'klinik_data.db'
+
 
 def get_date_range():
     try:
