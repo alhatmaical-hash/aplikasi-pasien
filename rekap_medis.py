@@ -260,22 +260,22 @@ elif menu == "Analisis Dept & Perusahaan":
     else:
         st.warning("Data tidak ditemukan pada periode ini.")
 
-# --- 8. MODUL 4: ANALISIS ISTIRAHAT (TOTAL DATA SICK PER GRUP) ---
+# --- 8. MODUL 4: ANALISIS ISTIRAHAT (SISTEM TABS & RINGKASAN GRUP) ---
 elif menu == "Keterangan Istirahat":
-    st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK PER PERUSAHAAN</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
+    # 1. Filter Tanggal
     t1, t2 = st.columns(2)
     start = t1.date_input("Mulai", value=get_date_range()[0], key="r1")
     end = t2.date_input("Sampai", value=get_date_range()[1], key="r2")
 
     conn = sqlite3.connect(DB_PATH)
-    # Ambil kolom company untuk filtering
     query = f"SELECT departemen, company, rest_status, rest_duration FROM rekap_penyakit WHERE visit_time BETWEEN '{start}' AND '{end}'"
     df_raw = pd.read_sql_query(query, conn)
     conn.close()
 
     if not df_raw.empty:
-        # --- 1. PROSES DATA DASAR ---
+        # --- PRE-PROCESSING DATA ---
         df_raw['company'] = df_raw['company'].fillna('UNKNOWN').str.upper().str.strip()
         df_raw['status_lower'] = df_raw['rest_status'].fillna('tidak').str.lower().str.strip()
         df_raw['dur_num'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
@@ -283,8 +283,8 @@ elif menu == "Keterangan Istirahat":
         selisih_hari = (end - start).days + 1
         bulan_nama = start.strftime("%B").upper()
 
-        # Fungsi Helper untuk membuat baris tabel ringkasan
-        def get_summary_table(df_filtered, title):
+        # Helper Fungsi untuk Membuat Tabel Ringkasan
+        def get_summary_table(df_filtered):
             if df_filtered.empty:
                 return None
             
@@ -303,69 +303,61 @@ elif menu == "Keterangan Istirahat":
             })
             return summary
 
-        # --- 2. DEFINISI DAFTAR KONTRAKTOR ---
-        # List ini digunakan untuk menggabungkan (akumulasi) semua kontraktor per induk
-        list_kontraktor_hjf = [
-            "PT INDO FUDONG (HJF)", "PT IMJ ( INOVASI MAJU JAYA) HJF", "PT BTG-ZJYC (ONC)", 
-            "PT. ZJYC ONC", "PT. GDSK (HJF)", "PT GLOBEL DARMA SARANA KARYA GDSK (HJF)", 
-            "PT GOBEL DHARMA SARANA KARYA GDSK (HJF)", "PT GEOSERVICES MAKASSAR", 
-            "PT. RENTOKIL INDONESIA", "PT.MATAHARI PUTRA PRIMA (HYPERMART) HJF"
-        ]
-        
-        list_kontraktor_kps = [
-            "PT MCC BAOYE (KPS)", "PT MCC6 (KPS)", "PT. JINRUI KPS", "PT YAOHUA (KPS)", 
-            "PT CREC (KPS)", "PT. CISDI (KPS)", "PT CISDI-KPS", "PT JME-KPS", 
-            "PT. ETGH-KPS", "PT. BTG ZJYC (KPS)"
-        ]
-        
-        list_kontraktor_ost = [
-            "PT. MCCBY DCM", "PT LONGI & CENTER OST", "PT CREC (OST)", "PT STHB (OST)", 
-            "PT ZTPI -OST", "PT ZTPI-(OST)", "ZTPI (OST)", "PT. ZTPI/ OST", "PT ZTPI (OST)",
-            "PT JIANGXI (OST)", "PT. CCEPC OST", "PT INDO FUDONG (OST)", "PT CSCEC (OST)"
-        ]
-        
-        list_kontraktor_ckm = ["PT. MCC BAOYE (CKM)"]
+        # --- DAFTAR KONTRAKTOR PER GRUP ---
+        list_hjf = ["PT INDO FUDONG (HJF)", "PT IMJ ( INOVASI MAJU JAYA) HJF", "PT BTG-ZJYC (ONC)", "PT. ZJYC ONC", "PT. GDSK (HJF)", "PT GLOBEL DARMA SARANA KARYA GDSK (HJF)", "PT GOBEL DHARMA SARANA KARYA GDSK (HJF)", "PT GEOSERVICES MAKASSAR", "PT. RENTOKIL INDONESIA", "PT.MATAHARI PUTRA PRIMA (HYPERMART) HJF"]
+        list_kps = ["PT MCC BAOYE (KPS)", "PT MCC6 (KPS)", "PT. JINRUI KPS", "PT YAOHUA (KPS)", "PT CREC (KPS)", "PT. CISDI (KPS)", "PT CISDI-KPS", "PT JME-KPS", "PT. ETGH-KPS", "PT. BTG ZJYC (KPS)"]
+        list_ost = ["PT. MCCBY DCM", "PT LONGI & CENTER OST", "PT CREC (OST)", "PT STHB (OST)", "PT ZTPI -OST", "PT ZTPI-(OST)", "ZTPI (OST)", "PT. ZTPI/ OST", "PT ZTPI (OST)", "PT JIANGXI (OST)", "PT. CCEPC OST", "PT INDO FUDONG (OST)", "PT CSCEC (OST)"]
+        list_ckm = ["PT. MCC BAOYE (CKM)"]
 
-        # --- 3. TAMPILAN TABEL BERURUTAN ---
-        
-        # Definisikan alur penampilan: (Judul Tabel, Filter Perusahaan)
-        alur_laporan = [
-            ("PT. HALMAHERA JAYA FERONIKEL (HJF)", df_raw[df_raw['company'].str.contains("HALMAHERA JAYA FERONIKEL (HJF)", na=False, regex=False)]),
-            ("KONTRAKTOR PT. HALMAHERA JAYA FERONIKEL", df_raw[df_raw['company'].isin(list_kontraktor_hjf)]),
-            
-            ("PT. KARUNIA PERMAI SENTOSA (KPS)", df_raw[df_raw['company'].str.contains("KARUNIA PERMAI SENTOSA (KPS)", na=False, regex=False)]),
-            ("KONTRAKTOR PT. KARUNIA PERMAI SENTOSA", df_raw[df_raw['company'].isin(list_kontraktor_kps)]),
-            
-            ("PT. OBI SINAR TIMUR (OST)", df_raw[df_raw['company'].str.contains("OBI SINAR TIMUR (OST)", na=False, regex=False)]),
-            ("KONTRAKTOR PT. OBI SINAR TIMUR", df_raw[df_raw['company'].isin(list_kontraktor_ost)]),
-            
-            ("PT. CIPTA KEMAKMURAN MITRA (CKM)", df_raw[df_raw['company'].str.contains("CIPTA KEMAKMURAN MITRA (CKM)", na=False, regex=False)]),
-            ("KONTRAKTOR PT. CIPTA KEMAKMURAN MITRA", df_raw[df_raw['company'].isin(list_kontraktor_ckm)])
-        ]
+        # --- TAMPILAN TAB (SHEETS) ---
+        st.write("### 🏢 Pilih Ringkasan Perusahaan")
+        tab1, tab2, tab3, tab4 = st.tabs(["HJF GROUP", "KPS GROUP", "OST GROUP", "CKM GROUP"])
 
-        for judul, df_filtered in alur_laporan:
-            st.write(f"#### DATA SICK {judul}")
-            res = get_summary_table(df_filtered, judul)
-            if res is not None:
-                st.table(res)
-            else:
-                st.caption(f"Tidak ada data ditemukan untuk {judul}")
+        with tab1:
+            st.subheader("PT. HALMAHERA JAYA FERONIKEL (HJF)")
+            induk = df_raw[df_raw['company'].str.contains("HALMAHERA JAYA FERONIKEL", na=False, regex=False)]
+            st.table(get_summary_table(induk)) if not induk.empty else st.info("Data Induk HJF Tidak Ditemukan")
+            
+            st.subheader("KONTRAKTOR HJF")
+            kon = df_raw[df_raw['company'].isin(list_hjf)]
+            st.table(get_summary_table(kon)) if not kon.empty else st.info("Data Kontraktor HJF Tidak Ditemukan")
 
-        # --- 4. CATATAN KAKI ---
+        with tab2:
+            st.subheader("PT. KARUNIA PERMAI SENTOSA (KPS)")
+            induk = df_raw[df_raw['company'].str.contains("KARUNIA PERMAI SENTOSA", na=False, regex=False)]
+            st.table(get_summary_table(induk)) if not induk.empty else st.info("Data Induk KPS Tidak Ditemukan")
+            
+            st.subheader("KONTRAKTOR KPS")
+            kon = df_raw[df_raw['company'].isin(list_kps)]
+            st.table(get_summary_table(kon)) if not kon.empty else st.info("Data Kontraktor KPS Tidak Ditemukan")
+
+        with tab3:
+            st.subheader("PT. OBI SINAR TIMUR (OST)")
+            induk = df_raw[df_raw['company'].str.contains("OBI SINAR TIMUR", na=False, regex=False)]
+            st.table(get_summary_table(induk)) if not induk.empty else st.info("Data Induk OST Tidak Ditemukan")
+            
+            st.subheader("KONTRAKTOR OST")
+            kon = df_raw[df_raw['company'].isin(list_ost)]
+            st.table(get_summary_table(kon)) if not kon.empty else st.info("Data Kontraktor OST Tidak Ditemukan")
+
+        with tab4:
+            st.subheader("PT. CIPTA KEMAKMURAN MITRA (CKM)")
+            induk = df_raw[df_raw['company'].str.contains("CIPTA KEMAKMURAN MITRA", na=False, regex=False)]
+            st.table(get_summary_table(induk)) if not induk.empty else st.info("Data Induk CKM Tidak Ditemukan")
+            
+            st.subheader("KONTRAKTOR CKM")
+            kon = df_raw[df_raw['company'].isin(list_ckm)]
+            st.table(get_summary_table(kon)) if not kon.empty else st.info("Data Kontraktor CKM Tidak Ditemukan")
+
+        # --- CATATAN KAKI ---
+        st.markdown("---")
         st.markdown("""
-            <p style='color:red; font-weight:bold; font-size:14px;'>
+            <p style='color:red; font-weight:bold; font-size:14px; text-align:center;'>
             NOTE : DAFTAR KUNJUNGAN DAN JUMLAH REKOMENDASI ISTIRAHAT GABUNG DENGAN 3 DEVISI , RANAP RAJAL UGD.
             </p>
             """, unsafe_allow_html=True)
-
-        # --- 5. DETAIL PER DEPARTEMEN (OPSIONAL - Jika masih ingin ditampilkan di paling bawah) ---
-        with st.expander("Lihat Detail Rincian Per Departemen (Seluruh Perusahaan)"):
-             rekap = df_raw.groupby('departemen').size().reset_index(name='TOTAL KUNJUNGAN')
-             # ... (logika tabel detail departemen Anda yang sebelumnya tetap bisa ditaruh di sini)
-             st.dataframe(rekap)
-
     else:
-        st.info("ℹ️ Tidak ada data untuk periode ini.")
+        st.info("ℹ️ Belum ada data untuk periode tanggal ini.")
 # --- 9. MODUL: LIHAT SEMUA DATA (DENGAN DURASI, DEPT, & PERUSAHAAN) ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE REKAP MEDIS</h1>", unsafe_allow_html=True)
