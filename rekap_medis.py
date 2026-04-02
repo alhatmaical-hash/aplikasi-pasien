@@ -219,9 +219,9 @@ elif menu == "Keterangan Istirahat":
     else:
         st.info("Belum ada data istirahat.")
 
-# --- 9. MODUL: LIHAT DATA (VERSI PERBAIKAN DURASI HARI/JAM) ---
+# --- 9. MODUL: LIHAT DATA (VERSI FINAL - PAKSA ANGKA MUNCUL) ---
 elif menu == "Lihat Semua Data":
-    st.header("📂 Database Rekap Medis")
+    st.markdown("<h1>📂 DATABASE REKAP MEDIS</h1>", unsafe_allow_html=True)
     
     t1_db, t2_db = get_date_range()
     c1, c2, c3 = st.columns([1,1,2])
@@ -230,24 +230,34 @@ elif menu == "Lihat Semua Data":
     st_filter = c3.selectbox("Filter Status Istirahat:", ["Semua", "Ya", "Tidak"])
 
     conn = sqlite3.connect(DB_PATH)
+    # Ambil data dari database
     df_raw = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
     
     if not df_raw.empty:
-        # --- PEMBERSIHAN DATA AGAR LOGIKA JALAN ---
+        # --- PROSES PEMBERSIHAN DATA EKSTREM ---
         # 1. Bersihkan Status (Ya/Tidak)
-        df_raw['rest_status'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.capitalize()
+        df_raw['rest_status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
+        
         # 2. Bersihkan Tipe (Hari/Jam)
-        df_raw['rest_type'] = df_raw['rest_type'].fillna('').astype(str).str.strip().str.lower()
-        # 3. Pastikan Durasi adalah Angka
-        df_raw['rest_duration'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
+        df_raw['rest_type_clean'] = df_raw['rest_type'].fillna('').astype(str).str.strip().str.lower()
+        
+        # 3. Paksa Durasi Menjadi Angka (Penting!)
+        df_raw['rest_duration_clean'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
 
         # Logika Filter Dropdown
-        if st_filter != "Semua":
-            df_raw = df_raw[df_raw['rest_status'] == st_filter]
+        if st_filter == "Ya":
+            df_raw = df_raw[df_raw['rest_status_clean'].isin(['ya', 'yes', 'y'])]
+        elif st_filter == "Tidak":
+            df_raw = df_raw[df_raw['rest_status_clean'].isin(['tidak', 'no', 't', 'n', ''])]
 
         if not df_raw.empty:
+            # Hitung Statistik
+            total_tampil = len(df_raw)
+            st.info(f"Ditemukan {total_tampil} data (Status: {st_filter})")
+
+            # Susun Tabel Tampilan
             df_display = pd.DataFrame()
-            df_display['No.'] = range(1, len(df_raw) + 1)
+            df_display['No.'] = range(1, total_tampil + 1)
             df_display['Pilih'] = False
             df_display['Visit Time'] = df_raw['visit_time']
             df_display['Patient Name'] = df_raw['patient_name']
@@ -255,44 +265,20 @@ elif menu == "Lihat Semua Data":
             df_display['Clinic'] = df_raw['clinic']
             df_display['Company'] = df_raw['company']
             df_display['Department'] = df_raw['department']
-            df_display['Istirahat (Y/T)'] = df_raw['rest_status']
+            df_display['Istirahat (Y/T)'] = df_raw['rest_status'] # Menampilkan teks asli (Ya/Tidak)
             
-            # --- LOGIKA BARU UNTUK KOLOM HARI DAN JAM ---
-            # Menggunakan .str.contains untuk menghindari error jika ada spasi tambahan
-            df_display['Istirahat Hari'] = df_raw.apply(
-                lambda x: int(x['rest_duration']) if 'hari' in str(x['rest_type']) and x['rest_duration'] > 0 else "-", axis=1
-            )
-            df_display['Istirahat Jam'] = df_raw.apply(
-                lambda x: int(x['rest_duration']) if 'jam' in str(x['rest_type']) and x['rest_duration'] > 0 else "-", axis=1
-            )
-            
-            df_display['db_id'] = df_raw['id']
+            # --- LOGIKA PENENTUAN ANGKA (DIPERKETAT) ---
+            def check_hari(row):
+                status = str(row['rest_status_clean'])
+                tipe = str(row['rest_type_clean'])
+                durasi = row['rest_duration_clean']
+                # Jika status 'ya' dan ada kata 'hari' atau 'day'
+                if status in ['ya', 'yes', 'y'] and ('hari' in tipe or 'day' in tipe) and durasi > 0:
+                    return int(durasi)
+                return "-"
 
-            edited_df = st.data_editor(
-                df_display, 
-                hide_index=True, 
-                column_config={
-                    "db_id": None, 
-                    "Pilih": st.column_config.CheckboxColumn("Hapus?")
-                },
-                use_container_width=True
-            )
-
-            # Tombol Aksi
-            c_del1, c_del2 = st.columns(2)
-            if c_del1.button("🗑️ HAPUS TERPILIH"):
-                ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
-                if ids:
-                    conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
-                    conn.commit()
-                    st.rerun()
-            
-            if c_del2.button("🔥 KOSONGKAN DATA"):
-                conn.cursor().execute("DELETE FROM rekap_penyakit")
-                conn.commit()
-                st.rerun()
-        else:
-            st.warning(f"Data '{st_filter}' tidak ditemukan.")
-    else:
-        st.info("Database Kosong.")
-    conn.close()
+            def check_jam(row):
+                status = str(row['rest_status_clean'])
+                tipe = str(row['rest_type_clean'])
+                durasi = row['rest_duration_clean']
+                # Jika status 'ya' dan ada kata 'jam' atau 'hour'
