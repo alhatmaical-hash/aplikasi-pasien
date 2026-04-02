@@ -260,9 +260,9 @@ elif menu == "Analisis Dept & Perusahaan":
     else:
         st.warning("Data tidak ditemukan pada periode ini.")
 
-# --- 8. MODUL 4: KETERANGAN ISTIRAHAT & ANALISIS KUNJUNGAN ---
+# --- 8. MODUL 4: ANALISIS ISTIRAHAT (TOTAL DATA SICK) ---
 elif menu == "Keterangan Istirahat":
-    st.markdown("<h1>🛌 ANALISIS ISTIRAHAT & KUNJUNGAN</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
     # Filter Tanggal
     t1, t2 = st.columns(2)
@@ -270,51 +270,58 @@ elif menu == "Keterangan Istirahat":
     end = t2.date_input("Sampai", value=get_date_range()[1], key="r2")
 
     conn = sqlite3.connect(DB_PATH)
-    # Kita ambil data Lengkap: Status Istirahat, Departemen, dan Company
+    # Mengambil kolom yang diperlukan untuk perhitungan
     query = f"""
-        SELECT rest_status, rest_type, rest_duration, departemen, company 
+        SELECT departemen, rest_status, rest_duration 
         FROM rekap_penyakit 
         WHERE visit_time BETWEEN '{start}' AND '{end}'
     """
-    df_rest = pd.read_sql_query(query, conn)
+    df_raw = pd.read_sql_query(query, conn)
     conn.close()
 
-    if not df_rest.empty:
-        # --- Bagian A: Statistik Singkat ---
-        total = len(df_rest)
-        # Menghitung yang statusnya 'ya' (case-insensitive)
-        df_rest['status_lower'] = df_rest['rest_status'].str.lower().str.strip()
-        ya_rest = len(df_rest[df_rest['status_lower'] == 'ya'])
-        tidak_rest = total - ya_rest
+    if not df_raw.empty:
+        # 1. Pembersihan & Normalisasi Data
+        df_raw['departemen'] = df_raw['departemen'].fillna('TIDAK TERDAFTAR').replace(['', '-', 'None'], 'TIDAK TERDAFTAR')
+        df_raw['status_lower'] = df_raw['rest_status'].fillna('tidak').str.lower().str.strip()
+        df_raw['dur_num'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
 
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Total Pasien", f"{total}")
-        m2.metric("✅ Istirahat (Ya)", f"{ya_rest}")
-        m3.metric("❌ Tidak Istirahat", f"{tidak_rest}")
+        # 2. Logika Pengelompokan (Grouping)
+        # Hitung Total Kunjungan per Departemen
+        rekap = df_raw.groupby('departemen').size().reset_index(name='TOTAL KUNJUNGAN')
+        
+        # Hitung Istirahat Hari (Status YA & Durasi 1-7)
+        ist_hari = df_raw[(df_raw['status_lower'] == 'ya') & (df_raw['dur_num'] >= 1) & (df_raw['dur_num'] <= 7)]
+        ist_hari_count = ist_hari.groupby('departemen').size().reset_index(name='ISTIRAHAT HARI')
+        
+        # Hitung Istirahat Jam (Status YA & Durasi > 7)
+        ist_jam = df_raw[(df_raw['status_lower'] == 'ya') & (df_raw['dur_num'] > 7)]
+        ist_jam_count = ist_jam.groupby('departemen').size().reset_index(name='ISTIRAHAT JAM')
 
-        st.markdown("---")
+        # 3. Gabungkan semua hitungan ke dalam satu tabel utama
+        final_table = rekap.merge(ist_hari_count, on='departemen', how='left')
+        final_table = final_table.merge(ist_jam_count, on='departemen', how='left')
         
-        # --- Bagian B: Tabel Perbandingan (Departemen vs Kontraktor/Company) ---
-        st.write("### 🏢 Perbandingan Kunjungan: Departemen vs Perusahaan")
+        # Isi nilai kosong (NaN) dengan 0 dan tambahkan teks " PASIEN" agar mirip gambar
+        final_table = final_table.fillna(0)
         
-        # Membuat Pivot Table untuk melihat sebaran kunjungan
-        # Baris: Nama Departemen | Kolom: Nama Perusahaan (Company)
-        pivot_compare = df_rest.groupby(['departemen', 'company']).size().unstack(fill_value=0)
-        
-        # Tambahkan Kolom Total di akhir untuk perbandingan angka total
-        pivot_compare['TOTAL KUNJUNGAN'] = pivot_compare.sum(axis=1)
-        
-        # Menampilkan tabel
-        st.dataframe(pivot_compare, use_container_width=True)
+        # Membuat tampilan tabel yang rapi (Formatted Table)
+        display_df = pd.DataFrame()
+        display_df['DEPARTEMEN'] = final_table['departemen'].str.upper()
+        display_df['TOTAL KUNJUNGAN'] = final_table['TOTAL KUNJUNGAN'].astype(int).astype(str) + " PASIEN"
+        display_df['ISTIRAHAT HARI'] = final_table['ISTIRAHAT HARI'].astype(int).astype(str) + " PASIEN"
+        display_df['ISTIRAHAT JAM'] = final_table['ISTIRAHAT JAM'].astype(int).astype(str) + " PASIEN"
 
-        # --- Bagian C: Visualisasi ---
-        st.write("### 📊 Grafik Distribusi Kunjungan")
-        # Kita hapus kolom TOTAL agar skala grafik per kolom perusahaan tetap proporsional
-        st.bar_chart(pivot_compare.drop(columns=['TOTAL KUNJUNGAN']))
+        # 4. Tampilkan Tabel sesuai format gambar
+        st.write("### Tabel Rekapitulasi Departemen")
+        st.table(display_df)
+
+        # 5. Visualisasi Tambahan
+        st.write("### 📊 Perbandingan Visual")
+        chart_data = final_table.set_index('departemen')[['ISTIRAHAT HARI', 'ISTIRAHAT JAM']]
+        st.bar_chart(chart_data)
 
     else:
-        # Menambahkan 'st.info' agar tidak kosong dan tidak menyebabkan IndentationError
-        st.info("ℹ️ Tidak ada data pasien yang ditemukan pada rentang tanggal tersebut.")
+        st.info("ℹ️ Tidak ada data untuk periode ini.")
 
 # --- 9. MODUL: LIHAT SEMUA DATA (DENGAN DURASI, DEPT, & PERUSAHAAN) ---
 elif menu == "Lihat Semua Data":
