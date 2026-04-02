@@ -334,7 +334,6 @@ elif menu == "Lihat Semua Data":
             df_display['Diagnosa'] = df_tampil['diagnosa']
             df_display['Status'] = df_tampil['rest_status'].str.upper()
             df_display['db_id'] = df_tampil['id']
-
             # --- BAGIAN YANG TADI ERROR (INDENTASI DIPERBAIKI) ---
             edited_df = st.data_editor(
                 df_display, 
