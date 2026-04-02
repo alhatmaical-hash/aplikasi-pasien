@@ -119,10 +119,16 @@ if menu == "Upload Data CSV":
         if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
             try:
                 conn = sqlite3.connect(DB_PATH)
-                # Standarisasi Tanggal
                 df['visit_time'] = pd.to_datetime(df['visit_time']).dt.strftime('%Y-%m-%d')
                 
-                # Daftar kolom yang wajib ada di CSV
+                # --- KODE PENGAMAN: Tambahkan kolom jika tidak ada di CSV ---
+                for col in ['rest_status', 'rest_type', 'rest_duration']:
+                    if col not in df.columns:
+                        if col == 'rest_duration':
+                            df[col] = 0 # Default angka 0
+                        else:
+                            df[col] = "Tidak" # Default status Tidak
+                
                 kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company', 'rest_status', 'rest_type', 'rest_duration']
                 
                 df_to_save = df[kolom_target]
@@ -132,7 +138,7 @@ if menu == "Upload Data CSV":
                 st.success("✅ Berhasil Disimpan!")
                 st.rerun()
             except Exception as e:
-                st.error(f"❌ Gagal: Pastikan CSV memiliki kolom {kolom_target}. Error: {e}")
+                st.error(f"❌ Error: {e}")
 
 # --- 6. MODUL 2: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
