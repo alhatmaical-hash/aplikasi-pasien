@@ -311,17 +311,19 @@ elif menu == "Lihat Semua Data":
             st.markdown("---")
 
             # --- PENYUSUNAN TABEL (KOLOM LENGKAP) ---
-            df_display = pd.DataFrame()
+           df_display = pd.DataFrame()
             df_display['No.'] = range(1, len(df_tampil) + 1)
             df_display['Pilih'] = False
             df_display['Tanggal'] = df_tampil['visit_time']
             df_display['Nama Pasien'] = df_tampil['patient_name']
             df_display['Diagnosa'] = df_tampil['diagnosa']
-            df_display['Departemen'] = df_tampil['clinic']
+            
+            # Ganti label 'Departemen' menjadi 'Clinic' jika itu yang Anda maksud
+            df_display['Clinic'] = df_tampil['clinic'] 
+            
             df_display['Perusahaan'] = df_tampil['company']
             
-            # --- MUNCULKAN KEMBALI KOLOM DURASI ---
-            # Menggunakan logika yang sama dengan Modul 10
+            # Kolom Istirahat (Hari/Jam)
             df_display['Istirahat'] = df_tampil['dur_num'].apply(
                 lambda x: f"{int(x)} Hari" if 1 <= x <= 7 else (f"{int(x)} Jam" if x > 7 else "-")
             )
