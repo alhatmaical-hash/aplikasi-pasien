@@ -378,7 +378,7 @@ elif menu == "Keterangan Istirahat":
         st.info("ℹ️ Belum ada data untuk periode tanggal ini.")
 # --- 9. MODUL: LIHAT SEMUA DATA (DENGAN DURASI, DEPT, & PERUSAHAAN) ---
 elif menu == "Lihat Semua Data":
-    st.markdown("<h1>📂 DATABASE REKAP MEDIS</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>📂 DATABASE REKAM MEDIS</h1>", unsafe_allow_html=True)
     
     t_awal, t_akhir = get_date_range()
     
