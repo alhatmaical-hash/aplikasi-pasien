@@ -330,16 +330,16 @@ elif menu == "Keterangan Istirahat":
         
         # Definisikan alur penampilan: (Judul Tabel, Filter Perusahaan)
         alur_laporan = [
-            ("PT HALMAHERA JAYA FERONIKEL (HJF)", df_raw[df_raw['company'] == "PT HALMAHERA JAYA FERONIKEL"]),
+            ("PT. HALMAHERA JAYA FERONIKEL (HJF)", df_raw[df_raw['company'].str.contains("HALMAHERA JAYA FERONIKEL (HJF)", na=False, regex=False)]),
             ("KONTRAKTOR PT. HALMAHERA JAYA FERONIKEL", df_raw[df_raw['company'].isin(list_kontraktor_hjf)]),
             
-            ("PT. KARUNIA PERMAI SENTOSA (KPS)", df_raw[df_raw['company'] == "PT. KARUNIA PERMAI SENTOSA"]),
+            ("PT. KARUNIA PERMAI SENTOSA (KPS)", df_raw[df_raw['company'].str.contains("KARUNIA PERMAI SENTOSA (KPS)", na=False, regex=False)]),
             ("KONTRAKTOR PT. KARUNIA PERMAI SENTOSA", df_raw[df_raw['company'].isin(list_kontraktor_kps)]),
             
-            ("PT. OBI SINAR TIMUR (OST)", df_raw[df_raw['company'] == "PT. OBI SINAR TIMUR"]),
+            ("PT. OBI SINAR TIMUR (OST)", df_raw[df_raw['company'].str.contains("OBI SINAR TIMUR (OST)", na=False, regex=False)]),
             ("KONTRAKTOR PT. OBI SINAR TIMUR", df_raw[df_raw['company'].isin(list_kontraktor_ost)]),
             
-            ("PT. CIPTA KEMAKMURAN MITRA (CKM)", df_raw[df_raw['company'] == "PT. CIPTA KEMAKMURAN MITRA"]),
+            ("PT. CIPTA KEMAKMURAN MITRA (CKM)", df_raw[df_raw['company'].str.contains("CIPTA KEMAKMURAN MITRA (CKM)", na=False, regex=False)]),
             ("KONTRAKTOR PT. CIPTA KEMAKMURAN MITRA", df_raw[df_raw['company'].isin(list_kontraktor_ckm)])
         ]
 
