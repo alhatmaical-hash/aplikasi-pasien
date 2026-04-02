@@ -142,13 +142,58 @@ if st.sidebar.button("🔴 KELUAR APLIKASI", type="primary", use_container_width
     st.session_state["authenticated"] = False
     st.rerun()
 
-# --- 5. MODUL 1: UPLOAD DATA (VERSI NORMAL & ANTI-NONE) ---
+# --- 5. MODUL 1: UPLOAD DATA (VERSI PERBAIKAN TOTAL) ---
 if menu == "Upload Data CSV":
     st.markdown("<h1>📤 UPLOAD DATA PASIEN</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
     
-    ❌
-Terjadi kesalahan: Execution failed
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)
+            # Normalisasi nama kolom: huruf kecil dan ganti spasi dengan underscore
+            df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+            
+            # --- LOGIKA PENYELARASAN KOLOM ---
+            # Jika di CSV namanya 'department' (Inggris), ubah ke 'departemen' (Indo)
+            if 'department' in df.columns and 'departemen' not in df.columns:
+                df = df.rename(columns={'department': 'departemen'})
+            
+            st.write("### 🔍 Pratinjau Data:")
+            st.dataframe(df.head(), use_container_width=True)
+            
+            if st.button("💾 SIMPAN KE DATABASE", use_container_width=True, type="primary"):
+                conn = sqlite3.connect(DB_PATH)
+                
+                # Pembersihan Baris Kosong
+                df = df.dropna(subset=['patient_name'])
+                df['p_name_check'] = df['patient_name'].astype(str).str.strip().str.lower()
+                df = df[~df['p_name_check'].isin(['none', 'nan', '', 'null'])].copy()
+
+                if not df.empty:
+                    # Pastikan format tanggal aman
+                    df['visit_time'] = pd.to_datetime(df['visit_time']).dt.strftime('%Y-%m-%d')
+                    
+                    # Tambahkan kolom yang kurang secara otomatis agar tidak error
+                    kolom_wajib = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'departemen', 'company', 'rest_status', 'rest_type', 'rest_duration']
+                    for col in kolom_wajib:
+                        if col not in df.columns:
+                            df[col] = 0 if col == 'rest_duration' else "-"
+                    
+                    # Simpan hanya kolom yang dibutuhkan
+                    df_to_save = df[kolom_wajib]
+                    df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
+                    conn.commit()
+                    conn.close()
+                    
+                    st.success(f"✅ Berhasil menyimpan {len(df_to_save)} data pasien.")
+                    st.balloons()
+                else:
+                    st.warning("⚠️ File CSV tidak berisi data valid.")
+                    conn.close()
+
+        except Exception as e:
+            st.error(f"Terjadi kesalahan teknis: {str(e)}")
+            if 'conn' in locals(): conn.close()
 
 # --- 6. MODUL 2: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
