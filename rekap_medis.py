@@ -190,7 +190,7 @@ if menu == "Upload Data CSV":
         st.dataframe(df.head(), use_container_width=True)
         
         # 3. Tombol Simpan (Sejajar dengan st.write di atas)
-       if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
+    if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
     try:
         conn = sqlite3.connect(DB_PATH)
         
