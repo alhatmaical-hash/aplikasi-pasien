@@ -315,7 +315,7 @@ elif menu == "Lihat Semua Data":
     
     conn.close()
 
-# --- 10. MODUL: ANALISIS ISTIRAHAT PASIEN (VERSI ANTI-NONE) ---
+# --- 10. MODUL: ANALISIS ISTIRAHAT PASIEN (VERSI SUPER CLEAN) ---
 elif menu == "Analisis Istirahat":
     st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
     
@@ -337,26 +337,26 @@ elif menu == "Analisis Istirahat":
     conn.close()
 
     if not df.empty:
-        # --- PROSES PEMBERSIHAN DATA DARI NONE/KOSONG ---
-        # 1. Hapus baris yang memang benar-benar kosong di kolom nama
+        # --- 1. PEMBERSIHAN TOTAL (MENGHILANGKAN NONE/KOSONG) ---
+        # Menghapus baris yang kolom namanya benar-benar kosong (null)
         df = df.dropna(subset=['patient_name'])
         
-        # 2. Filter baris yang berisi teks "None", "nan", atau spasi kosong saja
-        df['p_name_clean'] = df['patient_name'].astype(str).str.strip().str.lower()
-        df = df[~df['p_name_clean'].isin(['none', 'nan', '', 'null'])].copy()
+        # Menghapus baris yang namanya hanya berisi teks 'None', 'nan', atau string kosong/spasi
+        df['patient_name'] = df['patient_name'].astype(str).str.strip()
+        df = df[~df['patient_name'].str.lower().isin(['none', 'nan', '', 'null'])].copy()
         
-        # 3. Normalisasi Status & Durasi
+        # --- 2. NORMALISASI DATA ---
         df['status_clean'] = df['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
         df['dur_clean'] = pd.to_numeric(df['rest_duration'], errors='coerce').fillna(0)
         
-        # Ambil hanya yang berstatus 'Ya'
+        # Filter hanya yang berstatus 'Ya'
         df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])].copy()
 
         # Logika Pemisahan Durasi
         df_hari = df_ya[(df_ya['dur_clean'] >= 1) & (df_ya['dur_clean'] <= 7)]
         df_jam = df_ya[df_ya['dur_clean'] > 7]
 
-        # --- LOGIKA TOMBOL FILTER ---
+        # --- 3. LOGIKA TOMBOL FILTER ---
         if tipe_filter == "Hanya Istirahat Hari (1-7)":
             df_final = df_hari
             label_stat = "Istirahat Hari"
@@ -367,14 +367,40 @@ elif menu == "Analisis Istirahat":
             df_final = df_ya
             label_stat = "Total Istirahat (Ya)"
 
-        # --- TAMPILAN STATISTIK RINGKAS ---
-        st.subheader(f"📈 Statistik: {tipe_filter}")
+        # --- 4. TAMPILAN STATISTIK ---
+        st.subheader(f"📈 {label_stat}")
+        
         col1, col2, col3 = st.columns(3)
+        # Gunakan len(df_final) agar statistik sinkron dengan tabel yang bersih
         col1.metric("Jumlah Pasien", f"{len(df_final)} Orang")
-        col2.metric("Rata-rata Durasi", f"{round(df_final['dur_clean'].mean(), 1) if not df_final.empty else 0}")
-        col3.metric("Total Kunjungan Umum", f"{len(df)} Orang")
+        avg_dur = df_final['dur_clean'].mean() if not df_final.empty else 0
+        col2.metric("Rata-rata Durasi", f"{round(avg_dur, 1)}")
+        col3.metric("Total Data Bersih", f"{len(df)} Orang")
 
         st.markdown("---")
 
         if not df_final.empty:
-            st
+            # Susun Tabel Tampilan
+            df_view = pd.DataFrame()
+            df_view['No.'] = range(1, len(df_final) + 1)
+            df_view['Visit Time'] = df_final['visit_time']
+            df_view['Patient Name'] = df_final['patient_name']
+            df_view['Diagnosa'] = df_final['diagnosa']
+            df_view['Company'] = df_final['company']
+            # Format tampilan durasi agar lebih rapi
+            df_view['Durasi'] = df_final['dur_clean'].apply(lambda x: f"{int(x)} Hari" if x <= 7 else f"{int(x)} Jam")
+            
+            st.dataframe(df_view, hide_index=True, use_container_width=True)
+            
+            # Tombol Download
+            csv = df_view.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label=f"📥 Download Data {label_stat}",
+                data=csv,
+                file_name=f'analisis_{label_stat.lower().replace(" ", "_")}.csv',
+                mime='text/csv',
+            )
+        else:
+            st.warning(f"Tidak ada data valid untuk kategori: {tipe_filter}")
+    else:
+        st.info("Tidak ada data ditemukan pada rentang tanggal tersebut.")
