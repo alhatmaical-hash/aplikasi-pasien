@@ -272,7 +272,23 @@ elif menu == "Keterangan Istirahat":
     conn.close()
 
     if not df_rest.empty:
-        # Statistik Utama
+       elif menu == "Keterangan Istirahat":
+    st.markdown("<h1>🛌 ANALISIS ISTIRAHAT & KUNJUNGAN</h1>", unsafe_allow_html=True)
+    t1, t2 = st.columns(2)
+    start = t1.date_input("Mulai", value=get_date_range()[0], key="r1")
+    end = t2.date_input("Sampai", value=get_date_range()[1], key="r2")
+
+    conn = sqlite3.connect(DB_PATH)
+    # Tambahkan departemen dan company di SELECT agar data bisa diolah
+    df_rest = pd.read_sql_query(f"""
+        SELECT rest_status, rest_type, rest_duration, departemen, company 
+        FROM rekap_penyakit 
+        WHERE visit_time BETWEEN '{start}' AND '{end}'
+    """, conn)
+    conn.close()
+
+    if not df_rest.empty:
+        # --- Bagian 1: Statistik Utama (Tetap Dipertahankan) ---
         total = len(df_rest)
         ya_rest = len(df_rest[df_rest['rest_status'].str.lower() == 'ya'])
         tidak_rest = total - ya_rest
@@ -282,24 +298,27 @@ elif menu == "Keterangan Istirahat":
         m2.metric("✅ Istirahat (Ya)", f"{ya_rest}")
         m3.metric("❌ Tidak Istirahat", f"{tidak_rest}")
 
-        if ya_rest > 0:
-            st.write("### 📊 Detail Istirahat (Tipe: Hari vs Jam)")
-            df_ya = df_rest[df_rest['rest_status'].str.lower() == 'ya']
-            
-            # Distribusi Tipe (Hari vs Jam)
-            col1, col2 = st.columns(2)
-            with col1:
-                tipe_counts = df_ya['rest_type'].value_counts().reset_index()
-                tipe_counts.columns = ['Tipe', 'Jumlah']
-                st.dataframe(tipe_counts, hide_index=True, use_container_width=True)
-            with col2:
-                st.bar_chart(tipe_counts.set_index('Tipe'))
+        # --- Bagian 2: TABEL PERBANDINGAN (GANTI BAGIAN INI) ---
+        st.markdown("---")
+        st.write("### 🏢 Perbandingan Kunjungan: Departemen vs Perusahaan (Kontraktor)")
+        
+        # Membuat Pivot Table: Baris = Departemen, Kolom = Company
+        # fill_value=0 memastikan jika tidak ada data, muncul angka 0 (bukan NaN)
+        pivot_compare = df_rest.groupby(['departemen', 'company']).size().unstack(fill_value=0)
+        
+        # Tambahkan total baris untuk memudahkan pembacaan
+        pivot_compare['TOTAL'] = pivot_compare.sum(axis=1)
+        
+        # Tampilkan tabel perbandingan
+        st.dataframe(pivot_compare, use_container_width=True)
 
-            st.write("### ⏱️ Detail Durasi Istirahat")
-            detail = df_ya.groupby(['rest_type', 'rest_duration']).size().reset_index(name='Jumlah Orang')
-            st.table(detail) # Tabel sederhana untuk durasi
+        # Visualisasi grafik perbandingan
+        st.write("### 📊 Visualisasi Distribusi Kunjungan")
+        # Hapus kolom 'TOTAL' khusus untuk grafik agar visualisasi batang tetap rapi
+        st.bar_chart(pivot_compare.drop(columns=['TOTAL']))
+
     else:
-        st.info("Belum ada data istirahat.")
+        st.info("Belum ada data pada periode ini.")
 
 # --- 9. MODUL: LIHAT SEMUA DATA (DENGAN DURASI, DEPT, & PERUSAHAAN) ---
 elif menu == "Lihat Semua Data":
