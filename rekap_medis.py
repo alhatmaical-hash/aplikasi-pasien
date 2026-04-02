@@ -306,6 +306,22 @@ elif menu == "Lihat Semua Data":
                         conn.commit()
                         st.success(f"Berhasil menghapus {len(ids)} data.")
                         st.rerun()
+
+                 with st.expander("⚠️ Zona Bahaya"):
+                    st.warning("Tombol di bawah ini akan menghapus SELURUH data yang muncul di tabel sesuai filter tanggal di atas.")
+                    if st.button("🔥 HAPUS SEMUA DATA TERFILTER", use_container_width=True):
+                        # Ambil semua ID dari dataframe yang sedang ditampilkan
+                        all_ids = df_display['db_id'].tolist()
+                        
+                        if all_ids:
+                            conn = sqlite3.connect(DB_PATH)
+                            conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(all_ids))})", all_ids)
+                            conn.commit()
+                            conn.close()
+                            st.success(f"💥 Berhasil menghapus total {len(all_ids)} data!")
+                            st.rerun()
+                        else:
+                            st.info("Tidak ada data untuk dihapus.")
             else:
                 st.warning(f"Tidak ada data dengan filter '{st_filter}' pada periode ini.")
         else:
