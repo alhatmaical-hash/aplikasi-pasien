@@ -290,7 +290,7 @@ elif menu == "Keterangan Istirahat":
     else:
         st.info("Belum ada data istirahat.")
 
-# --- 9. MODUL: LIHAT DATA (DENGAN TOMBOL HAPUS SEMUA) ---
+# --- 9. MODUL: LIHAT DATA (STATISTIK DINAMIS) ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE REKAP MEDIS</h1>", unsafe_allow_html=True)
     
@@ -306,33 +306,34 @@ elif menu == "Lihat Semua Data":
     df_raw = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
     
     if not df_raw.empty:
-        # --- 1. PEMBERSIHAN BARIS NONE (AGAR TIDAK MUNCUL SEPERTI DI GAMBAR) ---
+        # Pembersihan data agar sinkron dengan CSV
         df_raw = df_raw.dropna(subset=['patient_name'])
         df_raw['p_name_check'] = df_raw['patient_name'].astype(str).str.strip().str.lower()
         df_raw = df_raw[~df_raw['p_name_check'].isin(['none', 'nan', '', 'null'])].copy()
 
         if not df_raw.empty:
-            # --- 2. LOGIKA STATISTIK ---
+            # Logika Statistik Dasar
             df_raw['status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
-            total_ya = len(df_raw[df_raw['status_clean'].isin(['ya', 'y', 'yes'])])
-            total_tidak = len(df_raw) - total_ya
             
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Total Data Pasien", f"{len(df_raw)} Orang")
-            m2.metric("Total Istirahat (YA)", f"{total_ya} Orang")
-            m3.metric("Total Tidak Istirahat", f"{total_tidak} Orang")
+            # --- LOGIKA FILTER TAMPILAN & METRIK DINAMIS ---
+            if st_filter == "Ya":
+                df_tampil = df_raw[df_raw['status_clean'].isin(['ya', 'yes', 'y'])].copy()
+                label_metrik = "Total Data (Filter: YA)"
+            elif st_filter == "Tidak":
+                df_tampil = df_raw[~df_raw['status_clean'].isin(['ya', 'yes', 'y'])].copy()
+                label_metrik = "Total Data (Filter: TIDAK)"
+            else:
+                df_tampil = df_raw.copy()
+                label_metrik = "Total Seluruh Data"
+
+            # Menampilkan Metrik sesuai Filter
+            col_m1, col_m2 = st.columns(2)
+            col_m1.metric(label_metrik, f"{len(df_tampil)} Orang")
+            col_m2.metric("Total Keseluruhan (Tanpa Filter)", f"{len(df_raw)} Orang")
             
             st.markdown("---")
 
-            # --- 3. FILTER TAMPILAN ---
-            if st_filter == "Ya":
-                df_tampil = df_raw[df_raw['status_clean'].isin(['ya', 'yes', 'y'])].copy()
-            elif st_filter == "Tidak":
-                df_tampil = df_raw[df_raw['status_clean'].isin(['tidak', 'no', 't', 'n', ''])].copy()
-            else:
-                df_tampil = df_raw.copy()
-
-            # --- 4. RENDER TABEL ---
+            # --- RENDER TABEL ---
             df_display = pd.DataFrame()
             df_display['No.'] = range(1, len(df_tampil) + 1)
             df_display['Hapus?'] = False
@@ -341,40 +342,27 @@ elif menu == "Lihat Semua Data":
             df_display['Diagnosa'] = df_tampil['diagnosa']
             df_display['Clinic'] = df_tampil['clinic']
             df_display['Company'] = df_tampil['company']
+            df_display['Status'] = df_tampil['rest_status'].str.upper()
             df_display['db_id'] = df_tampil['id']
 
             edited_df = st.data_editor(
                 df_display, 
                 hide_index=True, 
                 use_container_width=True,
-                column_config={"db_id": None, "Pilih": st.column_config.CheckboxColumn("Hapus?")},
-                disabled=[c for c in df_display.columns if c != "Pilih"]
+                column_config={"db_id": None, "Hapus?": st.column_config.CheckboxColumn("Pilih")},
+                disabled=[c for c in df_display.columns if c != "Hapus?"]
             )
 
-            # --- 5. TOMBOL AKSI (HAPUS TERPILIH & HAPUS SEMUA) ---
-            st.write("") # Spasi tambahan
-            
-            # Tombol 1: Hapus yang dicentang
+            # Tombol Hapus Terpilih
             if st.button("🗑️ HAPUS DATA TERPILIH", use_container_width=True):
-                ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
+                ids = edited_df[edited_df['Hapus?'] == True]['db_id'].tolist()
                 if ids:
                     conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
                     conn.commit()
                     st.success(f"✅ Berhasil menghapus {len(ids)} data.")
                     st.rerun()
                 else:
-                    st.warning("Silakan centang data yang ingin dihapus terlebih dahulu.")
-
-            # Tombol 2: Hapus Semua (Tanpa perlu centang)
-            with st.expander("⚠️ Opsi Lanjutan (Hapus Semua)"):
-                st.write("Klik tombol di bawah ini untuk menghapus seluruh data yang sedang tampil di tabel saat ini.")
-                if st.button("🔥 KONFIRMASI: HAPUS SEMUA DATA TERFILTER", use_container_width=True, type="primary"):
-                    all_ids = df_display['db_id'].tolist()
-                    if all_ids:
-                        conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(all_ids))})", all_ids)
-                        conn.commit()
-                        st.success(f"💥 Sukses menghapus {len(all_ids)} data!")
-                        st.rerun()
+                    st.warning("Silakan centang data yang ingin dihapus.")
     else:
         st.info("Database kosong pada rentang tanggal ini.")
     
