@@ -314,3 +314,61 @@ elif menu == "Lihat Semua Data":
         st.info("Database kosong pada rentang tanggal ini.")
     
     conn.close()
+
+# --- 10. MODUL KHUSUS: ANALISIS ISTIRAHAT PASIEN ---
+elif menu == "Analisis Istirahat":
+    st.markdown("<h1>📊 ANALISIS ISTIRAHAT PASIEN</h1>", unsafe_allow_html=True)
+    
+    t_awal, t_akhir = get_date_range()
+    
+    with st.container():
+        c1, c2 = st.columns(2)
+        f1 = c1.date_input("Mulai Periode", t_awal, key="ana_1")
+        f2 = c2.date_input("Sampai Periode", t_akhir, key="ana_2")
+
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
+    conn.close()
+
+    if not df.empty:
+        # Pembersihan dasar
+        df = df.dropna(subset=['patient_name'])
+        df['status_clean'] = df['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
+        df['dur_clean'] = pd.to_numeric(df['rest_duration'], errors='coerce').fillna(0)
+
+        # Hitung Statistik
+        total_ya = len(df[df['status_clean'].isin(['ya', 'y', 'yes'])])
+        total_tidak = len(df[df['status_clean'].isin(['tidak', 't', 'no', ''])])
+        
+        # Hitung Detail Istirahat (Hanya dari yang 'Ya')
+        df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])]
+        jml_hari = len(df_ya[(df_ya['dur_clean'] >= 1) & (df_ya['dur_clean'] <= 7)])
+        jml_jam = len(df_ya[df_ya['dur_clean'] > 7])
+
+        # --- TAMPILAN DASHBOARD ---
+        st.subheader("📈 Ringkasan Eksekutif")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Kunjungan", f"{len(df)} Orang")
+        col2.metric("Perlu Istirahat (YA)", f"{total_ya} Orang")
+        col3.metric("Tidak Istirahat", f"{total_tidak} Orang")
+
+        st.markdown("---")
+        
+        st.subheader("⏰ Detail Durasi Istirahat (Status: YA)")
+        k1, k2 = st.columns(2)
+        with k1:
+            st.info(f"### 📅 {jml_hari}\n**Orang Istirahat (1-7 Hari)**")
+        with k2:
+            st.warning(f"### ⏱️ {jml_jam}\n**Orang Istirahat (> 7 Jam)**")
+
+        # --- VISUALISASI SEDERHANA ---
+        st.markdown("---")
+        st.subheader("📊 Perbandingan Persentase")
+        chart_data = pd.DataFrame({
+            'Kategori': ['Istirahat Hari', 'Istirahat Jam', 'Tidak Istirahat'],
+            'Jumlah': [jml_hari, jml_jam, total_tidak]
+        })
+        st.bar_chart(data=chart_data, x='Kategori', y='Jumlah')
+
+    else:
+        st.info("Belum ada data untuk dianalisis pada periode ini.")
