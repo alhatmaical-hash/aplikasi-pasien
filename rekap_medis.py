@@ -177,8 +177,9 @@ if menu == "Upload Data CSV":
                             else:
                                 df[col] = "Tidak"
                     
-                    kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company', 'rest_status', 'rest_type', 'rest_duration']
-                    
+                    kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'departmen', 'company', 'rest_status', 'rest_type', 'rest_duration']
+                    if 'department' in df.columns and 'departemen' not in df.columns:
+                        df = df.rename(columns={'department': 'departemen'})
                     # Simpan data yang sudah bersih
                     df_to_save = df[kolom_target]
                     df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
@@ -322,7 +323,12 @@ elif menu == "Lihat Semua Data":
             df_display['Clinic'] = df_tampil['clinic']
             
             # Sesuaikan 'departemen' dengan nama kolom asli di database/CSV Anda
-            df_display['Departemen'] = df_tampil['departemen'] if 'departemen' in df_tampil.columns else "-"
+            if 'departemen' in df_tampil.columns:
+                df_display['Departemen'] = df_tampil['departemen']
+            elif 'department' in df_tampil.columns:
+                df_display['Departemen'] = df_tampil['department']
+            else:
+                df_display['Departemen'] = "-"
             
             df_display['Perusahaan'] = df_tampil['company']
             
