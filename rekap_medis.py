@@ -330,7 +330,7 @@ elif menu == "Keterangan Istirahat":
         
         # Definisikan alur penampilan: (Judul Tabel, Filter Perusahaan)
         alur_laporan = [
-            ("PT. HALMAHERA JAYA FERONIKEL (HJF)", df_raw[df_raw['company'] == "PT. HALMAHERA JAYA FERONIKEL"]),
+            ("PT HALMAHERA JAYA FERONIKEL (HJF)", df_raw[df_raw['company'] == "PT HALMAHERA JAYA FERONIKEL"]),
             ("KONTRAKTOR PT. HALMAHERA JAYA FERONIKEL", df_raw[df_raw['company'].isin(list_kontraktor_hjf)]),
             
             ("PT. KARUNIA PERMAI SENTOSA (KPS)", df_raw[df_raw['company'] == "PT. KARUNIA PERMAI SENTOSA"]),
