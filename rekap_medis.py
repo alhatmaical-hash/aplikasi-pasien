@@ -322,7 +322,7 @@ elif menu == "Lihat Semua Data":
             df_display['Clinic'] = df_tampil['clinic']
             
             # Sesuaikan 'departemen' dengan nama kolom asli di database/CSV Anda
-            df_display['Departemen'] = df_tampil['departement'] if 'departemen' in df_tampil.columns else "-"
+            df_display['Departemen'] = df_tampil['departemen'] if 'departemen' in df_tampil.columns else "-"
             
             df_display['Perusahaan'] = df_tampil['company']
             
