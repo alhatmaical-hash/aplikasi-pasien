@@ -192,25 +192,20 @@ if menu == "Upload Data CSV":
         # 3. Tombol Simpan (Sejajar dengan st.write di atas)
     if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
             try:
-                # Bagian ini HARUS lebih menjorok ke dalam dibanding 'if' di atas
                 conn = sqlite3.connect(DB_PATH)
                 
-                # Menyelaraskan urutan kolom
-                kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company']
-                
-                # Memastikan format tanggal bisa dibaca filter (YYYY-MM-DD)
+                # MEMAKSA FORMAT TANGGAL (Agar bisa dibaca oleh Filter)
+                # Kode ini mengubah '03/01/2026' menjadi '2026-01-03'
                 df['visit_time'] = pd.to_datetime(df['visit_time']).dt.strftime('%Y-%m-%d')
                 
+                kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company']
                 df_to_save = df[kolom_target]
                 
-                # Simpan ke tabel
                 df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
-                
-                conn.commit() 
+                conn.commit()
                 conn.close()
-                
-                st.success("✅ BERHASIL! Data sudah masuk ke database.")
-                st.rerun() 
+                st.success("✅ BERHASIL SIMPAN! Cek menu Lihat Semua Data.")
+                st.rerun()
                 
             except Exception as e:
                 st.error("❌ GAGAL MENYIMPAN!")
