@@ -270,6 +270,7 @@ elif menu == "Keterangan Istirahat":
     end = t2.date_input("Sampai", value=get_date_range()[1], key="r2")
 
     conn = sqlite3.connect(DB_PATH)
+    # Menarik data company untuk kebutuhan filtering per tab
     query = f"SELECT departemen, company, rest_status, rest_duration FROM rekap_penyakit WHERE visit_time BETWEEN '{start}' AND '{end}'"
     df_raw = pd.read_sql_query(query, conn)
     conn.close()
@@ -283,12 +284,13 @@ elif menu == "Keterangan Istirahat":
         selisih_hari = (end - start).days + 1
         bulan_nama = start.strftime("%B").upper()
 
-        # Helper Fungsi untuk Membuat Tabel Ringkasan
+        # Helper Fungsi untuk Membuat Tabel Ringkasan (Executive Summary)
         def get_summary_table(df_filtered):
             if df_filtered.empty:
                 return None
             
             total_pasien = len(df_filtered)
+            # Filter Istirahat Hari (1-7) & Jam (>7)
             ist_hari = len(df_filtered[(df_filtered['status_lower'] == 'ya') & (df_filtered['dur_num'] >= 1) & (df_filtered['dur_num'] <= 7)])
             ist_jam = len(df_filtered[(df_filtered['status_lower'] == 'ya') & (df_filtered['dur_num'] > 7)])
             
@@ -303,51 +305,67 @@ elif menu == "Keterangan Istirahat":
             })
             return summary
 
-        # --- DAFTAR KONTRAKTOR PER GRUP ---
+        # --- DAFTAR LIST KONTRAKTOR (Sesuai Permintaan) ---
         list_hjf = ["PT INDO FUDONG (HJF)", "PT IMJ ( INOVASI MAJU JAYA) HJF", "PT BTG-ZJYC (ONC)", "PT. ZJYC ONC", "PT. GDSK (HJF)", "PT GLOBEL DARMA SARANA KARYA GDSK (HJF)", "PT GOBEL DHARMA SARANA KARYA GDSK (HJF)", "PT GEOSERVICES MAKASSAR", "PT. RENTOKIL INDONESIA", "PT.MATAHARI PUTRA PRIMA (HYPERMART) HJF"]
         list_kps = ["PT MCC BAOYE (KPS)", "PT MCC6 (KPS)", "PT. JINRUI KPS", "PT YAOHUA (KPS)", "PT CREC (KPS)", "PT. CISDI (KPS)", "PT CISDI-KPS", "PT JME-KPS", "PT. ETGH-KPS", "PT. BTG ZJYC (KPS)"]
         list_ost = ["PT. MCCBY DCM", "PT LONGI & CENTER OST", "PT CREC (OST)", "PT STHB (OST)", "PT ZTPI -OST", "PT ZTPI-(OST)", "ZTPI (OST)", "PT. ZTPI/ OST", "PT ZTPI (OST)", "PT JIANGXI (OST)", "PT. CCEPC OST", "PT INDO FUDONG (OST)", "PT CSCEC (OST)"]
         list_ckm = ["PT. MCC BAOYE (CKM)"]
 
-        # --- TAMPILAN TAB (SHEETS) ---
+        # --- TAMPILAN SISTEM TAB (SHEETS) ---
         st.write("### 🏢 Pilih Ringkasan Perusahaan")
         tab1, tab2, tab3, tab4 = st.tabs(["HJF GROUP", "KPS GROUP", "OST GROUP", "CKM GROUP"])
 
         with tab1:
             st.subheader("PT. HALMAHERA JAYA FERONIKEL (HJF)")
             induk = df_raw[df_raw['company'].str.contains("HALMAHERA JAYA FERONIKEL", na=False, regex=False)]
-            st.table(get_summary_table(induk)) if not induk.empty else st.info("Data Induk HJF Tidak Ditemukan")
+            res_induk = get_summary_table(induk)
+            if res_induk is not None: st.table(res_induk)
+            else: st.info("Data Induk HJF Tidak Ditemukan")
             
             st.subheader("KONTRAKTOR HJF")
             kon = df_raw[df_raw['company'].isin(list_hjf)]
-            st.table(get_summary_table(kon)) if not kon.empty else st.info("Data Kontraktor HJF Tidak Ditemukan")
+            res_kon = get_summary_table(kon)
+            if res_kon is not None: st.table(res_kon)
+            else: st.info("Data Kontraktor HJF Tidak Ditemukan")
 
         with tab2:
             st.subheader("PT. KARUNIA PERMAI SENTOSA (KPS)")
             induk = df_raw[df_raw['company'].str.contains("KARUNIA PERMAI SENTOSA", na=False, regex=False)]
-            st.table(get_summary_table(induk)) if not induk.empty else st.info("Data Induk KPS Tidak Ditemukan")
+            res_induk = get_summary_table(induk)
+            if res_induk is not None: st.table(res_induk)
+            else: st.info("Data Induk KPS Tidak Ditemukan")
             
             st.subheader("KONTRAKTOR KPS")
             kon = df_raw[df_raw['company'].isin(list_kps)]
-            st.table(get_summary_table(kon)) if not kon.empty else st.info("Data Kontraktor KPS Tidak Ditemukan")
+            res_kon = get_summary_table(kon)
+            if res_kon is not None: st.table(res_kon)
+            else: st.info("Data Kontraktor KPS Tidak Ditemukan")
 
         with tab3:
             st.subheader("PT. OBI SINAR TIMUR (OST)")
             induk = df_raw[df_raw['company'].str.contains("OBI SINAR TIMUR", na=False, regex=False)]
-            st.table(get_summary_table(induk)) if not induk.empty else st.info("Data Induk OST Tidak Ditemukan")
+            res_induk = get_summary_table(induk)
+            if res_induk is not None: st.table(res_induk)
+            else: st.info("Data Induk OST Tidak Ditemukan")
             
             st.subheader("KONTRAKTOR OST")
             kon = df_raw[df_raw['company'].isin(list_ost)]
-            st.table(get_summary_table(kon)) if not kon.empty else st.info("Data Kontraktor OST Tidak Ditemukan")
+            res_kon = get_summary_table(kon)
+            if res_kon is not None: st.table(res_kon)
+            else: st.info("Data Kontraktor OST Tidak Ditemukan")
 
         with tab4:
             st.subheader("PT. CIPTA KEMAKMURAN MITRA (CKM)")
             induk = df_raw[df_raw['company'].str.contains("CIPTA KEMAKMURAN MITRA", na=False, regex=False)]
-            st.table(get_summary_table(induk)) if not induk.empty else st.info("Data Induk CKM Tidak Ditemukan")
+            res_induk = get_summary_table(induk)
+            if res_induk is not None: st.table(res_induk)
+            else: st.info("Data Induk CKM Tidak Ditemukan")
             
             st.subheader("KONTRAKTOR CKM")
             kon = df_raw[df_raw['company'].isin(list_ckm)]
-            st.table(get_summary_table(kon)) if not kon.empty else st.info("Data Kontraktor CKM Tidak Ditemukan")
+            res_kon = get_summary_table(kon)
+            if res_kon is not None: st.table(res_kon)
+            else: st.info("Data Kontraktor CKM Tidak Ditemukan")
 
         # --- CATATAN KAKI ---
         st.markdown("---")
