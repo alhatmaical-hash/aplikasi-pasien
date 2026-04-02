@@ -260,66 +260,109 @@ elif menu == "Analisis Dept & Perusahaan":
     else:
         st.warning("Data tidak ditemukan pada periode ini.")
 
-# --- 8. MODUL 4: ANALISIS ISTIRAHAT (TOTAL DATA SICK) ---
+# --- 8. MODUL 4: ANALISIS ISTIRAHAT (TOTAL DATA SICK PER GRUP) ---
 elif menu == "Keterangan Istirahat":
-    st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK PER PERUSAHAAN</h1>", unsafe_allow_html=True)
     
     t1, t2 = st.columns(2)
     start = t1.date_input("Mulai", value=get_date_range()[0], key="r1")
     end = t2.date_input("Sampai", value=get_date_range()[1], key="r2")
 
     conn = sqlite3.connect(DB_PATH)
-    query = f"SELECT departemen, rest_status, rest_duration FROM rekap_penyakit WHERE visit_time BETWEEN '{start}' AND '{end}'"
+    # Ambil kolom company untuk filtering
+    query = f"SELECT departemen, company, rest_status, rest_duration FROM rekap_penyakit WHERE visit_time BETWEEN '{start}' AND '{end}'"
     df_raw = pd.read_sql_query(query, conn)
     conn.close()
 
     if not df_raw.empty:
-        # --- 1. PROSES DATA ---
-        df_raw['departemen'] = df_raw['departemen'].fillna('TIDAK TERDAFTAR').replace(['', '-', 'None'], 'TIDAK TERDAFTAR')
+        # --- 1. PROSES DATA DASAR ---
+        df_raw['company'] = df_raw['company'].fillna('UNKNOWN').str.upper().str.strip()
         df_raw['status_lower'] = df_raw['rest_status'].fillna('tidak').str.lower().str.strip()
         df_raw['dur_num'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
-
-        # Hitung Kategori
-        ist_hari = df_raw[(df_raw['status_lower'] == 'ya') & (df_raw['dur_num'] >= 1) & (df_raw['dur_num'] <= 7)]
-        ist_jam = df_raw[(df_raw['status_lower'] == 'ya') & (df_raw['dur_num'] > 7)]
-
-        # --- 2. METRIK SINGKAT ---
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Total Pasien", f"{len(df_raw)}")
-        m2.metric("✅ Istirahat (Ya)", f"{len(ist_hari) + len(ist_jam)}")
-        m3.metric("❌ Tidak Istirahat", f"{len(df_raw) - (len(ist_hari) + len(ist_jam))}")
-
-        # --- 3. TABEL RINGKASAN TOTAL (EXECUTIVE SUMMARY) ---
-        # Diletakkan di sini agar menjadi ringkasan awal
-        st.markdown("---")
-        st.write("### 📈 Ringkasan Total Data")
+        
         selisih_hari = (end - start).days + 1
-        summary_data = pd.DataFrame({
-            "TANGGAL": [f"{start.day} SAMPAI {end.day}"],
-            "ANGKA KUNJUNGAN SAKIT": [f"{len(df_raw)} PASIEN"],
-            "JUMLAH REKOMENDASI SAKIT/ISTIRAHAT PER-HARI": [f"{len(ist_hari)} PASIEN"],
-            "JUMLAH REKOMENDASI SAKIT/ISTIRAHAT PER-JAM": [f"{len(ist_jam)} PASIEN"],
-            "JUMLAH HARI KERJA": [f"{selisih_hari} HARI"]
-        })
-        st.table(summary_data)
+        bulan_nama = start.strftime("%B").upper()
 
-        # --- 4. TABEL DETAIL PER DEPARTEMEN ---
-        st.markdown("---")
-        st.write("### 🏢 Detail Rekapitulasi Per Departemen")
+        # Fungsi Helper untuk membuat baris tabel ringkasan
+        def get_summary_table(df_filtered, title):
+            if df_filtered.empty:
+                return None
+            
+            total_pasien = len(df_filtered)
+            ist_hari = len(df_filtered[(df_filtered['status_lower'] == 'ya') & (df_filtered['dur_num'] >= 1) & (df_filtered['dur_num'] <= 7)])
+            ist_jam = len(df_filtered[(df_filtered['status_lower'] == 'ya') & (df_filtered['dur_num'] > 7)])
+            
+            summary = pd.DataFrame({
+                "TAHUN": [start.year],
+                "BULAN": [bulan_nama],
+                "TANGGAL": [f"{start.day} SAMPAI {end.day}"],
+                "ANGKA KUNJUNGAN SAKIT": [f"{total_pasien} PASIEN"],
+                "REKOMENDASI PER-HARI": [f"{ist_hari} PASIEN"],
+                "REKOMENDASI PER-JAM": [f"{ist_jam} PASIEN"],
+                "HARI KERJA": [f"{selisih_hari} HARI"]
+            })
+            return summary
+
+        # --- 2. DEFINISI DAFTAR KONTRAKTOR ---
+        # List ini digunakan untuk menggabungkan (akumulasi) semua kontraktor per induk
+        list_kontraktor_hjf = [
+            "PT INDO FUDONG (HJF)", "PT IMJ ( INOVASI MAJU JAYA) HJF", "PT BTG-ZJYC (ONC)", 
+            "PT. ZJYC ONC", "PT. GDSK (HJF)", "PT GLOBEL DARMA SARANA KARYA GDSK (HJF)", 
+            "PT GOBEL DHARMA SARANA KARYA GDSK (HJF)", "PT GEOSERVICES MAKASSAR", 
+            "PT. RENTOKIL INDONESIA", "PT.MATAHARI PUTRA PRIMA (HYPERMART) HJF"
+        ]
         
-        rekap = df_raw.groupby('departemen').size().reset_index(name='TOTAL KUNJUNGAN')
-        ist_hari_count = ist_hari.groupby('departemen').size().reset_index(name='ISTIRAHAT HARI')
-        ist_jam_count = ist_jam.groupby('departemen').size().reset_index(name='ISTIRAHAT JAM')
-
-        final_table = rekap.merge(ist_hari_count, on='departemen', how='left').merge(ist_jam_count, on='departemen', how='left').fillna(0)
+        list_kontraktor_kps = [
+            "PT MCC BAOYE (KPS)", "PT MCC6 (KPS)", "PT. JINRUI KPS", "PT YAOHUA (KPS)", 
+            "PT CREC (KPS)", "PT. CISDI (KPS)", "PT CISDI-KPS", "PT JME-KPS", 
+            "PT. ETGH-KPS", "PT. BTG ZJYC (KPS)"
+        ]
         
-        display_df = pd.DataFrame()
-        display_df['DEPARTEMEN'] = final_table['departemen'].str.upper()
-        display_df['TOTAL KUNJUNGAN'] = final_table['TOTAL KUNJUNGAN'].astype(int).astype(str) + " PASIEN"
-        display_df['ISTIRAHAT HARI'] = final_table['ISTIRAHAT HARI'].astype(int).astype(str) + " PASIEN"
-        display_df['ISTIRAHAT JAM'] = final_table['ISTIRAHAT JAM'].astype(int).astype(str) + " PASIEN"
+        list_kontraktor_ost = [
+            "PT. MCCBY DCM", "PT LONGI & CENTER OST", "PT CREC (OST)", "PT STHB (OST)", 
+            "PT ZTPI -OST", "PT ZTPI-(OST)", "ZTPI (OST)", "PT. ZTPI/ OST", "PT ZTPI (OST)",
+            "PT JIANGXI (OST)", "PT. CCEPC OST", "PT INDO FUDONG (OST)", "PT CSCEC (OST)"
+        ]
+        
+        list_kontraktor_ckm = ["PT. MCC BAOYE (CKM)"]
 
-        st.table(display_df)
+        # --- 3. TAMPILAN TABEL BERURUTAN ---
+        
+        # Definisikan alur penampilan: (Judul Tabel, Filter Perusahaan)
+        alur_laporan = [
+            ("PT. HALMAHERA JAYA FERONIKEL (HJF)", df_raw[df_raw['company'] == "PT. HALMAHERA JAYA FERONIKEL"]),
+            ("KONTRAKTOR PT. HALMAHERA JAYA FERONIKEL", df_raw[df_raw['company'].isin(list_kontraktor_hjf)]),
+            
+            ("PT. KARUNIA PERMAI SENTOSA (KPS)", df_raw[df_raw['company'] == "PT. KARUNIA PERMAI SENTOSA"]),
+            ("KONTRAKTOR PT. KARUNIA PERMAI SENTOSA", df_raw[df_raw['company'].isin(list_kontraktor_kps)]),
+            
+            ("PT. OBI SINAR TIMUR (OST)", df_raw[df_raw['company'] == "PT. OBI SINAR TIMUR"]),
+            ("KONTRAKTOR PT. OBI SINAR TIMUR", df_raw[df_raw['company'].isin(list_kontraktor_ost)]),
+            
+            ("PT. CIPTA KEMAKMURAN MITRA (CKM)", df_raw[df_raw['company'] == "PT. CIPTA KEMAKMURAN MITRA"]),
+            ("KONTRAKTOR PT. CIPTA KEMAKMURAN MITRA", df_raw[df_raw['company'].isin(list_kontraktor_ckm)])
+        ]
+
+        for judul, df_filtered in alur_laporan:
+            st.write(f"#### DATA SICK {judul}")
+            res = get_summary_table(df_filtered, judul)
+            if res is not None:
+                st.table(res)
+            else:
+                st.caption(f"Tidak ada data ditemukan untuk {judul}")
+
+        # --- 4. CATATAN KAKI ---
+        st.markdown("""
+            <p style='color:red; font-weight:bold; font-size:14px;'>
+            NOTE : DAFTAR KUNJUNGAN DAN JUMLAH REKOMENDASI ISTIRAHAT GABUNG DENGAN 3 DEVISI , RANAP RAJAL UGD.
+            </p>
+            """, unsafe_allow_html=True)
+
+        # --- 5. DETAIL PER DEPARTEMEN (OPSIONAL - Jika masih ingin ditampilkan di paling bawah) ---
+        with st.expander("Lihat Detail Rincian Per Departemen (Seluruh Perusahaan)"):
+             rekap = df_raw.groupby('departemen').size().reset_index(name='TOTAL KUNJUNGAN')
+             # ... (logika tabel detail departemen Anda yang sebelumnya tetap bisa ditaruh di sini)
+             st.dataframe(rekap)
 
     else:
         st.info("ℹ️ Tidak ada data untuk periode ini.")
