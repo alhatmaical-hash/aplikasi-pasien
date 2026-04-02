@@ -260,37 +260,31 @@ elif menu == "Analisis Dept & Perusahaan":
     else:
         st.warning("Data tidak ditemukan pada periode ini.")
 
-# --- 8. MODUL 4: KETERANGAN ISTIRAHAT (MODUL BARU) ---
-elif menu == "Keterangan Istirahat":
-    st.markdown("<h1>🛌 ANALISIS ISTIRAHAT PASIEN</h1>", unsafe_allow_html=True)
-    t1, t2 = st.columns(2)
-    start = t1.date_input("Mulai", value=get_date_range()[0], key="r1")
-    end = t2.date_input("Sampai", value=get_date_range()[1], key="r2")
-
-    conn = sqlite3.connect(DB_PATH)
-    df_rest = pd.read_sql_query(f"SELECT rest_status, rest_type, rest_duration FROM rekap_penyakit WHERE visit_time BETWEEN '{start}' AND '{end}'", conn)
-    conn.close()
-    if not df_rest.empty:
-        
+# --- 8. MODUL 4: KETERANGAN ISTIRAHAT & ANALISIS KUNJUNGAN ---
 elif menu == "Keterangan Istirahat":
     st.markdown("<h1>🛌 ANALISIS ISTIRAHAT & KUNJUNGAN</h1>", unsafe_allow_html=True)
+    
+    # Filter Tanggal
     t1, t2 = st.columns(2)
     start = t1.date_input("Mulai", value=get_date_range()[0], key="r1")
     end = t2.date_input("Sampai", value=get_date_range()[1], key="r2")
 
     conn = sqlite3.connect(DB_PATH)
-    # Tambahkan departemen dan company di SELECT agar data bisa diolah
-    df_rest = pd.read_sql_query(f"""
+    # Kita ambil data Lengkap: Status Istirahat, Departemen, dan Company
+    query = f"""
         SELECT rest_status, rest_type, rest_duration, departemen, company 
         FROM rekap_penyakit 
         WHERE visit_time BETWEEN '{start}' AND '{end}'
-    """, conn)
+    """
+    df_rest = pd.read_sql_query(query, conn)
     conn.close()
 
     if not df_rest.empty:
-        # --- Bagian 1: Statistik Utama (Tetap Dipertahankan) ---
+        # --- Bagian A: Statistik Singkat ---
         total = len(df_rest)
-        ya_rest = len(df_rest[df_rest['rest_status'].str.lower() == 'ya'])
+        # Menghitung yang statusnya 'ya' (case-insensitive)
+        df_rest['status_lower'] = df_rest['rest_status'].str.lower().str.strip()
+        ya_rest = len(df_rest[df_rest['status_lower'] == 'ya'])
         tidak_rest = total - ya_rest
 
         m1, m2, m3 = st.columns(3)
@@ -298,27 +292,29 @@ elif menu == "Keterangan Istirahat":
         m2.metric("✅ Istirahat (Ya)", f"{ya_rest}")
         m3.metric("❌ Tidak Istirahat", f"{tidak_rest}")
 
-        # --- Bagian 2: TABEL PERBANDINGAN (GANTI BAGIAN INI) ---
         st.markdown("---")
-        st.write("### 🏢 Perbandingan Kunjungan: Departemen vs Perusahaan (Kontraktor)")
         
-        # Membuat Pivot Table: Baris = Departemen, Kolom = Company
-        # fill_value=0 memastikan jika tidak ada data, muncul angka 0 (bukan NaN)
+        # --- Bagian B: Tabel Perbandingan (Departemen vs Kontraktor/Company) ---
+        st.write("### 🏢 Perbandingan Kunjungan: Departemen vs Perusahaan")
+        
+        # Membuat Pivot Table untuk melihat sebaran kunjungan
+        # Baris: Nama Departemen | Kolom: Nama Perusahaan (Company)
         pivot_compare = df_rest.groupby(['departemen', 'company']).size().unstack(fill_value=0)
         
-        # Tambahkan total baris untuk memudahkan pembacaan
-        pivot_compare['TOTAL'] = pivot_compare.sum(axis=1)
+        # Tambahkan Kolom Total di akhir untuk perbandingan angka total
+        pivot_compare['TOTAL KUNJUNGAN'] = pivot_compare.sum(axis=1)
         
-        # Tampilkan tabel perbandingan
+        # Menampilkan tabel
         st.dataframe(pivot_compare, use_container_width=True)
 
-        # Visualisasi grafik perbandingan
-        st.write("### 📊 Visualisasi Distribusi Kunjungan")
-        # Hapus kolom 'TOTAL' khusus untuk grafik agar visualisasi batang tetap rapi
-        st.bar_chart(pivot_compare.drop(columns=['TOTAL']))
+        # --- Bagian C: Visualisasi ---
+        st.write("### 📊 Grafik Distribusi Kunjungan")
+        # Kita hapus kolom TOTAL agar skala grafik per kolom perusahaan tetap proporsional
+        st.bar_chart(pivot_compare.drop(columns=['TOTAL KUNJUNGAN']))
 
     else:
-        st.info("Belum ada data pada periode ini.")
+        # Menambahkan 'st.info' agar tidak kosong dan tidak menyebabkan IndentationError
+        st.info("ℹ️ Tidak ada data pasien yang ditemukan pada rentang tanggal tersebut.")
 
 # --- 9. MODUL: LIHAT SEMUA DATA (DENGAN DURASI, DEPT, & PERUSAHAAN) ---
 elif menu == "Lihat Semua Data":
