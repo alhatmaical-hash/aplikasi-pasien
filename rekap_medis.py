@@ -219,45 +219,53 @@ elif menu == "Keterangan Istirahat":
     else:
         st.info("Belum ada data istirahat.")
 
-# --- 9. MODUL: LIHAT DATA (VERSI ANTI-BLANK / TABEL PASTI MUNCUL) ---
+# --- 9. MODUL: LIHAT DATA (VERSI PARIPURNA) ---
 elif menu == "Lihat Semua Data":
-    st.markdown("<h1>📂 DATABASE REKAP MEDIS</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>📂 DATABASE REKAP MEDIS KESELURUHAN</h1>", unsafe_allow_html=True)
     
-    # Ambil rentang tanggal asli dari database
-    awal_db, akhir_db = get_date_range()
+    # Mendapatkan rentang tanggal otomatis dari database agar filter tidak kosong
+    t_awal_db, t_akhir_db = get_date_range()
     
-    # --- BAGIAN FILTER ---
-    with st.container():
-        c1, c2, c3 = st.columns([1,1,2])
-        # Gunakan awal_db dan akhir_db agar filter langsung mengarah ke data yang ada
-        f1 = c1.date_input("Dari Tanggal", value=awal_db, key="f_tgl_mulai")
-        f2 = c2.date_input("Sampai Tanggal", value=akhir_db, key="f_tgl_akhir")
-        st_filter = c3.selectbox("Filter Status Istirahat:", ["Semua", "Ya", "Tidak"], key="f_status")
+    # --- BAGIAN FILTER & PENCARIAN ---
+    with st.expander("🔍 Filter & Statistik Data", expanded=True):
+        c1, c2 = st.columns(2)
+        f1 = c1.date_input("Mulai Tanggal", value=t_awal_db, key="f_mulai")
+        f2 = c2.date_input("Sampai Tanggal", value=t_akhir_db, key="f_sampai")
+        
+        c3, c4 = st.columns(2)
+        cari_nama = c3.text_input("Cari Nama Pasien", placeholder="Masukkan nama...")
+        filter_st = c4.selectbox("Filter Status Istirahat:", ["Semua", "Ya", "Tidak"])
 
-    # Koneksi Database
     conn = sqlite3.connect(DB_PATH)
     
-    # Ambil data tanpa filter nama dulu agar tabel lebih mudah muncul
-    query = "SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ? ORDER BY visit_time DESC"
-    df_raw = pd.read_sql_query(query, conn, params=[f1, f2])
+    # Query SQL untuk mengambil data dasar
+    query = "SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?"
+    params = [f1, f2]
+    if cari_nama:
+        query += " AND patient_name LIKE ?"
+        params.append(f'%{cari_nama}%')
+    
+    df_raw = pd.read_sql_query(query, conn, params=params)
     
     if not df_raw.empty:
-        # --- PEMBERSIHAN DATA AGAR KOLOM HARI/JAM MUNCUL ---
-        df_raw['rest_status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
-        df_raw['rest_type_clean'] = df_raw['rest_type'].fillna('').astype(str).str.strip().str.lower()
-        df_raw['rest_duration_clean'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
+        # --- PROSES PEMBERSIHAN DATA (AGAR YA/TIDAK & ANGKA PASTI MUNCUL) ---
+        # 1. Bersihkan Kolom Status (Huruf kecil & buang spasi)
+        df_raw['status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
+        
+        # 2. Bersihkan Kolom Tipe (Hari/Jam)
+        df_raw['type_clean'] = df_raw['rest_type'].fillna('').astype(str).str.strip().str.lower()
+        
+        # 3. Bersihkan Kolom Durasi (Paksa ke Angka)
+        df_raw['dur_clean'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
 
-        # Logika Filter Status
-        if st_filter == "Ya":
-            df_raw = df_raw[df_raw['rest_status_clean'].isin(['ya', 'yes', 'y'])]
-        elif st_filter == "Tidak":
-            df_raw = df_raw[df_raw['rest_status_clean'].isin(['tidak', 'no', 't', 'n', ''])]
+        # Aplikasi Filter Dropdown Status
+        if filter_st == "Ya":
+            df_raw = df_raw[df_raw['status_clean'].isin(['ya', 'yes', 'y'])]
+        elif filter_st == "Tidak":
+            df_raw = df_raw[df_raw['status_clean'].isin(['tidak', 'no', 't', 'n', ''])]
 
-        # --- VALIDASI JIKA SETELAH FILTER DATA JADI KOSONG ---
         if not df_raw.empty:
-            st.write(f"✅ Menampilkan **{len(df_raw)}** data pasien.")
-            
-            # Susun Tabel Tampilan
+            # --- MENYUSUN TAMPILAN TABEL (SESUAI DATA UPLOAD) ---
             df_display = pd.DataFrame()
             df_display['No.'] = range(1, len(df_raw) + 1)
             df_display['Pilih'] = False
@@ -267,50 +275,8 @@ elif menu == "Lihat Semua Data":
             df_display['Clinic'] = df_raw['clinic']
             df_display['Company'] = df_raw['company']
             df_display['Department'] = df_raw['department']
-            df_display['Istirahat (Y/T)'] = df_raw['rest_status']
+            df_display['Istirahat (Y/T)'] = df_raw['rest_status'].str.strip().str.capitalize()
             
-            # Logika Pemisahan Hari dan Jam
-            df_display['Istirahat Hari'] = df_raw.apply(
-                lambda x: int(x['rest_duration_clean']) if ('hari' in str(x['rest_type_clean'])) and x['rest_duration_clean'] > 0 else "-", axis=1
-            )
-            df_display['Istirahat Jam'] = df_raw.apply(
-                lambda x: int(x['rest_duration_clean']) if ('jam' in str(x['rest_type_clean'])) and x['rest_duration_clean'] > 0 else "-", axis=1
-            )
-            df_display['db_id'] = df_raw['id']
-
-            # --- RENDER TABEL (st.data_editor) ---
-            edited_df = st.data_editor(
-                df_display, 
-                hide_index=True, 
-                use_container_width=True,
-                column_config={
-                    "db_id": None, 
-                    "Pilih": st.column_config.CheckboxColumn("Hapus?", default=False),
-                    "No.": st.column_config.Column(width="small"),
-                },
-                disabled=[c for c in df_display.columns if c != "Pilih"]
-            )
-
-            # --- TOMBOL AKSI ---
-            st.markdown("---")
-            col_a, col_b = st.columns([1, 1])
-            with col_a:
-                if st.button("🗑️ HAPUS DATA TERPILIH", use_container_width=True):
-                    ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
-                    if ids:
-                        cur = conn.cursor()
-                        cur.execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
-                        conn.commit()
-                        st.rerun()
-            with col_b:
-                if st.checkbox("⚠️ Aktifkan Tombol Reset"):
-                    if st.button("🔥 KOSONGKAN DATABASE", type="primary", use_container_width=True):
-                        conn.cursor().execute("DELETE FROM rekap_penyakit")
-                        conn.commit()
-                        st.rerun()
-        else:
-            st.warning(f"Data dengan status '{st_filter}' tidak ditemukan pada rentang tanggal ini.")
-    else:
-        st.info("Database kosong atau filter tanggal tidak sesuai. Silakan upload data di menu Upload.")
-    
-    conn.close()
+            # Logika Kolom Hari & Jam (PASTI MUNCUL JIKA STATUS YA)
+            def hitung_hari(row):
+                if row['status_clean'] in ['ya
