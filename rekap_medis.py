@@ -219,7 +219,7 @@ elif menu == "Keterangan Istirahat":
     else:
         st.info("Belum ada data istirahat.")
 
-# --- 9. MODUL: LIHAT & HAPUS DATA (SESUAI TABEL UPLOAD) ---
+# --- 9. MODUL: LIHAT & HAPUS DATA (DENGAN FILTER STATUS ISTIRAHAT) ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE REKAP MEDIS</h1>", unsafe_allow_html=True)
     
@@ -227,41 +227,55 @@ elif menu == "Lihat Semua Data":
     awal_db, akhir_db = get_date_range()
     
     # --- AREA FILTER & PENCARIAN ---
-    with st.expander("🔍 Filter Pencarian Data", expanded=True):
-        c1, c2, c3 = st.columns([1, 1, 2])
+    with st.expander("🔍 Filter & Statistik Pencarian", expanded=True):
+        c1, c2 = st.columns(2)
         f1 = c1.date_input("Dari Tanggal", value=awal_db, key="filter_tgl1")
         f2 = c2.date_input("Sampai Tanggal", value=akhir_db, key="filter_tgl2")
-        cari = c3.text_input("Cari Nama Pasien", placeholder="Ketik nama pasien di sini...")
+        
+        c3, c4 = st.columns(2)
+        cari = c3.text_input("Cari Nama Pasien", placeholder="Ketik nama pasien...")
+        # FILTER BARU: Berdasarkan Status Istirahat (Ya/Tidak)
+        filter_status = c4.selectbox("Filter Status Istirahat", ["Semua", "Ya", "Tidak"])
 
     # Koneksi ke Database
     conn = sqlite3.connect(DB_PATH)
     
-    # Query dengan Filter Tanggal dan Nama
+    # Query Dasar
     query = "SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?"
     params = [f1, f2]
+    
     if cari:
         query += " AND patient_name LIKE ?"
         params.append(f'%{cari}%')
-    
+        
+    # Menjalankan query awal untuk mendapatkan data
     df_raw = pd.read_sql_query(query, conn, params=params)
     
+    # Filter Tambahan berdasarkan Status Istirahat di tingkat Pandas (agar lebih fleksibel)
+    if filter_status != "Semua":
+        df_raw = df_raw[df_raw['rest_status'].str.lower() == filter_status.lower()]
+
     if not df_raw.empty:
-        # --- MENYUSUN TAMPILAN TABEL (SESUAI URUTAN UPLOAD) ---
-        df_display = pd.DataFrame()
+        # --- STATISTIK RINGKAS (TOTAL DATA) ---
+        total_data = len(df_raw)
+        total_ya = len(df_raw[df_raw['rest_status'].str.lower() == 'ya'])
+        total_tidak = len(df_raw[df_raw['rest_status'].str.lower() == 'tidak'])
         
-        # 1. Nomor Urut & Checkbox Hapus
+        col_m1, col_m2, col_m3 = st.columns(3)
+        col_m1.metric("Total Data Tampil", f"{total_data}")
+        col_m2.metric("✅ Status: Ya", f"{total_ya}")
+        col_m3.metric("❌ Status: Tidak", f"{total_tidak}")
+
+        # --- MENYUSUN TAMPILAN TABEL ---
+        df_display = pd.DataFrame()
         df_display['No.'] = range(1, len(df_raw) + 1)
         df_display['Pilih'] = False
-        
-        # 2. Kolom Utama (Urutan sesuai Gambar Upload Anda)
         df_display['Visit Time'] = df_raw['visit_time']
         df_display['Patient Name'] = df_raw['patient_name']
         df_display['Diagnosa'] = df_raw['diagnosa']
         df_display['Clinic'] = df_raw['clinic']
         df_display['Company'] = df_raw['company']
         df_display['Department'] = df_raw['department']
-        
-        # 3. Kolom Keterangan Istirahat (Custom Request)
         df_display['Istirahat (Y/T)'] = df_raw['rest_status']
         
         # Logika memisahkan durasi Hari dan Jam
@@ -271,58 +285,35 @@ elif menu == "Lihat Semua Data":
         df_display['Istirahat Jam'] = df_raw.apply(
             lambda x: x['rest_duration'] if str(x['rest_type']).lower() == 'jam' else "-", axis=1
         )
-        
-        # Simpan ID asli (Hidden) untuk keperluan hapus data
         df_display['db_id'] = df_raw['id']
 
-        # --- MENAMPILKAN TABEL INTERAKTIF ---
-        st.write(f"Menampilkan **{len(df_display)}** data ditemukan:")
-        
+        # --- MENAMPILKAN TABEL ---
         edited_df = st.data_editor(
             df_display, 
             hide_index=True, 
             use_container_width=True,
             column_config={
-                "db_id": None, # Sembunyikan ID Database asli dari user
+                "db_id": None, 
                 "Pilih": st.column_config.CheckboxColumn("Hapus?", default=False),
                 "No.": st.column_config.Column(width="small"),
-                "Visit Time": st.column_config.Column(width="medium"),
-                "Patient Name": st.column_config.Column(width="large"),
-                "Istirahat (Y/T)": st.column_config.Column(width="small"),
             },
-            disabled=[c for c in df_display.columns if c != "Pilih"] # Hanya kolom 'Pilih' yang bisa diklik
+            disabled=[c for c in df_display.columns if c != "Pilih"]
         )
 
+        # --- TOMBOL HAPUS ---
         st.markdown("<br>", unsafe_allow_html=True)
-
-        # --- TOMBOL AKSI (HAPUS) ---
-        col_btn1, col_btn2 = st.columns([1, 4])
-        
-        with col_btn1:
-            if st.button("🗑️ HAPUS TERPILIH", use_container_width=True):
-                ids_to_delete = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
-                if ids_to_delete:
-                    cur = conn.cursor()
-                    placeholder = ','.join(['?'] * len(ids_to_delete))
-                    cur.execute(f"DELETE FROM rekap_penyakit WHERE id IN ({placeholder})", ids_to_delete)
-                    conn.commit()
-                    st.success(f"✅ {len(ids_to_delete)} data berhasil dihapus!")
-                    st.rerun()
-                else:
-                    st.warning("Silakan centang kolom 'Hapus' pada data yang ingin dibuang.")
-
-        with col_btn2:
-            # Fitur pengaman untuk mengosongkan database
-            if st.checkbox("⚠️ Aktifkan Tombol Kosongkan Seluruh Database"):
-                if st.button("🔥 DELETE ALL DATA PERMANENTLY", type="primary"):
-                    cur = conn.cursor()
-                    cur.execute("DELETE FROM rekap_penyakit")
-                    cur.execute("DELETE FROM sqlite_sequence WHERE name='rekap_penyakit'")
-                    conn.commit()
-                    st.success("✅ Database telah dikosongkan secara total!")
-                    st.rerun()
-
+        if st.button("🗑️ HAPUS DATA TERPILIH"):
+            ids_to_delete = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
+            if ids_to_delete:
+                cur = conn.cursor()
+                placeholder = ','.join(['?'] * len(ids_to_delete))
+                cur.execute(f"DELETE FROM rekap_penyakit WHERE id IN ({placeholder})", ids_to_delete)
+                conn.commit()
+                st.success(f"✅ {len(ids_to_delete)} data dihapus!")
+                st.rerun()
+            else:
+                st.warning("Centang kolom 'Hapus?' terlebih dahulu.")
     else:
-        st.info("Tidak ada data ditemukan. Pastikan rentang tanggal sudah benar atau coba upload data baru di menu Upload.")
+        st.info(f"Tidak ada data dengan status istirahat '{filter_status}' pada rentang tanggal ini.")
     
     conn.close()
