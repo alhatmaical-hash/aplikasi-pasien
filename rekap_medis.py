@@ -336,11 +336,16 @@ elif menu == "Lihat Semua Data":
             df_display['Status'] = df_tampil['rest_status'].str.upper()
             df_display['db_id'] = df_tampil['id']
 
-            edited_df = st.data_editor(
+           edited_df = st.data_editor(
                 df_display, 
                 hide_index=True, 
                 use_container_width=True,
-                column_config={"db_id": None,
+                column_config={
+                    "db_id": None, 
+                    "Pilih": st.column_config.CheckboxColumn("Hapus?")
+                }, # <--- Pastikan ada tutup kurung kurawal '}' dan kurung tutup ')'
+                disabled=[c for c in df_display.columns if c != "Pilih"]
+            )
 # --- 10. MODUL: ANALISIS ISTIRAHAT (VERSI AKURASI TINGGI) ---
 elif menu == "Analisis Istirahat":
     st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
