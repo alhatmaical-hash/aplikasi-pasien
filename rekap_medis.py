@@ -238,10 +238,9 @@ elif menu == "Lihat Semua Data":
     if not df_raw.empty:
         # --- PROSES PEMBERSIHAN BARIS KOSONG / NONE ---
         # 1. Ubah semua kolom menjadi string dan buang spasi di awal/akhir
-        df_raw = df_raw.applymap(lambda x: str(x).strip() if x is not None else "")
+        df_raw = df_raw.map(lambda x: str(x).strip() if x is not None else "")
         
-        # 2. Hanya ambil baris yang Patient Name-nya bukan 'None', 'nan', atau Kosong
-        # Kita filter: Nama pasien harus punya panjang lebih dari 2 karakter
+        # Filter ketat agar baris 'None' atau 'nan' hilang
         df_raw = df_raw[
             (df_raw['patient_name'].str.lower() != 'none') & 
             (df_raw['patient_name'].str.lower() != 'nan') & 
