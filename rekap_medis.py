@@ -369,7 +369,7 @@ elif menu == "Lihat Semua Data":
     else:
         st.info("Database kosong pada periode ini.")
     conn.close()
-# --- 10. MODUL: ANALISIS ISTIRAHAT (VERSI AKURASI TINGGI) ---
+# --- 10. MODUL: ANALISIS ISTIRAHAT (FIX FORMAT JAM > 24) ---
 elif menu == "Analisis Istirahat":
     st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
     
@@ -382,7 +382,7 @@ elif menu == "Analisis Istirahat":
         
         tipe_filter = st.radio(
             "Tampilan Tabel di Bawah:",
-            ["Semua Data", "Hanya Istirahat Hari", "Hanya Istirahat Jam", "Tidak Istirahat"],
+            ["Semua Istirahat", "Hanya Istirahat Hari (1-7)", "Hanya Istirahat Jam (> 7)"],
             horizontal=True
         )
 
@@ -391,59 +391,55 @@ elif menu == "Analisis Istirahat":
     conn.close()
 
     if not df.empty:
-        # 1. Pembersihan Data (Wajib agar jumlah baris sinkron dengan CSV)
+        # Pembersihan data
         df = df.dropna(subset=['patient_name'])
         df['p_check'] = df['patient_name'].astype(str).str.strip().str.lower()
         df = df[~df['p_check'].isin(['none', 'nan', '', 'null'])].copy()
         
-        # 2. Normalisasi Status & Durasi
+        # Normalisasi Status & Durasi
         df['status_clean'] = df['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
         df['dur_clean'] = pd.to_numeric(df['rest_duration'], errors='coerce').fillna(0)
         
-        # 3. Pengelompokan Data
-        df_istirahat = df[df['status_clean'].isin(['ya', 'y', 'yes'])].copy()
-        df_tidak = df[~df['status_clean'].isin(['ya', 'y', 'yes'])].copy()
-        
-        # Pemisahan Hari (1-7) dan Jam (>7) sesuai hitungan manual Anda
-        df_hari = df_istirahat[(df_istirahat['dur_clean'] >= 1) & (df_istirahat['dur_clean'] <= 7)]
-        df_jam = df_istirahat[df_istirahat['dur_clean'] > 7]
+        # Filter hanya yang "Ya" istirahat
+        df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])].copy()
 
-        # --- 4. TAMPILAN RINGKASAN SESUAI DATA CSV ---
-        st.subheader("📌 Validasi Data Istirahat")
-        
-        # Baris Pertama: Total Utama
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Total Data (Clean)", f"{len(df)} Orang")
-        m2.metric("✅ Total Istirahat", f"{len(df_istirahat)} Orang")
-        m3.metric("❌ Tidak Istirahat", f"{len(df_tidak)} Orang")
-        
-        # Baris Kedua: Detail Pembagian Istirahat
+        # --- LOGIKA PEMISAHAN ---
+        # Hari: 1 sampai 7
+        # Jam: Semua yang di atas 7 (termasuk yang > 24)
+        df_hari = df_ya[(df_ya['dur_clean'] >= 1) & (df_ya['dur_clean'] <= 7)]
+        df_jam = df_ya[df_ya['dur_clean'] > 7]
+
+        st.subheader("📌 Ringkasan Istirahat")
+        s1, s2, s3 = st.columns(3)
+        s1.metric("Total Istirahat (Ya)", f"{len(df_ya)} Orang")
+        s2.metric("🛌 Istirahat HARI (1-7)", f"{len(df_hari)} Orang")
+        s3.metric("⏱️ Istirahat JAM (> 7)", f"{len(df_jam)} Orang")
+
         st.markdown("---")
-        st.write("### 📂 Detail Pembagian Istirahat")
-        s1, s2 = st.columns(2)
-        s1.metric("🛌 Istirahat Kategori HARI", f"{len(df_hari)} Orang", help="Durasi 1 - 7")
-        s2.metric("⏱️ Istirahat Kategori JAM", f"{len(df_jam)} Orang", help="Durasi > 7")
 
-        # --- 5. LOGIKA FILTER TABEL ---
-        if tipe_filter == "Hanya Istirahat Hari":
+        # Pilihan filter untuk tabel
+        if tipe_filter == "Hanya Istirahat Hari (1-7)":
             df_final = df_hari
-        elif tipe_filter == "Hanya Istirahat Jam":
+        elif tipe_filter == "Hanya Istirahat Jam (> 7)":
             df_final = df_jam
-        elif tipe_filter == "Tidak Istirahat":
-            df_final = df_tidak
         else:
-            df_final = df
+            df_final = df_ya
 
         if not df_final.empty:
             df_view = pd.DataFrame()
             df_view['No.'] = range(1, len(df_final) + 1)
+            df_view['Tanggal'] = df_final['visit_time']
             df_view['Nama Pasien'] = df_final['patient_name']
             df_view['Diagnosa'] = df_final['diagnosa']
-            df_view['Status'] = df_final['status_clean'].str.upper()
-            df_view['Durasi'] = df_final['dur_clean'].apply(lambda x: f"{int(x)} Hari" if x <= 7 and x > 0 else (f"{int(x)} Jam" if x > 7 else "-"))
+            
+            # --- PERBAIKAN FORMAT DISPLAY ---
+            # Jika durasi > 7, paksa tulis "Jam" (tidak akan berubah jadi hari meski > 24)
+            df_view['Durasi'] = df_final['dur_clean'].apply(
+                lambda x: f"{int(x)} Hari" if 1 <= x <= 7 else f"{int(x)} Jam"
+            )
             
             st.dataframe(df_view, hide_index=True, use_container_width=True)
         else:
-            st.warning("Data tidak ditemukan untuk filter ini.")
+            st.warning(f"Tidak ada data untuk kategori {tipe_filter}")
     else:
-        st.info("Database kosong pada periode ini.")
+        st.info("Tidak ada data pada periode ini.")
