@@ -315,21 +315,22 @@ elif menu == "Lihat Semua Data":
     
     conn.close()
 
-# --- 10. MODUL: ANALISIS ISTIRAHAT PASIEN (DENGAN FILTER DETAIL) ---
+# --- 10. MODUL: ANALISIS ISTIRAHAT (VERSI FIX - PASTI BERUBAH) ---
 elif menu == "Analisis Istirahat":
-    st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>📊 ANALISIS DURASI ISTIRAHAT</h1>", unsafe_allow_html=True)
     
     t_awal, t_akhir = get_date_range()
     
-    with st.expander("📅 Pengaturan Periode & Filter Utama", expanded=True):
+    # FILTER BOX
+    with st.container(border=True):
         c1, c2 = st.columns(2)
-        f1 = c1.date_input("Dari Tanggal", t_awal, key="ana_date_1")
-        f2 = c2.date_input("Sampai Tanggal", t_akhir, key="ana_date_2")
+        f1 = c1.date_input("Mulai", t_awal, key="ana_1")
+        f2 = c2.date_input("Sampai", t_akhir, key="ana_2")
         
-        # Tombol Filter Spesifik
-        tipe_filter = st.radio(
-            "Pilih Kategori Analisis:",
-            ["Semua Istirahat", "Hanya Istirahat Hari (1-7)", "Hanya Istirahat Jam (> 7)"],
+        # TOMBOL FILTER UTAMA
+        pilihan = st.radio(
+            "Pilih Grup Pasien yang Ingin Dihitung:",
+            ["Semua (Ya/Tidak)", "Hanya Istirahat Hari", "Hanya Istirahat Jam"],
             horizontal=True
         )
 
@@ -338,64 +339,50 @@ elif menu == "Analisis Istirahat":
     conn.close()
 
     if not df.empty:
-        # --- PEMBERSIHAN DATA ---
+        # Bersihkan data hantu/None
         df = df.dropna(subset=['patient_name'])
         df['status_clean'] = df['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
         df['dur_clean'] = pd.to_numeric(df['rest_duration'], errors='coerce').fillna(0)
         
-        # Hanya ambil yang statusnya 'Ya' untuk analisis ini
-        df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])].copy()
-
-        # Logika Pemisahan Data
+        # Logika Pengelompokan
+        df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])]
         df_hari = df_ya[(df_ya['dur_clean'] >= 1) & (df_ya['dur_clean'] <= 7)]
         df_jam = df_ya[df_ya['dur_clean'] > 7]
+        df_tidak = df[df['status_clean'].isin(['tidak', 't', 'no', ''])]
 
-        # --- LOGIKA TOMBOL FILTER ---
-        if tipe_filter == "Hanya Istirahat Hari (1-7)":
+        # LOGIKA PERUBAHAN TAMPILAN BERDASARKAN TOMBOL
+        if pilihan == "Hanya Istirahat Hari":
             df_final = df_hari
-            label_stat = "Istirahat Hari"
-            warna = "blue"
-        elif tipe_filter == "Hanya Istirahat Jam (> 7)":
+            label = "Istirahat Hari"
+        elif pilihan == "Hanya Istirahat Jam":
             df_final = df_jam
-            label_stat = "Istirahat Jam"
-            warna = "orange"
+            label = "Istirahat Jam"
         else:
-            df_final = df_ya
-            label_stat = "Total Istirahat (Ya)"
-            warna = "green"
+            df_final = df
+            label = "Total Keseluruhan"
 
-        # --- TAMPILAN STATISTIK RINGKAS ---
-        st.subheader(f"📈 Statistik: {tipe_filter}")
+        # TAMPILKAN ANGKA TOTAL (Akan berubah sesuai klik tombol)
+        st.subheader(f"🔍 Hasil Analisis: {label}")
+        m1, m2, m3 = st.columns(3)
         
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Jumlah Pasien", f"{len(df_final)} Orang")
-        col2.metric("Rata-rata Durasi", f"{round(df_final['dur_clean'].mean(), 1) if not df_final.empty else 0}")
-        col3.metric("Total Kunjungan Umum", f"{len(df)} Orang")
+        # Metrik dinamis yang mengikuti tombol
+        m1.metric(f"Total {label}", f"{len(df_final)} Orang")
+        m2.metric("Istirahat Hari (1-7)", f"{len(df_hari)} Orang")
+        m3.metric("Istirahat Jam (>7)", f"{len(df_jam)} Orang")
 
         st.markdown("---")
 
         if not df_final.empty:
-            # Tampilkan Tabel Hasil Filter
-            st.write(f"**Daftar Pasien ({label_stat}):**")
-            
-            # Susun Tabel Tampilan
+            # Tabel yang ikut berubah
             df_view = pd.DataFrame()
             df_view['No.'] = range(1, len(df_final) + 1)
-            df_view['Visit Time'] = df_final['visit_time']
-            df_view['Patient Name'] = df_final['patient_name']
-            df_view['Diagnosa'] = df_final['diagnosa']
-            df_view['Company'] = df_final['company']
-            df_view['Durasi'] = df_final['dur_clean'].apply(lambda x: f"{int(x)} {'Hari' if x <= 7 else 'Jam'}")
+            df_view['Tanggal'] = df_final['visit_time']
+            df_view['Nama Pasien'] = df_final['patient_name']
+            df_view['Status'] = df_final['rest_status']
+            df_view['Durasi'] = df_final['dur_clean'].apply(lambda x: f"{int(x)} Hari" if x <= 7 else f"{int(x)} Jam")
             
             st.dataframe(df_view, hide_index=True, use_container_width=True)
-            
-            # Tombol Download Data Terfilter
-            csv = df_view.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label=f"📥 Download Data {label_stat}",
-                data=csv,
-                file_name=f'analisis_{label_stat.lower().replace(" ", "_")}.csv',
-                mime='text/csv',
-            )
         else:
-            st.warning(f"Tidak ada data ditemukan untuk kategori {tipe_filter}")
+            st.warning("Data untuk kategori ini tidak ditemukan.")
+    else:
+        st.info("Database kosong pada tanggal tersebut.")
