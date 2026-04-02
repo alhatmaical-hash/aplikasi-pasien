@@ -124,7 +124,7 @@ if menu == "Upload Data CSV":
                 df = df.dropna(subset=['patient_name']) 
                 df = df[~df['patient_name'].astype(str).str.lower().isin(['none', 'nan', '', 'null'])] 
 
-                if not df.empty:
+            if not df.empty:
                     df['visit_time'] = pd.to_datetime(df['visit_time']).dt.strftime('%Y-%m-%d')
                     
                     for col in ['rest_status', 'rest_type', 'rest_duration']:
@@ -140,7 +140,7 @@ if menu == "Upload Data CSV":
                     # Pastikan baris di bawah ini sejajar dengan conn.close()
                     st.success(f"✅ Berhasil! {len(df_to_save)} data disimpan.")
                     st.balloons() 
-                 else:
+            else:
                     st.warning("⚠️ File kosong atau hanya berisi baris 'None'.")
                     
             except Exception as e:
