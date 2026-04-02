@@ -104,7 +104,7 @@ if st.sidebar.button("🔴 KELUAR APLIKASI", type="primary", use_container_width
     st.session_state["authenticated"] = False
     st.rerun()
 
-# --- 5. MODUL 1: UPLOAD DATA ---
+# --- 5. MODUL 1: UPLOAD DATA (VERSI NORMAL & ANTI-NONE) ---
 if menu == "Upload Data CSV":
     st.markdown("<h1>📤 UPLOAD DATA PASIEN</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
@@ -120,31 +120,42 @@ if menu == "Upload Data CSV":
             try:
                 conn = sqlite3.connect(DB_PATH)
                 
-                # Filter baris None sebelum proses
+                # --- PEMBERSIHAN DATA SEBELUM SIMPAN ---
+                # Hapus baris yang benar-benar kosong di kolom nama pasien
                 df = df.dropna(subset=['patient_name']) 
-                df = df[~df['patient_name'].astype(str).str.lower().isin(['none', 'nan', '', 'null'])] 
+                # Hapus baris yang berisi teks "None", "NaN", atau kosong
+                df['p_name_check'] = df['patient_name'].astype(str).str.strip().str.lower()
+                df = df[~df['p_name_check'].isin(['none', 'nan', '', 'null'])].copy()
 
-            if not df.empty:
+                if not df.empty:
+                    # Konversi tanggal
                     df['visit_time'] = pd.to_datetime(df['visit_time']).dt.strftime('%Y-%m-%d')
                     
+                    # Cek kolom tambahan untuk status istirahat
                     for col in ['rest_status', 'rest_type', 'rest_duration']:
                         if col not in df.columns:
-                            df[col] = 0 if col == 'rest_duration' else "Tidak"
+                            if col == 'rest_duration':
+                                df[col] = 0
+                            else:
+                                df[col] = "Tidak"
                     
                     kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company', 'rest_status', 'rest_type', 'rest_duration']
+                    
+                    # Simpan data yang sudah bersih
                     df_to_save = df[kolom_target]
                     df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
                     conn.commit()
                     conn.close()
                     
-                    # Pastikan baris di bawah ini sejajar dengan conn.close()
-                    st.success(f"✅ Berhasil! {len(df_to_save)} data disimpan.")
-                    st.balloons() 
-            else:
-                    st.warning("⚠️ File kosong atau hanya berisi baris 'None'.")
-                    
+                    # Notifikasi Sukses (Tanpa rerun instan agar pesan terbaca)
+                    st.success(f"✅ Berhasil! {len(df_to_save)} data pasien telah disimpan.")
+                    st.balloons()
+                else:
+                    st.warning("⚠️ File CSV tidak berisi data valid (semua baris kosong atau 'None').")
+                    conn.close()
+
             except Exception as e:
-                st.error(f"❌ Error: {e}")
+                st.error(f"❌ Terjadi kesalahan: {e}")
 
 # --- 6. MODUL 2: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
