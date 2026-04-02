@@ -70,9 +70,9 @@ if "username" not in st.session_state:
 # Tampilan Form Login
 if not st.session_state["authenticated"]:
     st.title("🏥 Akses Terbatas - Klinik Apps")
-    tab_login, tab_buat = st.tabs(["🔑 Masuk Sistem", "🆕 Registrasi User Baru"])
     
-    with tab_login:
+    # Menghapus sistem Tab di depan agar tidak bisa registrasi bebas
+    with st.container(border=True):
         u_input = st.text_input("Username:", key="login_user")
         p_input = st.text_input("Password:", type="password", key="login_pwd")
         
@@ -80,25 +80,9 @@ if not st.session_state["authenticated"]:
             if login_user(u_input, p_input):
                 st.session_state["authenticated"] = True
                 st.session_state["username"] = u_input
-                st.success(f"Selamat Datang {u_input}!")
                 st.rerun()
             else:
                 st.error("❌ Username atau Password Salah!")
-    
-    with tab_buat:
-        st.subheader("Buat Akun Petugas Baru")
-        new_u = st.text_input("Username Baru", key="reg_user")
-        new_p = st.text_input("Password Baru", type="password", key="reg_pwd")
-        confirm_p = st.text_input("Konfirmasi Password", type="password", key="reg_confirm")
-        
-        if st.button("✅ DAFTARKAN USER BARU", use_container_width=True):
-            if new_u and new_p == confirm_p:
-                if add_userdata(new_u, new_p):
-                    st.success(f"Akun '{new_u}' berhasil dibuat! Silakan pindah ke tab Masuk.")
-                else:
-                    st.error("❌ Username sudah terdaftar.")
-            else:
-                st.warning("⚠️ Periksa kembali input Anda.")
     st.stop()
 # --- 2. SETTING DATABASE & FUNGSI ---
 
@@ -152,7 +136,7 @@ st.markdown("""
 # --- 4. SIDEBAR NAVIGASI ---
 st.sidebar.title("🏥 MENU KLINIK")
 menu = st.sidebar.radio("NAVIGASI", 
-    ["Upload Data CSV", "Laporan 10 Penyakit", "Analisis Dept & Perusahaan", "Keterangan Istirahat", "Lihat Semua Data", "Analisis Istirahat"])
+    ["Upload Data CSV", "Laporan 10 Penyakit", "Analisis Dept & Perusahaan", "Keterangan Istirahat", "Lihat Semua Data", "Analisis Istirahat", "Manajemen User"])
 
 if st.sidebar.button("🔴 KELUAR APLIKASI", type="primary", use_container_width=True):
     st.session_state["authenticated"] = False
@@ -447,3 +431,33 @@ elif menu == "Analisis Istirahat":
             st.warning("Data tidak ditemukan untuk filter ini.")
     else:
         st.info("Database kosong pada periode ini.")
+
+# --- 11. MODUL: MANAJEMEN USER (REGISTRASI DI DALAM) ---
+elif menu == "Manajemen User":
+    st.markdown("<h1>👤 MANAJEMEN PENGGUNA</h1>", unsafe_allow_html=True)
+    
+    # Hanya izinkan user 'admin' yang bisa buka menu ini (Opsional)
+    if st.session_state["username"] == "admin":
+        with st.expander("🆕 Tambah Pengguna Baru", expanded=True):
+            new_u = st.text_input("Username Baru", key="reg_user")
+            new_p = st.text_input("Password Baru", type="password", key="reg_pwd")
+            confirm_p = st.text_input("Konfirmasi Password", type="password", key="reg_confirm")
+            
+            if st.button("✅ DAFTARKAN USER", use_container_width=True):
+                if new_u and new_p == confirm_p:
+                    if add_userdata(new_u, new_p):
+                        st.success(f"Berhasil! Akun '{new_u}' sekarang sudah bisa digunakan.")
+                    else:
+                        st.error("❌ Username sudah ada.")
+                else:
+                    st.warning("⚠️ Cek kembali input password Anda.")
+                    
+        # Tampilkan daftar user yang ada (Opsional)
+        st.markdown("---")
+        st.subheader("📋 Daftar Pengguna Sistem")
+        conn = sqlite3.connect(DB_PATH)
+        df_user = pd.read_sql_query("SELECT username FROM userstable", conn)
+        conn.close()
+        st.table(df_user)
+    else:
+        st.error("🚫 Maaf, hanya akun 'admin' yang boleh menambah user baru.")
