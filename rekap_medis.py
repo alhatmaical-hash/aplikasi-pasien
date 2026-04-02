@@ -219,7 +219,7 @@ elif menu == "Keterangan Istirahat":
     else:
         st.info("Belum ada data istirahat.")
 
-# --- 9. MODUL: LIHAT DATA (VERSI ANTI-NONE / BERSIH TOTAL) ---
+# --- 9. MODUL: LIHAT DATA (VERSI FILTER SUPER KETAT) ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE REKAP MEDIS</h1>", unsafe_allow_html=True)
     
@@ -232,75 +232,87 @@ elif menu == "Lihat Semua Data":
         st_filter = c3.selectbox("Filter Istirahat:", ["Semua", "Ya", "Tidak"])
 
     conn = sqlite3.connect(DB_PATH)
+    # Ambil data
     df_raw = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
     
     if not df_raw.empty:
-        # --- LANGKAH 1: HAPUS BARIS YANG BENAR-BENAR KOSONG (NONE) ---
-        # Kita hapus baris jika kolom 'patient_name' atau 'visit_time' bernilai None/NaN
-        df_raw = df_raw.dropna(subset=['patient_name', 'visit_time'])
+        # --- PROSES PEMBERSIHAN BARIS KOSONG / NONE ---
+        # 1. Ubah semua kolom menjadi string dan buang spasi di awal/akhir
+        df_raw = df_raw.applymap(lambda x: str(x).strip() if x is not None else "")
         
-        # Tambahan: Hanya ambil yang nama pasiennya bukan string "None" atau kosong
-        df_raw = df_raw[df_raw['patient_name'].astype(str).str.lower() != 'none']
-        df_raw = df_raw[df_raw['patient_name'].astype(str).str.strip() != '']
-
-        # --- LANGKAH 2: PEMBERSIHAN DATA UNTUK KOLOM ISTIRAHAT ---
-        df_raw['status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
-        df_raw['dur_clean'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
-
-        # Filter Dropdown (Ya/Tidak)
-        if st_filter == "Ya":
-            df_raw = df_raw[df_raw['status_clean'].isin(['ya', 'yes', 'y'])]
-        elif st_filter == "Tidak":
-            df_raw = df_raw[df_raw['status_clean'].isin(['tidak', 'no', 't', 'n', ''])]
+        # 2. Hanya ambil baris yang Patient Name-nya bukan 'None', 'nan', atau Kosong
+        # Kita filter: Nama pasien harus punya panjang lebih dari 2 karakter
+        df_raw = df_raw[
+            (df_raw['patient_name'].str.lower() != 'none') & 
+            (df_raw['patient_name'].str.lower() != 'nan') & 
+            (df_raw['patient_name'].str.len() > 1)
+        ]
 
         if not df_raw.empty:
-            # Susun Tabel Akhir
-            df_display = pd.DataFrame()
-            df_display['No.'] = range(1, len(df_raw) + 1)
-            df_display['Pilih'] = False
-            df_display['Visit Time'] = df_raw['visit_time']
-            df_display['Patient Name'] = df_raw['patient_name']
-            df_display['Diagnosa'] = df_raw['diagnosa']
-            df_display['Clinic'] = df_raw['clinic']
-            df_display['Company'] = df_raw['company']
-            df_display['Department'] = df_raw['department']
-            df_display['Istirahat (Y/T)'] = df_raw['rest_status']
-            
-            # Logika Hari vs Jam (Berdasarkan Angka)
-            df_display['Istirahat Hari'] = df_raw.apply(
-                lambda x: f"{int(x['dur_clean'])}" if (x['status_clean'] in ['ya','y'] and 1 <= x['dur_clean'] <= 7) else "-", axis=1
-            )
-            df_display['Istirahat Jam'] = df_raw.apply(
-                lambda x: f"{int(x['dur_clean'])}" if (x['status_clean'] in ['ya','y'] and x['dur_clean'] > 7) else "-", axis=1
-            )
-            df_display['db_id'] = df_raw['id']
+            # --- PEMBERSIHAN DATA UNTUK KOLOM ISTIRAHAT ---
+            df_raw['status_clean'] = df_raw['rest_status'].str.lower()
+            df_raw['dur_clean'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
 
-            # RENDER TABEL
-            edited_df = st.data_editor(
-                df_display, 
-                hide_index=True, 
-                use_container_width=True,
-                column_config={"db_id": None, "Pilih": st.column_config.CheckboxColumn("Hapus?")},
-                disabled=[c for c in df_display.columns if c != "Pilih"]
-            )
+            # Filter Dropdown (Ya/Tidak)
+            if st_filter == "Ya":
+                df_raw = df_raw[df_raw['status_clean'].isin(['ya', 'yes', 'y'])]
+            elif st_filter == "Tidak":
+                df_raw = df_raw[df_raw['status_clean'].isin(['tidak', 'no', 't', 'n', ''])]
 
-            # Tombol Hapus
-            st.markdown("---")
-            c_a, c_b = st.columns(2)
-            if c_a.button("🗑️ HAPUS TERPILIH"):
-                ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
-                if ids:
-                    conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
+            if not df_raw.empty:
+                # Susun Tabel Akhir
+                df_display = pd.DataFrame()
+                df_display['No.'] = range(1, len(df_raw) + 1)
+                df_display['Pilih'] = False
+                df_display['Visit Time'] = df_raw['visit_time']
+                df_display['Patient Name'] = df_raw['patient_name']
+                df_display['Diagnosa'] = df_raw['diagnosa']
+                df_display['Clinic'] = df_raw['clinic']
+                df_display['Company'] = df_raw['company']
+                df_display['Department'] = df_raw['department']
+                df_display['Istirahat (Y/T)'] = df_raw['rest_status']
+                
+                # Logika Hari vs Jam
+                df_display['Istirahat Hari'] = df_raw.apply(
+                    lambda x: f"{int(x['dur_clean'])}" if (x['status_clean'] in ['ya','y'] and 1 <= x['dur_clean'] <= 7) else "-", axis=1
+                )
+                df_display['Istirahat Jam'] = df_raw.apply(
+                    lambda x: f"{int(x['dur_clean'])}" if (x['status_clean'] in ['ya','y'] and x['dur_clean'] > 7) else "-", axis=1
+                )
+                df_display['db_id'] = df_raw['id']
+
+                # RENDER TABEL
+                edited_df = st.data_editor(
+                    df_display, 
+                    hide_index=True, 
+                    use_container_width=True,
+                    column_config={
+                        "db_id": None, 
+                        "Pilih": st.column_config.CheckboxColumn("Hapus?"),
+                        "No.": st.column_config.Column(width="small")
+                    },
+                    disabled=[c for c in df_display.columns if c != "Pilih"]
+                )
+
+                # Tombol Aksi
+                st.markdown("---")
+                c_a, c_b = st.columns(2)
+                if c_a.button("🗑️ HAPUS TERPILIH", use_container_width=True):
+                    ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
+                    if ids:
+                        conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
+                        conn.commit()
+                        st.rerun()
+                
+                if c_b.button("🔥 RESET DATABASE", use_container_width=True):
+                    conn.cursor().execute("DELETE FROM rekap_penyakit")
                     conn.commit()
                     st.rerun()
-            
-            if c_b.button("🔥 RESET DATABASE"):
-                conn.cursor().execute("DELETE FROM rekap_penyakit")
-                conn.commit()
-                st.rerun()
+            else:
+                st.warning(f"Tidak ada data dengan status '{st_filter}'.")
         else:
-            st.warning("Data hasil filter kosong.")
+            st.info("Semua baris kosong telah dibersihkan. Tidak ada data valid untuk ditampilkan.")
     else:
-        st.info("Tidak ada data dalam database.")
+        st.info("Database kosong.")
     
     conn.close()
