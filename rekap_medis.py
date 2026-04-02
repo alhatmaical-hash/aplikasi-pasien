@@ -133,7 +133,6 @@ if menu == "Upload Data CSV":
                     
                     kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company', 'rest_status', 'rest_type', 'rest_duration']
                     df_to_save = df[kolom_target]
-                    
                     df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
                     conn.commit()
                     conn.close()
@@ -141,7 +140,7 @@ if menu == "Upload Data CSV":
                     # Pastikan baris di bawah ini sejajar dengan conn.close()
                     st.success(f"✅ Berhasil! {len(df_to_save)} data disimpan.")
                     st.balloons() 
-                else:
+                 else:
                     st.warning("⚠️ File kosong atau hanya berisi baris 'None'.")
                     
             except Exception as e:
