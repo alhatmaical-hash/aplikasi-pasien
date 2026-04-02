@@ -135,8 +135,11 @@ if menu == "Upload Data CSV":
                 df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
                 conn.commit()
                 conn.close()
-                st.success("✅ Berhasil Disimpan!")
-                st.rerun()
+                st.success(f"✅ Berhasil! {len(df_to_save)} data pasien telah disimpan ke database.")
+                    st.balloons() # Memberikan efek visual tambahan
+                else:
+                    st.warning("⚠️ File CSV yang Anda upload kosong atau hanya berisi baris 'None'.")
+                    
             except Exception as e:
                 st.error(f"❌ Error: {e}")
 
