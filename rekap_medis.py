@@ -315,7 +315,7 @@ elif menu == "Lihat Semua Data":
     
     conn.close()
 
-# --- 10. MODUL: ANALISIS ISTIRAHAT PASIEN (VERSI SUPER CLEAN) ---
+# --- 10. MODUL: ANALISIS ISTIRAHAT PASIEN (VERSI ANTI-NONE & AKURAT) ---
 elif menu == "Analisis Istirahat":
     st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
     
@@ -333,30 +333,33 @@ elif menu == "Analisis Istirahat":
         )
 
     conn = sqlite3.connect(DB_PATH)
+    # Mengambil data berdasarkan rentang tanggal
     df = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
     conn.close()
 
     if not df.empty:
-        # --- 1. PEMBERSIHAN TOTAL (MENGHILANGKAN NONE/KOSONG) ---
-        # Menghapus baris yang kolom namanya benar-benar kosong (null)
+        # --- 1. PEMBERSIHAN DATA (MENGHILANGKAN BARIS KOSONG/NONE) ---
+        # Hapus baris jika kolom nama pasien kosong atau bernilai null
         df = df.dropna(subset=['patient_name'])
         
-        # Menghapus baris yang namanya hanya berisi teks 'None', 'nan', atau string kosong/spasi
-        df['patient_name'] = df['patient_name'].astype(str).str.strip()
-        df = df[~df['patient_name'].str.lower().isin(['none', 'nan', '', 'null'])].copy()
+        # Hapus baris jika nama pasien hanya berisi teks "None" atau spasi kosong
+        df['patient_name_str'] = df['patient_name'].astype(str).str.strip().str.lower()
+        df = df[~df['patient_name_str'].isin(['none', 'nan', '', 'null'])].copy()
         
-        # --- 2. NORMALISASI DATA ---
+        # --- 2. NORMALISASI STATUS & DURASI ---
+        # Menyeragamkan status istirahat menjadi huruf kecil
         df['status_clean'] = df['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
+        # Memastikan durasi adalah angka
         df['dur_clean'] = pd.to_numeric(df['rest_duration'], errors='coerce').fillna(0)
         
-        # Filter hanya yang berstatus 'Ya'
+        # Filter hanya pasien yang status istirahatnya "Ya"
         df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])].copy()
 
-        # Logika Pemisahan Durasi
+        # Pemisahan kategori berdasarkan durasi (Hari vs Jam)
         df_hari = df_ya[(df_ya['dur_clean'] >= 1) & (df_ya['dur_clean'] <= 7)]
         df_jam = df_ya[df_ya['dur_clean'] > 7]
 
-        # --- 3. LOGIKA TOMBOL FILTER ---
+        # --- 3. LOGIKA FILTER MENU ---
         if tipe_filter == "Hanya Istirahat Hari (1-7)":
             df_final = df_hari
             label_stat = "Istirahat Hari"
@@ -368,31 +371,33 @@ elif menu == "Analisis Istirahat":
             label_stat = "Total Istirahat (Ya)"
 
         # --- 4. TAMPILAN STATISTIK ---
-        st.subheader(f"📈 {label_stat}")
+        st.subheader(f"📈 Statistik: {label_stat}")
         
         col1, col2, col3 = st.columns(3)
-        # Gunakan len(df_final) agar statistik sinkron dengan tabel yang bersih
+        # Menampilkan jumlah pasien yang sudah difilter bersih
         col1.metric("Jumlah Pasien", f"{len(df_final)} Orang")
+        # Menghitung rata-rata durasi istirahat
         avg_dur = df_final['dur_clean'].mean() if not df_final.empty else 0
         col2.metric("Rata-rata Durasi", f"{round(avg_dur, 1)}")
-        col3.metric("Total Data Bersih", f"{len(df)} Orang")
+        col3.metric("Total Data Kunjungan", f"{len(df)} Orang")
 
         st.markdown("---")
 
         if not df_final.empty:
-            # Susun Tabel Tampilan
+            # Menyusun tabel untuk ditampilkan
             df_view = pd.DataFrame()
             df_view['No.'] = range(1, len(df_final) + 1)
             df_view['Visit Time'] = df_final['visit_time']
             df_view['Patient Name'] = df_final['patient_name']
             df_view['Diagnosa'] = df_final['diagnosa']
             df_view['Company'] = df_final['company']
-            # Format tampilan durasi agar lebih rapi
+            # Menentukan label unit (Hari/Jam) berdasarkan durasi
             df_view['Durasi'] = df_final['dur_clean'].apply(lambda x: f"{int(x)} Hari" if x <= 7 else f"{int(x)} Jam")
             
+            # Menampilkan tabel data tanpa indeks default
             st.dataframe(df_view, hide_index=True, use_container_width=True)
             
-            # Tombol Download
+            # Fitur unduh data dalam format CSV
             csv = df_view.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label=f"📥 Download Data {label_stat}",
@@ -401,6 +406,6 @@ elif menu == "Analisis Istirahat":
                 mime='text/csv',
             )
         else:
-            st.warning(f"Tidak ada data valid untuk kategori: {tipe_filter}")
+            st.warning(f"Tidak ada data ditemukan untuk kategori {tipe_filter}")
     else:
-        st.info("Tidak ada data ditemukan pada rentang tanggal tersebut.")
+        st.info("Database kosong atau tidak ada data pada rentang tanggal ini.")
