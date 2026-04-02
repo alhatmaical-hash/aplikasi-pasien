@@ -119,26 +119,30 @@ if menu == "Upload Data CSV":
         if st.button("💾 SIMPAN KE DATABASE SEKARANG", use_container_width=True, type="primary"):
             try:
                 conn = sqlite3.connect(DB_PATH)
-                df['visit_time'] = pd.to_datetime(df['visit_time']).dt.strftime('%Y-%m-%d')
                 
-                # --- KODE PENGAMAN: Tambahkan kolom jika tidak ada di CSV ---
-                for col in ['rest_status', 'rest_type', 'rest_duration']:
-                    if col not in df.columns:
-                        if col == 'rest_duration':
-                            df[col] = 0 # Default angka 0
-                        else:
-                            df[col] = "Tidak" # Default status Tidak
-                
-                kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company', 'rest_status', 'rest_type', 'rest_duration']
-                
-                df_to_save = df[kolom_target]
-                df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
-                conn.commit()
-                conn.close()
-                st.success(f"✅ Berhasil! {len(df_to_save)} data pasien telah disimpan ke database.")
-                    st.balloons() # Memberikan efek visual tambahan
+                # Filter baris None sebelum proses
+                df = df.dropna(subset=['patient_name']) 
+                df = df[~df['patient_name'].astype(str).str.lower().isin(['none', 'nan', '', 'null'])] 
+
+                if not df.empty:
+                    df['visit_time'] = pd.to_datetime(df['visit_time']).dt.strftime('%Y-%m-%d')
+                    
+                    for col in ['rest_status', 'rest_type', 'rest_duration']:
+                        if col not in df.columns:
+                            df[col] = 0 if col == 'rest_duration' else "Tidak"
+                    
+                    kolom_target = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'department', 'company', 'rest_status', 'rest_type', 'rest_duration']
+                    df_to_save = df[kolom_target]
+                    
+                    df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
+                    conn.commit()
+                    conn.close()
+                    
+                    # Pastikan baris di bawah ini sejajar dengan conn.close()
+                    st.success(f"✅ Berhasil! {len(df_to_save)} data disimpan.")
+                    st.balloons() 
                 else:
-                    st.warning("⚠️ File CSV yang Anda upload kosong atau hanya berisi baris 'None'.")
+                    st.warning("⚠️ File kosong atau hanya berisi baris 'None'.")
                     
             except Exception as e:
                 st.error(f"❌ Error: {e}")
