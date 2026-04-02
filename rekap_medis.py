@@ -106,13 +106,13 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                   visit_time TEXT, patient_name TEXT, diagnosa TEXT, 
-                  clinic TEXT, department TEXT, company TEXT,
+                  clinic TEXT, departmen TEXT, company TEXT,
                   rest_status TEXT, rest_type TEXT, rest_duration INTEGER)''')
     
     # Pastikan kolom baru ada (untuk migrasi database)
     kolom_baru = [
         ('visit_time', 'TEXT'), ('patient_name', 'TEXT'), ('diagnosa', 'TEXT'),
-        ('clinic', 'TEXT'), ('department', 'TEXT'), ('company', 'TEXT'),
+        ('clinic', 'TEXT'), ('departmen', 'TEXT'), ('company', 'TEXT'),
         ('rest_status', 'TEXT'), ('rest_type', 'TEXT'), ('rest_duration', 'INTEGER')
     ]
     for kolom, tipe in kolom_baru:
