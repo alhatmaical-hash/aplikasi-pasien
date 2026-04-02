@@ -235,7 +235,6 @@ elif menu == "Analisis Dept & Perusahaan":
     start, end = st.columns(2)
     t1 = start.date_input("Mulai", value=get_date_range()[0], key="a1")
     t2 = end.date_input("Sampai", value=get_date_range()[1], key="a2")
-    
     conn = sqlite3.connect(DB_PATH)
     df_data = pd.read_sql_query(f"SELECT department, company FROM rekap_penyakit WHERE visit_time BETWEEN '{t1}' AND '{t2}'", conn)
     conn.close()
