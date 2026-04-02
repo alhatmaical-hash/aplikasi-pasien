@@ -213,24 +213,51 @@ elif menu == "Laporan 10 Penyakit":
     else:
         st.warning("Data tidak tersedia.")
 
-# --- 7. MODUL 3: ANALISIS DEPT & PERUSAHAAN ---
+# --- 7. MODUL 3: ANALISIS DEPT & PERUSAHAAN (VERSI TABEL & GRAFIK) ---
 elif menu == "Analisis Dept & Perusahaan":
     st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
     start, end = st.columns(2)
     t1 = start.date_input("Mulai", value=get_date_range()[0], key="a1")
     t2 = end.date_input("Sampai", value=get_date_range()[1], key="a2")
+    
     conn = sqlite3.connect(DB_PATH)
-    df_data = pd.read_sql_query(f"SELECT department, company FROM rekap_penyakit WHERE visit_time BETWEEN '{t1}' AND '{t2}'", conn)
+    # Gunakan nama kolom 'departemen' agar sinkron dengan modul lainnya
+    query = f"SELECT departemen, company FROM rekap_penyakit WHERE visit_time BETWEEN '{t1}' AND '{t2}'"
+    df_data = pd.read_sql_query(query, conn)
     conn.close()
     
     if not df_data.empty:
         tab1, tab2 = st.tabs(["📊 Departemen", "🏢 Perusahaan"])
+        
         with tab1:
-            st.bar_chart(df_data['department'].value_counts())
+            st.write("### Rekapitulasi Kunjungan Per Departemen")
+            # Membuat tabel perhitungan
+            dept_counts = df_data['departemen'].value_counts().reset_index()
+            dept_counts.columns = ['Nama Departemen', 'Total Kunjungan']
+            
+            c1, c2 = st.columns([1, 2])
+            with c1:
+                # Menampilkan Tabel
+                st.dataframe(dept_counts, hide_index=True, use_container_width=True)
+            with c2:
+                # Menampilkan Grafik
+                st.bar_chart(dept_counts.set_index('Nama Departemen'))
+
         with tab2:
-            st.bar_chart(df_data['company'].value_counts())
+            st.write("### Rekapitulasi Kunjungan Per Perusahaan")
+            # Membuat tabel perhitungan
+            comp_counts = df_data['company'].value_counts().reset_index()
+            comp_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
+            
+            c1, c2 = st.columns([1, 2])
+            with c1:
+                # Menampilkan Tabel
+                st.dataframe(comp_counts, hide_index=True, use_container_width=True)
+            with c2:
+                # Menampilkan Grafik
+                st.bar_chart(comp_counts.set_index('Nama Perusahaan'))
     else:
-        st.warning("Data kosong.")
+        st.warning("Data tidak ditemukan pada periode ini.")
 
 # --- 8. MODUL 4: KETERANGAN ISTIRAHAT (MODUL BARU) ---
 elif menu == "Keterangan Istirahat":
