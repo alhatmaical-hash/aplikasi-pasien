@@ -276,18 +276,38 @@ elif menu == "Lihat Semua Data":
                 df_display, 
                 hide_index=True, 
                 use_container_width=True,
-                column_config={"db_id": None, "Hapus?": st.column_config.CheckboxColumn("Pilih")},
-                disabled=[c for c in df_display.columns if c != "Hapus?"]
+                column_config={"db_id": None, "Pilih": st.column_config.CheckboxColumn("Hapus?")},
+                disabled=[c for c in df_display.columns if c != "Pilih"]
             )
 
-            # --- 5. TOMBOL-TOMBOL AKSI ---
-            col_tombol1, col_tombol2 = st.columns(2)
+            # --- 5. TOMBOL AKSI (HAPUS TERPILIH & HAPUS SEMUA) ---
+            st.write("") # Spasi tambahan
             
-            with col_tombol1:
-                if st.button("🗑️ HAPUS DATA TERPILIH", use_container_width=True):
-                    ids = edited_df[edited_df['Hapus?'] == True]['db_id'].tolist()
-                    if ids:
-                        conn
+            # Tombol 1: Hapus yang dicentang
+            if st.button("🗑️ HAPUS DATA TERPILIH", use_container_width=True):
+                ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
+                if ids:
+                    conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
+                    conn.commit()
+                    st.success(f"✅ Berhasil menghapus {len(ids)} data.")
+                    st.rerun()
+                else:
+                    st.warning("Silakan centang data yang ingin dihapus terlebih dahulu.")
+
+            # Tombol 2: Hapus Semua (Tanpa perlu centang)
+            with st.expander("⚠️ Opsi Lanjutan (Hapus Semua)"):
+                st.write("Klik tombol di bawah ini untuk menghapus seluruh data yang sedang tampil di tabel saat ini.")
+                if st.button("🔥 KONFIRMASI: HAPUS SEMUA DATA TERFILTER", use_container_width=True, type="primary"):
+                    all_ids = df_display['db_id'].tolist()
+                    if all_ids:
+                        conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(all_ids))})", all_ids)
+                        conn.commit()
+                        st.success(f"💥 Sukses menghapus {len(all_ids)} data!")
+                        st.rerun()
+    else:
+        st.info("Database kosong pada rentang tanggal ini.")
+    
+    conn.close()
 # --- 10. MODUL: ANALISIS ISTIRAHAT PASIEN (VERSI ANTI-NONE & AKURAT) ---
 elif menu == "Analisis Istirahat":
     st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
