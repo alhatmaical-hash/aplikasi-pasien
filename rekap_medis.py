@@ -315,60 +315,87 @@ elif menu == "Lihat Semua Data":
     
     conn.close()
 
-# --- 10. MODUL KHUSUS: ANALISIS ISTIRAHAT PASIEN ---
+# --- 10. MODUL: ANALISIS ISTIRAHAT PASIEN (DENGAN FILTER DETAIL) ---
 elif menu == "Analisis Istirahat":
-    st.markdown("<h1>📊 ANALISIS ISTIRAHAT PASIEN</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
     
     t_awal, t_akhir = get_date_range()
     
-    with st.container():
+    with st.expander("📅 Pengaturan Periode & Filter Utama", expanded=True):
         c1, c2 = st.columns(2)
-        f1 = c1.date_input("Mulai Periode", t_awal, key="ana_1")
-        f2 = c2.date_input("Sampai Periode", t_akhir, key="ana_2")
+        f1 = c1.date_input("Dari Tanggal", t_awal, key="ana_date_1")
+        f2 = c2.date_input("Sampai Tanggal", t_akhir, key="ana_date_2")
+        
+        # Tombol Filter Spesifik
+        tipe_filter = st.radio(
+            "Pilih Kategori Analisis:",
+            ["Semua Istirahat", "Hanya Istirahat Hari (1-7)", "Hanya Istirahat Jam (> 7)"],
+            horizontal=True
+        )
 
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
     conn.close()
 
     if not df.empty:
-        # Pembersihan dasar
+        # --- PEMBERSIHAN DATA ---
         df = df.dropna(subset=['patient_name'])
         df['status_clean'] = df['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
         df['dur_clean'] = pd.to_numeric(df['rest_duration'], errors='coerce').fillna(0)
-
-        # Hitung Statistik
-        total_ya = len(df[df['status_clean'].isin(['ya', 'y', 'yes'])])
-        total_tidak = len(df[df['status_clean'].isin(['tidak', 't', 'no', ''])])
         
-        # Hitung Detail Istirahat (Hanya dari yang 'Ya')
-        df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])]
-        jml_hari = len(df_ya[(df_ya['dur_clean'] >= 1) & (df_ya['dur_clean'] <= 7)])
-        jml_jam = len(df_ya[df_ya['dur_clean'] > 7])
+        # Hanya ambil yang statusnya 'Ya' untuk analisis ini
+        df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])].copy()
 
-        # --- TAMPILAN DASHBOARD ---
-        st.subheader("📈 Ringkasan Eksekutif")
+        # Logika Pemisahan Data
+        df_hari = df_ya[(df_ya['dur_clean'] >= 1) & (df_ya['dur_clean'] <= 7)]
+        df_jam = df_ya[df_ya['dur_clean'] > 7]
+
+        # --- LOGIKA TOMBOL FILTER ---
+        if tipe_filter == "Hanya Istirahat Hari (1-7)":
+            df_final = df_hari
+            label_stat = "Istirahat Hari"
+            warna = "blue"
+        elif tipe_filter == "Hanya Istirahat Jam (> 7)":
+            df_final = df_jam
+            label_stat = "Istirahat Jam"
+            warna = "orange"
+        else:
+            df_final = df_ya
+            label_stat = "Total Istirahat (Ya)"
+            warna = "green"
+
+        # --- TAMPILAN STATISTIK RINGKAS ---
+        st.subheader(f"📈 Statistik: {tipe_filter}")
+        
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total Kunjungan", f"{len(df)} Orang")
-        col2.metric("Perlu Istirahat (YA)", f"{total_ya} Orang")
-        col3.metric("Tidak Istirahat", f"{total_tidak} Orang")
+        col1.metric("Jumlah Pasien", f"{len(df_final)} Orang")
+        col2.metric("Rata-rata Durasi", f"{round(df_final['dur_clean'].mean(), 1) if not df_final.empty else 0}")
+        col3.metric("Total Kunjungan Umum", f"{len(df)} Orang")
 
         st.markdown("---")
-        
-        st.subheader("⏰ Detail Durasi Istirahat (Status: YA)")
-        k1, k2 = st.columns(2)
-        with k1:
-            st.info(f"### 📅 {jml_hari}\n**Orang Istirahat (1-7 Hari)**")
-        with k2:
-            st.warning(f"### ⏱️ {jml_jam}\n**Orang Istirahat (> 7 Jam)**")
 
-        # --- VISUALISASI SEDERHANA ---
-        st.markdown("---")
-        st.subheader("📊 Perbandingan Persentase")
-        chart_data = pd.DataFrame({
-            'Kategori': ['Istirahat Hari', 'Istirahat Jam', 'Tidak Istirahat'],
-            'Jumlah': [jml_hari, jml_jam, total_tidak]
-        })
-        st.bar_chart(data=chart_data, x='Kategori', y='Jumlah')
-
-    else:
-        st.info("Belum ada data untuk dianalisis pada periode ini.")
+        if not df_final.empty:
+            # Tampilkan Tabel Hasil Filter
+            st.write(f"**Daftar Pasien ({label_stat}):**")
+            
+            # Susun Tabel Tampilan
+            df_view = pd.DataFrame()
+            df_view['No.'] = range(1, len(df_final) + 1)
+            df_view['Visit Time'] = df_final['visit_time']
+            df_view['Patient Name'] = df_final['patient_name']
+            df_view['Diagnosa'] = df_final['diagnosa']
+            df_view['Company'] = df_final['company']
+            df_view['Durasi'] = df_final['dur_clean'].apply(lambda x: f"{int(x)} {'Hari' if x <= 7 else 'Jam'}")
+            
+            st.dataframe(df_view, hide_index=True, use_container_width=True)
+            
+            # Tombol Download Data Terfilter
+            csv = df_view.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label=f"📥 Download Data {label_stat}",
+                data=csv,
+                file_name=f'analisis_{label_stat.lower().replace(" ", "_")}.csv',
+                mime='text/csv',
+            )
+        else:
+            st.warning(f"Tidak ada data ditemukan untuk kategori {tipe_filter}")
