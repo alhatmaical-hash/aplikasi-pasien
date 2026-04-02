@@ -219,7 +219,7 @@ elif menu == "Keterangan Istirahat":
     else:
         st.info("Belum ada data istirahat.")
 
-# --- 9. MODUL: LIHAT DATA (PERBAIKAN TOTAL INDENTASI & FILTER NONE) ---
+# --- 9. MODUL: LIHAT DATA (DENGAN STATISTIK HARI vs JAM) ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE REKAP MEDIS</h1>", unsafe_allow_html=True)
     
@@ -229,31 +229,44 @@ elif menu == "Lihat Semua Data":
         c1, c2, c3 = st.columns([1,1,2])
         f1 = c1.date_input("Mulai", t_awal)
         f2 = c2.date_input("Sampai", t_akhir)
-        st_filter = c3.selectbox("Filter Istirahat:", ["Semua", "Ya", "Tidak"])
+        st_filter = c3.selectbox("Filter Status:", ["Semua", "Ya", "Tidak"])
 
     conn = sqlite3.connect(DB_PATH)
-    # Ambil data dari database
     df_raw = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
     
     if not df_raw.empty:
-        # 1. HAPUS BARIS NONE/KOSONG SECARA AGRESIF
-        # Hapus baris jika nama pasien kosong atau berisi tulisan 'None'/'nan'
+        # --- 1. MEMBERSIHKAN BARIS NONE/HANTU ---
         df_raw = df_raw.dropna(subset=['patient_name'])
         df_raw['p_name_check'] = df_raw['patient_name'].astype(str).str.strip().str.lower()
         df_raw = df_raw[~df_raw['p_name_check'].isin(['none', 'nan', '', 'null'])].copy()
 
         if not df_raw.empty:
-            # 2. PROSES FILTER ISTIRAHAT
+            # --- 2. LOGIKA PEMBERSIHAN DATA ---
             df_raw['status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
             df_raw['dur_clean'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
 
+            # --- 3. HITUNG STATISTIK (HARI vs JAM) SEBELUM FILTER TABEL ---
+            # Menghitung orang yang istirahat Ya dan durasi 1-7 (Hari)
+            jml_hari = len(df_raw[(df_raw['status_clean'].isin(['ya', 'y'])) & (df_raw['dur_clean'] >= 1) & (df_raw['dur_clean'] <= 7)])
+            # Menghitung orang yang istirahat Ya dan durasi > 7 (Jam)
+            jml_jam = len(df_raw[(df_raw['status_clean'].isin(['ya', 'y'])) & (df_raw['dur_clean'] > 7)])
+
+            # Tampilkan dalam bentuk kartu (Metric) agar mudah dibaca
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Total Pasien", f"{len(df_raw)} Orang")
+            m2.metric("Istirahat Hari", f"{jml_hari} Orang", delta="Hari", delta_color="normal")
+            m3.metric("Istirahat Jam", f"{jml_jam} Orang", delta="Jam", delta_color="inverse")
+            
+            st.markdown("---")
+
+            # --- 4. FILTER TABEL (Berdasarkan Pilihan Dropdown) ---
             if st_filter == "Ya":
                 df_raw = df_raw[df_raw['status_clean'].isin(['ya', 'yes', 'y'])]
             elif st_filter == "Tidak":
                 df_raw = df_raw[df_raw['status_clean'].isin(['tidak', 'no', 't', 'n', ''])]
 
             if not df_raw.empty:
-                # 3. SUSUN TABEL TAMPILAN
+                # Susun Tabel Akhir
                 df_display = pd.DataFrame()
                 df_display['No.'] = range(1, len(df_raw) + 1)
                 df_display['Pilih'] = False
@@ -265,7 +278,7 @@ elif menu == "Lihat Semua Data":
                 df_display['Department'] = df_raw['department']
                 df_display['Istirahat (Y/T)'] = df_raw['rest_status']
                 
-                # Logika Hari vs Jam
+                # Kolom Hari/Jam di Tabel
                 df_display['Istirahat Hari'] = df_raw.apply(
                     lambda x: f"{int(float(x['dur_clean']))}" if (x['status_clean'] in ['ya','y'] and 1 <= float(x['dur_clean']) <= 7) else "-", axis=1
                 )
@@ -274,42 +287,24 @@ elif menu == "Lihat Semua Data":
                 )
                 df_display['db_id'] = df_raw['id']
 
-                st.info(f"✅ Total Data Terfilter: **{len(df_display)}**")
-
-                # 4. RENDER TABEL
+                # Render Tabel Interaktif
                 edited_df = st.data_editor(
                     df_display, 
                     hide_index=True, 
                     use_container_width=True,
-                    column_config={
-                        "db_id": None, 
-                        "Pilih": st.column_config.CheckboxColumn("Hapus?"),
-                        "No.": st.column_config.Column(width="small")
-                    },
+                    column_config={"db_id": None, "Pilih": st.column_config.CheckboxColumn("Hapus?")},
                     disabled=[c for c in df_display.columns if c != "Pilih"]
                 )
 
-                # 5. TOMBOL AKSI
-                st.markdown("---")
-                c_a, c_b = st.columns(2)
-                with c_a:
-                    if st.button("🗑️ HAPUS TERPILIH", use_container_width=True):
-                        ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
-                        if ids:
-                            conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
-                            conn.commit()
-                            st.rerun()
-                with c_b:
-                    if st.checkbox("Konfirmasi Reset"):
-                        if st.button("🔥 KOSONGKAN DATABASE", type="primary", use_container_width=True):
-                            conn.cursor().execute("DELETE FROM rekap_penyakit")
-                            conn.commit()
-                            st.rerun()
+                # Tombol Hapus
+                if st.button("🗑️ HAPUS DATA TERPILIH"):
+                    ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
+                    if ids:
+                        conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
+                        conn.commit()
+                        st.rerun()
             else:
                 st.warning(f"Data '{st_filter}' tidak ditemukan.")
-        else:
-            st.warning("Semua baris kosong/None telah disaring.")
     else:
-        st.info("Database kosong pada rentang tanggal ini.")
-    
+        st.info("Database kosong.")
     conn.close()
