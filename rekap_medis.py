@@ -270,9 +270,9 @@ elif menu == "Keterangan Istirahat":
     conn = sqlite3.connect(DB_PATH)
     df_rest = pd.read_sql_query(f"SELECT rest_status, rest_type, rest_duration FROM rekap_penyakit WHERE visit_time BETWEEN '{start}' AND '{end}'", conn)
     conn.close()
-
+    
     if not df_rest.empty:
-       elif menu == "Keterangan Istirahat":
+elif menu == "Keterangan Istirahat":
     st.markdown("<h1>🛌 ANALISIS ISTIRAHAT & KUNJUNGAN</h1>", unsafe_allow_html=True)
     t1, t2 = st.columns(2)
     start = t1.date_input("Mulai", value=get_date_range()[0], key="r1")
