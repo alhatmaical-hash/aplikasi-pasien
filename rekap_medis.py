@@ -315,22 +315,20 @@ elif menu == "Lihat Semua Data":
     
     conn.close()
 
-# --- 10. MODUL: ANALISIS ISTIRAHAT (VERSI FIX - PASTI BERUBAH) ---
+# --- 10. MODUL: ANALISIS ISTIRAHAT PASIEN (VERSI ANTI-NONE) ---
 elif menu == "Analisis Istirahat":
-    st.markdown("<h1>📊 ANALISIS DURASI ISTIRAHAT</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
     
     t_awal, t_akhir = get_date_range()
     
-    # FILTER BOX
-    with st.container(border=True):
+    with st.expander("📅 Pengaturan Periode & Filter Utama", expanded=True):
         c1, c2 = st.columns(2)
-        f1 = c1.date_input("Mulai", t_awal, key="ana_1")
-        f2 = c2.date_input("Sampai", t_akhir, key="ana_2")
+        f1 = c1.date_input("Dari Tanggal", t_awal, key="ana_date_1")
+        f2 = c2.date_input("Sampai Tanggal", t_akhir, key="ana_date_2")
         
-        # TOMBOL FILTER UTAMA
-        pilihan = st.radio(
-            "Pilih Grup Pasien yang Ingin Dihitung:",
-            ["Semua (Ya/Tidak)", "Hanya Istirahat Hari", "Hanya Istirahat Jam"],
+        tipe_filter = st.radio(
+            "Pilih Kategori Analisis:",
+            ["Semua Istirahat", "Hanya Istirahat Hari (1-7)", "Hanya Istirahat Jam (> 7)"],
             horizontal=True
         )
 
@@ -339,50 +337,44 @@ elif menu == "Analisis Istirahat":
     conn.close()
 
     if not df.empty:
-        # Bersihkan data hantu/None
+        # --- PROSES PEMBERSIHAN DATA DARI NONE/KOSONG ---
+        # 1. Hapus baris yang memang benar-benar kosong di kolom nama
         df = df.dropna(subset=['patient_name'])
+        
+        # 2. Filter baris yang berisi teks "None", "nan", atau spasi kosong saja
+        df['p_name_clean'] = df['patient_name'].astype(str).str.strip().str.lower()
+        df = df[~df['p_name_clean'].isin(['none', 'nan', '', 'null'])].copy()
+        
+        # 3. Normalisasi Status & Durasi
         df['status_clean'] = df['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
         df['dur_clean'] = pd.to_numeric(df['rest_duration'], errors='coerce').fillna(0)
         
-        # Logika Pengelompokan
-        df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])]
+        # Ambil hanya yang berstatus 'Ya'
+        df_ya = df[df['status_clean'].isin(['ya', 'y', 'yes'])].copy()
+
+        # Logika Pemisahan Durasi
         df_hari = df_ya[(df_ya['dur_clean'] >= 1) & (df_ya['dur_clean'] <= 7)]
         df_jam = df_ya[df_ya['dur_clean'] > 7]
-        df_tidak = df[df['status_clean'].isin(['tidak', 't', 'no', ''])]
 
-        # LOGIKA PERUBAHAN TAMPILAN BERDASARKAN TOMBOL
-        if pilihan == "Hanya Istirahat Hari":
+        # --- LOGIKA TOMBOL FILTER ---
+        if tipe_filter == "Hanya Istirahat Hari (1-7)":
             df_final = df_hari
-            label = "Istirahat Hari"
-        elif pilihan == "Hanya Istirahat Jam":
+            label_stat = "Istirahat Hari"
+        elif tipe_filter == "Hanya Istirahat Jam (> 7)":
             df_final = df_jam
-            label = "Istirahat Jam"
+            label_stat = "Istirahat Jam"
         else:
-            df_final = df
-            label = "Total Keseluruhan"
+            df_final = df_ya
+            label_stat = "Total Istirahat (Ya)"
 
-        # TAMPILKAN ANGKA TOTAL (Akan berubah sesuai klik tombol)
-        st.subheader(f"🔍 Hasil Analisis: {label}")
-        m1, m2, m3 = st.columns(3)
-        
-        # Metrik dinamis yang mengikuti tombol
-        m1.metric(f"Total {label}", f"{len(df_final)} Orang")
-        m2.metric("Istirahat Hari (1-7)", f"{len(df_hari)} Orang")
-        m3.metric("Istirahat Jam (>7)", f"{len(df_jam)} Orang")
+        # --- TAMPILAN STATISTIK RINGKAS ---
+        st.subheader(f"📈 Statistik: {tipe_filter}")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Jumlah Pasien", f"{len(df_final)} Orang")
+        col2.metric("Rata-rata Durasi", f"{round(df_final['dur_clean'].mean(), 1) if not df_final.empty else 0}")
+        col3.metric("Total Kunjungan Umum", f"{len(df)} Orang")
 
         st.markdown("---")
 
         if not df_final.empty:
-            # Tabel yang ikut berubah
-            df_view = pd.DataFrame()
-            df_view['No.'] = range(1, len(df_final) + 1)
-            df_view['Tanggal'] = df_final['visit_time']
-            df_view['Nama Pasien'] = df_final['patient_name']
-            df_view['Status'] = df_final['rest_status']
-            df_view['Durasi'] = df_final['dur_clean'].apply(lambda x: f"{int(x)} Hari" if x <= 7 else f"{int(x)} Jam")
-            
-            st.dataframe(df_view, hide_index=True, use_container_width=True)
-        else:
-            st.warning("Data untuk kategori ini tidak ditemukan.")
-    else:
-        st.info("Database kosong pada tanggal tersebut.")
+            st
