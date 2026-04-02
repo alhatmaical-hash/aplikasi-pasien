@@ -289,7 +289,7 @@ elif menu == "Keterangan Istirahat":
     else:
         st.info("Belum ada data istirahat.")
 
-# --- 9. MODUL: LIHAT DATA (DENGAN FITUR HAPUS SEMUA) ---
+# --- 9. MODUL: LIHAT DATA (VERSI INDENTASI RAPI) ---
 elif menu == "Lihat Semua Data":
     st.markdown("<h1>📂 DATABASE REKAP MEDIS</h1>", unsafe_allow_html=True)
     
@@ -321,11 +321,11 @@ elif menu == "Lihat Semua Data":
             else:
                 df_tampil = df_raw.copy()
 
-            # Tampilan Statistik Ringkas
+            # Statistik Ringkas
             st.metric(f"Data Terfilter ({st_filter})", f"{len(df_tampil)} Orang")
             st.markdown("---")
 
-            # Render Tabel
+            # Persiapan Tabel Display
             df_display = pd.DataFrame()
             df_display['No.'] = range(1, len(df_tampil) + 1)
             df_display['Pilih'] = False
@@ -335,16 +335,41 @@ elif menu == "Lihat Semua Data":
             df_display['Status'] = df_tampil['rest_status'].str.upper()
             df_display['db_id'] = df_tampil['id']
 
-           edited_df = st.data_editor(
+            # --- BAGIAN YANG TADI ERROR (INDENTASI DIPERBAIKI) ---
+            edited_df = st.data_editor(
                 df_display, 
                 hide_index=True, 
                 use_container_width=True,
                 column_config={
                     "db_id": None, 
                     "Pilih": st.column_config.CheckboxColumn("Hapus?")
-                }, # <--- Pastikan ada tutup kurung kurawal '}' dan kurung tutup ')'
+                },
                 disabled=[c for c in df_display.columns if c != "Pilih"]
             )
+
+            # Tombol Aksi
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.button("🗑️ HAPUS DATA TERPILIH", use_container_width=True):
+                    ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
+                    if ids:
+                        conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
+                        conn.commit()
+                        st.success(f"✅ Berhasil menghapus {len(ids)} data.")
+                        st.rerun()
+            
+            with col_btn2:
+                with st.expander("⚠️ Hapus Semua"):
+                    if st.button("🔥 KONFIRMASI HAPUS SEMUA", use_container_width=True, type="primary"):
+                        all_ids = df_display['db_id'].tolist()
+                        if all_ids:
+                            conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(all_ids))})", all_ids)
+                            conn.commit()
+                            st.success("💥 Semua data terfilter berhasil dihapus.")
+                            st.rerun()
+    else:
+        st.info("Database kosong pada periode ini.")
+    conn.close()
 # --- 10. MODUL: ANALISIS ISTIRAHAT (VERSI AKURASI TINGGI) ---
 elif menu == "Analisis Istirahat":
     st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
