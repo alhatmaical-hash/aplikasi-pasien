@@ -264,61 +264,62 @@ elif menu == "Analisis Dept & Perusahaan":
 elif menu == "Keterangan Istirahat":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
-    # Filter Tanggal
     t1, t2 = st.columns(2)
     start = t1.date_input("Mulai", value=get_date_range()[0], key="r1")
     end = t2.date_input("Sampai", value=get_date_range()[1], key="r2")
 
     conn = sqlite3.connect(DB_PATH)
-    # Mengambil kolom yang diperlukan untuk perhitungan
-    query = f"""
-        SELECT departemen, rest_status, rest_duration 
-        FROM rekap_penyakit 
-        WHERE visit_time BETWEEN '{start}' AND '{end}'
-    """
+    query = f"SELECT departemen, rest_status, rest_duration FROM rekap_penyakit WHERE visit_time BETWEEN '{start}' AND '{end}'"
     df_raw = pd.read_sql_query(query, conn)
     conn.close()
 
     if not df_raw.empty:
-        # 1. Pembersihan & Normalisasi Data
+        # --- 1. PROSES DATA ---
         df_raw['departemen'] = df_raw['departemen'].fillna('TIDAK TERDAFTAR').replace(['', '-', 'None'], 'TIDAK TERDAFTAR')
         df_raw['status_lower'] = df_raw['rest_status'].fillna('tidak').str.lower().str.strip()
         df_raw['dur_num'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
 
-        # 2. Logika Pengelompokan (Grouping)
-        # Hitung Total Kunjungan per Departemen
-        rekap = df_raw.groupby('departemen').size().reset_index(name='TOTAL KUNJUNGAN')
-        
-        # Hitung Istirahat Hari (Status YA & Durasi 1-7)
+        # Hitung Kategori
         ist_hari = df_raw[(df_raw['status_lower'] == 'ya') & (df_raw['dur_num'] >= 1) & (df_raw['dur_num'] <= 7)]
-        ist_hari_count = ist_hari.groupby('departemen').size().reset_index(name='ISTIRAHAT HARI')
-        
-        # Hitung Istirahat Jam (Status YA & Durasi > 7)
         ist_jam = df_raw[(df_raw['status_lower'] == 'ya') & (df_raw['dur_num'] > 7)]
+
+        # --- 2. METRIK SINGKAT ---
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Total Pasien", f"{len(df_raw)}")
+        m2.metric("✅ Istirahat (Ya)", f"{len(ist_hari) + len(ist_jam)}")
+        m3.metric("❌ Tidak Istirahat", f"{len(df_raw) - (len(ist_hari) + len(ist_jam))}")
+
+        # --- 3. TABEL RINGKASAN TOTAL (EXECUTIVE SUMMARY) ---
+        # Diletakkan di sini agar menjadi ringkasan awal
+        st.markdown("---")
+        st.write("### 📈 Ringkasan Total Data")
+        selisih_hari = (end - start).days + 1
+        summary_data = pd.DataFrame({
+            "TANGGAL": [f"{start.day} SAMPAI {end.day}"],
+            "ANGKA KUNJUNGAN SAKIT": [f"{len(df_raw)} PASIEN"],
+            "JUMLAH REKOMENDASI SAKIT/ISTIRAHAT PER-HARI": [f"{len(ist_hari)} PASIEN"],
+            "JUMLAH REKOMENDASI SAKIT/ISTIRAHAT PER-JAM": [f"{len(ist_jam)} PASIEN"],
+            "JUMLAH HARI KERJA": [f"{selisih_hari} HARI"]
+        })
+        st.table(summary_data)
+
+        # --- 4. TABEL DETAIL PER DEPARTEMEN ---
+        st.markdown("---")
+        st.write("### 🏢 Detail Rekapitulasi Per Departemen")
+        
+        rekap = df_raw.groupby('departemen').size().reset_index(name='TOTAL KUNJUNGAN')
+        ist_hari_count = ist_hari.groupby('departemen').size().reset_index(name='ISTIRAHAT HARI')
         ist_jam_count = ist_jam.groupby('departemen').size().reset_index(name='ISTIRAHAT JAM')
 
-        # 3. Gabungkan semua hitungan ke dalam satu tabel utama
-        final_table = rekap.merge(ist_hari_count, on='departemen', how='left')
-        final_table = final_table.merge(ist_jam_count, on='departemen', how='left')
+        final_table = rekap.merge(ist_hari_count, on='departemen', how='left').merge(ist_jam_count, on='departemen', how='left').fillna(0)
         
-        # Isi nilai kosong (NaN) dengan 0 dan tambahkan teks " PASIEN" agar mirip gambar
-        final_table = final_table.fillna(0)
-        
-        # Membuat tampilan tabel yang rapi (Formatted Table)
         display_df = pd.DataFrame()
         display_df['DEPARTEMEN'] = final_table['departemen'].str.upper()
         display_df['TOTAL KUNJUNGAN'] = final_table['TOTAL KUNJUNGAN'].astype(int).astype(str) + " PASIEN"
         display_df['ISTIRAHAT HARI'] = final_table['ISTIRAHAT HARI'].astype(int).astype(str) + " PASIEN"
         display_df['ISTIRAHAT JAM'] = final_table['ISTIRAHAT JAM'].astype(int).astype(str) + " PASIEN"
 
-        # 4. Tampilkan Tabel sesuai format gambar
-        st.write("### Tabel Rekapitulasi Departemen")
         st.table(display_df)
-
-        # 5. Visualisasi Tambahan
-        st.write("### 📊 Perbandingan Visual")
-        chart_data = final_table.set_index('departemen')[['ISTIRAHAT HARI', 'ISTIRAHAT JAM']]
-        st.bar_chart(chart_data)
 
     else:
         st.info("ℹ️ Tidak ada data untuk periode ini.")
