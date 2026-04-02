@@ -318,8 +318,11 @@ elif menu == "Lihat Semua Data":
             df_display['Nama Pasien'] = df_tampil['patient_name']
             df_display['Diagnosa'] = df_tampil['diagnosa']
             
-            # Ganti label 'Departemen' menjadi 'Clinic' jika itu yang Anda maksud
-            df_display['Clinic'] = df_tampil['clinic'] 
+            # Menampilkan Clinic DAN Departemen
+            df_display['Clinic'] = df_tampil['clinic']
+            
+            # Sesuaikan 'departemen' dengan nama kolom asli di database/CSV Anda
+            df_display['Departemen'] = df_tampil['departemen'] if 'departemen' in df_tampil.columns else "-"
             
             df_display['Perusahaan'] = df_tampil['company']
             
@@ -331,6 +334,7 @@ elif menu == "Lihat Semua Data":
             df_display['Status'] = df_tampil['rest_status'].str.upper()
             df_display['db_id'] = df_tampil['id']
 
+            # Render Tabel
             edited_df = st.data_editor(
                 df_display, 
                 hide_index=True, 
