@@ -231,70 +231,62 @@ elif menu == "Lihat Semua Data":
         f2 = c2.date_input("Sampai", t_akhir)
         st_filter = c3.selectbox("Filter Istirahat:", ["Semua", "Ya", "Tidak"])
 
-    conn = sqlite3.connect(DB_PATH)
+   conn = sqlite3.connect(DB_PATH)
     df_raw = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
     
     if not df_raw.empty:
-        # --- LANGKAH KRUSIAL: MEMBERSIHKAN BARIS NONE ---
-        # 1. Pastikan kolom patient_name adalah string dan buang spasi
-        df_raw['patient_name'] = df_raw['patient_name'].astype(str).str.strip()
+        # --- 1. MEMBERSIHKAN BARIS NONE (MENGHILANGKAN BARIS SELANG-SELING) ---
+        # Hapus baris yang kolom patient_name-nya kosong (NaN)
+        df_raw = df_raw.dropna(subset=['patient_name'])
         
-        # 2. Buang baris jika patient_name berisi kata 'None', 'nan', atau kosong/pendek
-        # Ini akan memastikan "None" tidak mengganggu hitungan total data
-        df_raw = df_raw[
-            (df_raw['patient_name'].str.lower() != 'none') & 
-            (df_raw['patient_name'].str.lower() != 'nan') & 
-            (df_raw['patient_name'].str.len() > 1)
-        ].copy()
+        # Hapus baris yang patient_name-nya berisi teks "None" atau "nan" (sebagai string)
+        df_raw['patient_name_str'] = df_raw['patient_name'].astype(str).str.strip().str.lower()
+        df_raw = df_raw[~df_raw['patient_name_str'].isin(['none', 'nan', '', 'null'])]
+        
+        # --- 2. LANJUT KE PROSES FILTER ISTIRAHAT ---
+        df_raw['status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
+        df_raw['dur_clean'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
+
+        # Filter Dropdown (Ya/Tidak)
+        if st_filter == "Ya":
+            df_raw = df_raw[df_raw['status_clean'].isin(['ya', 'yes', 'y'])]
+        elif st_filter == "Tidak":
+            df_raw = df_raw[df_raw['status_clean'].isin(['tidak', 'no', 't', 'n', ''])]
 
         if not df_raw.empty:
-            # Persiapan data untuk filter istirahat
-            df_raw['status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
-            # Gunakan pd.to_numeric agar durasi aman dihitung
-            df_raw['dur_clean'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
+            # Susun Tabel Tampilan
+            df_display = pd.DataFrame()
+            # Nomor urut (No.) harus dihitung ULANG setelah None dihapus
+            df_display['No.'] = range(1, len(df_raw) + 1)
+            df_display['Pilih'] = False
+            df_display['Visit Time'] = df_raw['visit_time']
+            df_display['Patient Name'] = df_raw['patient_name']
+            df_display['Diagnosa'] = df_raw['diagnosa']
+            df_display['Clinic'] = df_raw['clinic']
+            df_display['Company'] = df_raw['company']
+            df_display['Department'] = df_raw['department']
+            df_display['Istirahat (Y/T)'] = df_raw['rest_status']
+            
+            # Logika Hari vs Jam
+            df_display['Istirahat Hari'] = df_raw.apply(
+                lambda x: f"{int(float(x['dur_clean']))}" if (x['status_clean'] in ['ya','y'] and 1 <= float(x['dur_clean']) <= 7) else "-", axis=1
+            )
+            df_display['Istirahat Jam'] = df_raw.apply(
+                lambda x: f"{int(float(x['dur_clean']))}" if (x['status_clean'] in ['ya','y'] and float(x['dur_clean']) > 7) else "-", axis=1
+            )
+            df_display['db_id'] = df_raw['id']
 
-            # Filter Dropdown (Ya/Tidak)
-            if st_filter == "Ya":
-                df_raw = df_raw[df_raw['status_clean'].isin(['ya', 'yes', 'y'])]
-            elif st_filter == "Tidak":
-                df_raw = df_raw[df_raw['status_clean'].isin(['tidak', 'no', 't', 'n', ''])]
+            # Tampilkan Angka Total yang BENAR-BENAR Bersih
+            st.info(f"✅ Total Data Pasien: **{len(df_display)}**")
 
-            # --- CEK ULANG SETELAH FILTER ---
-            if not df_raw.empty:
-                # Susun Tabel Akhir
-                df_display = pd.DataFrame()
-                df_display['No.'] = range(1, len(df_raw) + 1)
-                df_display['Pilih'] = False
-                df_display['Visit Time'] = df_raw['visit_time']
-                df_display['Patient Name'] = df_raw['patient_name']
-                df_display['Diagnosa'] = df_raw['diagnosa']
-                df_display['Clinic'] = df_raw['clinic']
-                df_display['Company'] = df_raw['company']
-                df_display['Department'] = df_raw['department']
-                df_display['Istirahat (Y/T)'] = df_raw['rest_status']
-                
-                # Logika Hari vs Jam (Berdasarkan Angka)
-                # Gunakan float() untuk jaga-jaga jika durasi tersimpan sebagai desimal
-                df_display['Istirahat Hari'] = df_raw.apply(
-                    lambda x: f"{int(float(x['dur_clean']))}" if (x['status_clean'] in ['ya','y'] and 1 <= float(x['dur_clean']) <= 7) else "-", axis=1
-                )
-                df_display['Istirahat Jam'] = df_raw.apply(
-                    lambda x: f"{int(float(x['dur_clean']))}" if (x['status_clean'] in ['ya','y'] and float(x['dur_clean']) > 7) else "-", axis=1
-                )
-                df_display['db_id'] = df_raw['id']
-
-                # Tampilkan Total Data yang sudah bersih
-                st.info(f"✅ Total Data Terfilter: **{len(df_display)}**")
-
-                # RENDER TABEL
-                edited_df = st.data_editor(
-                    df_display, 
-                    hide_index=True, 
-                    use_container_width=True,
-                    column_config={"db_id": None, "Pilih": st.column_config.CheckboxColumn("Hapus?")},
-                    disabled=[c for c in df_display.columns if c != "Pilih"]
-                )
-
+            # RENDER TABEL
+            edited_df = st.data_editor(
+                df_display, 
+                hide_index=True, 
+                use_container_width=True,
+                column_config={"db_id": None, "Pilih": st.column_config.CheckboxColumn("Hapus?")},
+                disabled=[c for c in df_display.columns if c != "Pilih"]
+            )
                 # Tombol Aksi
                 st.markdown("---")
                 c_a, c_b = st.columns(2)
