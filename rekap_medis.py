@@ -98,7 +98,7 @@ st.markdown("""
 # --- 4. SIDEBAR NAVIGASI ---
 st.sidebar.title("🏥 MENU KLINIK")
 menu = st.sidebar.radio("NAVIGASI", 
-    ["Upload Data CSV", "Laporan 10 Penyakit", "Analisis Dept & Perusahaan", "Keterangan Istirahat", "Lihat Semua Data"])
+    ["Upload Data CSV", "Laporan 10 Penyakit", "Analisis Dept & Perusahaan", "Keterangan Istirahat", "Lihat Semua Data", "Analisis Istirahat"])
 
 if st.sidebar.button("🔴 KELUAR APLIKASI", type="primary", use_container_width=True):
     st.session_state["authenticated"] = False
