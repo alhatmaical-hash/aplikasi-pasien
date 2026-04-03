@@ -195,27 +195,77 @@ if menu == "Upload Data CSV":
 
 # --- 6. MODUL 2: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
-    st.markdown("<h1>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
+    
+    # --- FILTER TANGGAL ---
     t1, t2 = st.columns(2)
     start = t1.date_input("Mulai", value=get_date_range()[0])
     end = t2.date_input("Sampai", value=get_date_range()[1])
     
+    # --- AMBIL DATA DARI DATABASE ---
     conn = sqlite3.connect(DB_PATH)
-    query = f"SELECT diagnosa, COUNT(*) as jumlah FROM rekap_penyakit WHERE visit_time BETWEEN '{start}' AND '{end}' GROUP BY diagnosa ORDER BY jumlah DESC LIMIT 10"
+    query = f"""
+        SELECT diagnosa, COUNT(*) as jumlah 
+        FROM rekap_penyakit 
+        WHERE visit_time BETWEEN '{start}' AND '{end}' 
+        GROUP BY diagnosa 
+        ORDER BY jumlah DESC 
+        LIMIT 10
+    """
     df_top = pd.read_sql_query(query, conn)
     conn.close()
     
     if not df_top.empty:
         # --- PERBAIKAN NOMOR URUT (MULAI DARI 1) ---
-        df_top.index = range(1, len(df_top) + 1) # Mengubah index agar mulai dari 1
-        df_top.index.name = 'No' # Memberi nama kolom index menjadi 'No'
+        df_top.index = range(1, len(df_top) + 1)
+        df_top.index.name = 'No'
         
-        # Menampilkan tabel (gunakan reset_index agar kolom 'No' muncul di tabel)
+        # 1. Menampilkan Tabel (Tanpa Index Bawaan Pandas)
+        st.write("### Tabel Data")
         st.dataframe(df_top.reset_index(), use_container_width=True, hide_index=True)
         
+        # 2. Menampilkan Grafik Batang
+        st.write("### Visualisasi Grafik")
         st.bar_chart(df_top.set_index('diagnosa')['jumlah'])
+        
+        # --- MODUL DOWNLOAD DATA (CSV & EXCEL) ---
+        st.markdown("---")
+        st.write("#### 📥 Opsi Unduh Laporan")
+        col_dl1, col_dl2 = st.columns(2)
+
+        with col_dl1:
+            # Fitur Download CSV
+            csv_data = df_top.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Data (CSV)",
+                data=csv_data,
+                file_name=f'10_penyakit_{start}_sd_{end}.csv',
+                mime='text/csv',
+                use_container_width=True
+            )
+
+        with col_dl2:
+            # Fitur Download Excel (Memerlukan xlsxwriter)
+            import io
+            output = io.BytesIO()
+            try:
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    # Simpan data ke sheet 'Laporan'
+                    df_top.reset_index().to_excel(writer, index=False, sheet_name='Laporan_10_Besar')
+                
+                st.download_button(
+                    label="📊 Download Data (Excel)",
+                    data=output.getvalue(),
+                    file_name=f'10_penyakit_{start}_sd_{end}.xlsx',
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.error(f"Gagal memproses Excel: {e}")
+                st.info("Gunakan tombol CSV sebagai alternatif.")
+                
     else:
-        st.warning("Data tidak tersedia.")
+        st.warning(f"Tidak ada data ditemukan untuk rentang tanggal {start} sampai {end}.")
 
 # --- 7. MODUL 3: ANALISIS DEPT & PERUSAHAAN (VERSI TABEL & GRAFIK) ---
 elif menu == "Analisis Dept & Perusahaan":
