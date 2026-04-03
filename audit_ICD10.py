@@ -1,25 +1,17 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-import plotly.express as px
 from datetime import datetime
 
-# --- CONFIG & STYLING ---
+# --- CONFIG ---
 st.set_page_config(page_title="Smart Audit ICD-10 MIK", layout="wide")
-st.markdown("""
-    <style>
-    .main { background-color: #f5f7f9; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    </style>
-    """, unsafe_allow_html=True)
 
-# --- DATABASE ENGINE (MAHASISWA 2: BACKEND/DATABASE) ---
+# --- DATABASE ENGINE ---
 DB_NAME = "audit_mik_pro.db"
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    # Tabel Utama Hasil Audit dengan Indikator Mutu
     c.execute('''CREATE TABLE IF NOT EXISTS audit_klinik (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     tgl_audit TEXT,
@@ -42,47 +34,42 @@ init_db()
 
 # --- SIDEBAR NAVIGATION ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=80)
     st.title("🗂️ QC Rekam Medis")
     menu = st.radio("Navigasi Sistem:", 
-                    ["Dashboard Mutu (Mhs 3)", 
-                     "Instrumen Audit (Mhs 1)", 
+                    ["Dashboard Mutu", 
+                     "Instrumen Audit", 
                      "Riwayat & Laporan", 
                      "Decision Support"])
     st.markdown("---")
-    st.caption("📍 Lokasi: Wihdatul Ummah Medical Center")
+    st.caption("Proyek D4 MIK - Wihdatul Ummah Medical Center")
 
-# --- MODUL 1: INSTRUMEN AUDIT (MAHASISWA 1: DESAIN & INDIKATOR) ---
-if menu == "Instrumen Audit (Mhs 1)":
-    st.header("📋 Form Audit Koding Diagnosis (Quality Control)")
+# --- MODUL 1: INSTRUMEN AUDIT ---
+if menu == "Instrumen Audit":
+    st.header("📋 Form Audit Koding Diagnosis")
     
     with st.form("audit_form"):
         c1, c2 = st.columns(2)
         with c1:
-            st.subheader("Data Pasien")
             tgl = st.date_input("Tanggal Audit", datetime.now())
-            no_rm = st.text_input("Nomor Rekam Medis (WUMC-xxxx)")
+            no_rm = st.text_input("Nomor Rekam Medis")
             nama = st.text_input("Nama Pasien")
             unit = st.selectbox("Unit Layanan", ["Rawat Jalan", "Rawat Inap", "UGD"])
-            diag_dr = st.text_area("Diagnosa Utama (Resume Medis)")
+            diag_dr = st.text_area("Diagnosa dalam Resume Medis")
         
         with c2:
-            st.subheader("Penilaian Coder")
-            k_rs = st.text_input("Kode ICD-10 SIMRS (Coder)").upper()
-            k_audit = st.text_input("Kode ICD-10 Seharusnya (Auditor)").upper()
-            
-            # Indikator Penilaian (Mhs 1)
-            dokumen = st.radio("Kelengkapan Dokumen Penunjang", ["Lengkap", "Tidak Lengkap"])
-            error_type = st.selectbox("Kategori Kesalahan (Jika Ada)", 
+            k_rs = st.text_input("Kode ICD-10 Coder (SIMRS)").upper()
+            k_audit = st.text_input("Kode ICD-10 Auditor").upper()
+            dokumen = st.radio("Kelengkapan Dokumen", ["Lengkap", "Tidak Lengkap"])
+            error_type = st.selectbox("Kategori Kesalahan", 
                                     ["Tidak Ada", "Salah Kode Karakter ke-3", "Salah Kode Karakter ke-4", "Beda Bab ICD-10", "Dokumen Tidak Terbaca"])
             
-        auditor = st.text_input("Nama Mahasiswa Auditor")
+        auditor = st.text_input("Nama Auditor")
         
-        # Decision Logic (Mhs 1 & 2)
+        # Logic otomatis
         is_akurat = "AKURAT" if k_rs == k_audit else "TIDAK AKURAT"
-        rekomendasi = f"Perlu verifikasi ulang pada Kode {k_audit}" if is_akurat == "TIDAK AKURAT" else "Coding sudah sesuai standar."
+        rekomendasi = f"Verifikasi ulang Kode {k_audit}" if is_akurat == "TIDAK AKURAT" else "Sudah sesuai standar."
         
-        btn_simpan = st.form_submit_button("Submit Hasil Audit")
+        btn_simpan = st.form_submit_button("Simpan Hasil Audit")
         
         if btn_simpan:
             if no_rm and k_rs:
@@ -94,13 +81,13 @@ if menu == "Instrumen Audit (Mhs 1)":
                           (tgl.strftime("%Y-%m-%d"), no_rm, nama, unit, diag_dr, k_rs, k_audit, is_akurat, dokumen, error_type, rekomendasi, auditor))
                 conn.commit()
                 conn.close()
-                st.success(f"Audit RM {no_rm} Berhasil Disimpan sebagai {is_akurat}")
+                st.success(f"Data Berhasil Disimpan!")
             else:
-                st.warning("Mohon lengkapi data No RM dan Kode RS!")
+                st.error("Isi data yang wajib (No RM & Kode RS)!")
 
-# --- MODUL 2: DASHBOARD MONITORING (VERSI TANPA PLOTLY) ---
-elif menu == "Dashboard Mutu (Mhs 3)":
-    st.header("📊 Dashboard Monitoring Kualitas Data (QC)")
+# --- MODUL 2: DASHBOARD MONITORING (VERSI AMAN TANPA PLOTLY) ---
+elif menu == "Dashboard Mutu":
+    st.header("📊 Dashboard Kualitas Data (QC)")
     
     conn = sqlite3.connect(DB_NAME)
     df = pd.read_sql_query("SELECT * FROM audit_klinik", conn)
@@ -111,55 +98,41 @@ elif menu == "Dashboard Mutu (Mhs 3)":
         akurat = len(df[df['akurasi_kode'] == 'AKURAT'])
         persen_akurat = (akurat/total) * 100
         
-        col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric("Total Sampel Audit", f"{total} RM")
-        col_m2.metric("Coding Akurat", f"{akurat}")
-        col_m3.metric("Persentase Akurasi", f"{persen_akurat:.1f}%")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Total Sampel", f"{total} RM")
+        m2.metric("Akurat", f"{akurat}")
+        m3.metric("Tingkat Akurasi", f"{persen_akurat:.1f}%")
         
         st.markdown("---")
-        # MENGGUNAKAN GRAFIK BAWAAN STREAMLIT (TIDAK PERLU INSTAL PLOTLY)
-        st.subheader("Distribusi Kategori Kesalahan")
-        chart_data = df['kategori_error'].value_counts()
-        st.bar_chart(chart_data) # Ini fungsi bawaan, pasti jalan!
+        # Menggunakan grafik bawaan Streamlit (pasti jalan di komputer mana saja)
+        st.subheader("Grafik Kategori Kesalahan")
+        error_counts = df['kategori_error'].value_counts()
+        st.bar_chart(error_counts)
         
     else:
-        st.info("Dashboard akan muncul setelah ada data audit.")
+        st.info("Belum ada data untuk ditampilkan di Dashboard.")
 
-# --- MODUL 3: RIWAYAT & LAPORAN OTOMATIS ---
+# --- MODUL 3: RIWAYAT ---
 elif menu == "Riwayat & Laporan":
-    st.header("📄 Laporan Audit Berkala")
+    st.header("📄 Riwayat Audit")
     conn = sqlite3.connect(DB_NAME)
-    df_history = pd.read_sql_query("SELECT * FROM audit_klinik ORDER BY id DESC", conn)
+    df_history = pd.read_sql_query("SELECT * FROM audit_klinik", conn)
     conn.close()
-    
-    if not df_history.empty:
-        # Fitur Download (Laporan Otomatis)
-        csv = df_history.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Laporan Audit (CSV)", data=csv, file_name="laporan_audit_icd10.csv", mime='text/csv')
-        
-        st.dataframe(df_history, use_container_width=True)
-    else:
-        st.info("Belum ada riwayat audit.")
+    st.dataframe(df_history, use_container_width=True)
 
-# --- MODUL 4: DECISION SUPPORT (REKOMENDASI) ---
+# --- MODUL 4: DECISION SUPPORT ---
 elif menu == "Decision Support":
-    st.header("💡 Alat Bantu Pengambilan Keputusan")
-    st.write("Sistem memberikan rekomendasi tindakan berdasarkan kategori kesalahan terbanyak.")
-    
+    st.header("💡 Rekomendasi Tindakan Mutu")
     conn = sqlite3.connect(DB_NAME)
     df = pd.read_sql_query("SELECT kategori_error FROM audit_klinik", conn)
     conn.close()
     
     if not df.empty:
         top_error = df['kategori_error'].mode()[0]
-        st.error(f"Penyebab utama ketidakakuratan saat ini: **{top_error}**")
-        
-        with st.expander("Klik untuk Rekomendasi Tindakan Mutu"):
-            if top_error == "Salah Kode Karakter ke-4":
-                st.write("✅ **Rekomendasi:** Sosialisasi penggunaan ICD-10 Volume 1 & 3 untuk pengecekan spesifikasi digit ke-4.")
-            elif top_error == "Dokumen Tidak Lengkap":
-                st.write("✅ **Rekomendasi:** Audit kepatuhan penulisan resume medis oleh Dokter (DPJP).")
-            else:
-                st.write("✅ **Rekomendasi:** Pertahankan performa coding dan lakukan audit rutin bulanan.")
+        st.warning(f"Masalah Dominan: **{top_error}**")
+        if top_error != "Tidak Ada":
+            st.write("👉 **Saran:** Lakukan refreshment training coding ICD-10 khususnya pada Bab terkait.")
+        else:
+            st.write("👉 **Saran:** Kualitas coding sangat baik, pertahankan!")
     else:
-        st.info("Data belum cukup untuk memberikan rekomendasi.")
+        st.info("Data belum cukup.")
