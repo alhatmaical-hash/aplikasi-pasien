@@ -103,19 +103,15 @@ def get_date_range():
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # Pastikan 'departemen' dieja dengan benar
+    # Membuat tabel dengan kolom terpisah sesuai gambar
     c.execute('''CREATE TABLE IF NOT EXISTS rekap_penyakit 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                   visit_time TEXT, patient_name TEXT, diagnosa TEXT, 
                   clinic TEXT, departemen TEXT, company TEXT,
-                  rest_status TEXT, rest_type TEXT, rest_duration INTEGER)''')
+                  rest_status TEXT, istirahat_hari INTEGER, istirahat_jam INTEGER)''')
     
-    # Pastikan kolom baru ada (untuk migrasi database)
-    kolom_baru = [
-        ('visit_time', 'TEXT'), ('patient_name', 'TEXT'), ('diagnosa', 'TEXT'),
-        ('clinic', 'TEXT'), ('departemen', 'TEXT'), ('company', 'TEXT'),
-        ('rest_status', 'TEXT'), ('rest_type', 'TEXT'), ('rest_duration', 'INTEGER')
-    ]
+    # Pastikan migrasi kolom baru masuk ke DB yang sudah ada
+    kolom_baru = [('istirahat_hari', 'INTEGER'), ('istirahat_jam', 'INTEGER')]
     for kolom, tipe in kolom_baru:
         try:
             c.execute(f"ALTER TABLE rekap_penyakit ADD COLUMN {kolom} {tipe}")
