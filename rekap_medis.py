@@ -324,12 +324,10 @@ elif menu == "Analisis Dept & Perusahaan":
         with tab2:
             st.write("### Rekapitulasi Kunjungan Per Perusahaan")
             
-            # Cek apakah kolom 'perusahaan' ada (abaikan huruf besar/kecil)
-            df_data.columns = [c.lower() for c in df_data.columns]
-            
-            if 'perusahaan' in df_data.columns:
-                # Membuat tabel perhitungan
-                pers_counts = df_data['perusahaan'].value_counts().reset_index()
+            # --- GANTI 'perusahaan' JADI 'company' ---
+            if 'company' in df_data.columns:
+                # Membuat tabel perhitungan menggunakan kolom 'company'
+                pers_counts = df_data['company'].value_counts().reset_index()
                 pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
                 
                 p1, p2 = st.columns([1, 2])
@@ -365,7 +363,7 @@ elif menu == "Analisis Dept & Perusahaan":
                             key="btn_xlsx_pers"
                         )
             else:
-                st.error(f"Kolom 'perusahaan' tidak ditemukan. Kolom yang ada adalah: {list(df_data.columns)}")
+                st.error("Kolom 'company' tidak ditemukan di database.")
 
 # --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI PERBAIKAN RUMUS) ---
 elif menu == "Keterangan Istirahat":
