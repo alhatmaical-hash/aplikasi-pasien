@@ -4,9 +4,7 @@ import sqlite3
 from datetime import date
 import io
 import hashlib
-import subprocess
-import sys
-
+import xlsxwriter
 # --- 0. KONFIGURASI HALAMAN ---
 DB_PATH = 'klinik_data.db'
 st.set_page_config(
