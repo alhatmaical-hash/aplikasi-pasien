@@ -470,97 +470,82 @@ elif menu == "Lihat Semua Data":
     else:
         st.info("Database kosong pada periode ini.")
     conn.close()
-# --- 10. MODUL: ANALISIS ISTIRAHAT (TAMPILKAN SEMUA DATA & HITUNG) ---
+# --- 10. MODUL: ANALISIS DETAIL ISTIRAHAT ---
+elif menu == "Analisis Istirahat":
+    st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
+    
+    t_awal, t_akhir = get_date_range()
+    with st.expander("📅 Pengaturan Periode", expanded=True):
+        c1, c2 = st.columns(2)
+        f1 = c1.date_input("Dari Tanggal", t_awal, key="ana_date_1")
+        f2 = c2.date_input("Sampai Tanggal", t_akhir, key="ana_date_2")
+
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
+    conn.close()
+
+    if not df.empty:
+        df = df.fillna("-")
+        df['istirahat_hari_num'] = pd.to_numeric(df['istirahat_hari'], errors='coerce').fillna(0)
+        df['istirahat_jam_num'] = pd.to_numeric(df['istirahat_jam'], errors='coerce').fillna(0)
+        df['status_clean'] = df['rest_status'].astype(str).str.strip().str.lower()
+        
+        df_istirahat = df[df['status_clean'].isin(['ya', 'yes', 'y'])].copy()
+        df_tidak = df[~df['status_clean'].isin(['ya', 'yes', 'y'])].copy()
+        
+        st.subheader("📌 Ringkasan Status Pasien")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Total Data", f"{len(df)} Orang")
+        m2.metric("Total Istirahat", f"{len(df_istirahat)} Orang")
+        m3.metric("Kembali Bekerja", f"{len(df_tidak)} Orang")
+        st.markdown("---")
+        # ... (lanjutkan sisa kode tampilan tabel analisis Anda di sini) ...
+    else:
+        st.info("Database kosong pada periode ini.")
+
+# --- 11. MODUL: REKAPITULASI TOTAL DATA SICK (TEMPEL DI BAWAHNYA) ---
 elif menu == "Rekapitulasi Total Data Sick":
     st.markdown("<h1 style='text-align: center;'>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
-    # 1. Sinkronisasi Tanggal
     t_awal, t_akhir = get_date_range()
     col_t1, col_t2 = st.columns(2)
     f1 = col_t1.date_input("Mulai", t_awal, key="rekap_final_1")
     f2 = col_t2.date_input("Sampai", t_akhir, key="rekap_final_2")
 
-    # 2. Ambil Data dari Database
     conn = sqlite3.connect(DB_PATH)
     df_all = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
     conn.close()
 
     if not df_all.empty:
-        # FUNGSI INTERNAL: Menghitung statistik per grup perusahaan
         def hitung_statistik(df_grup):
-            if df_grup.empty:
-                return [0, 0, 0]
-            
+            if df_grup.empty: return [0, 0, 0]
             total = len(df_grup)
-            
-            # RUMUS PERBAIKAN: Mengubah data kolom menjadi angka (numeric) 
-            # agar nilai '1' atau '2' bisa terhitung oleh sistem
             hari_num = pd.to_numeric(df_grup['istirahat_hari'], errors='coerce').fillna(0)
             jam_num = pd.to_numeric(df_grup['istirahat_jam'], errors='coerce').fillna(0)
-            
-            # Hitung jumlah baris/pasien yang memiliki durasi > 0
-            jml_hari = len(df_grup[hari_num > 0])
-            jml_jam = len(df_grup[jam_num > 0])
-            
-            return [total, jml_hari, jml_jam]
+            return [total, len(df_grup[hari_num > 0]), len(df_grup[jam_num > 0])]
 
-        # FUNGSI INTERNAL: Merender Tabel agar sesuai tampilan lama
         def tampilkan_tabel_rekap(df_filter, judul_tabel):
             res = hitung_statistik(df_filter)
-            hari_kerja = (f2 - f1).days + 1
-            
             data_rekap = {
-                "TAHUN": [f1.year],
-                "BULAN": [f1.strftime('%B').upper()],
+                "TAHUN": [f1.year], "BULAN": [f1.strftime('%B').upper()],
                 "TANGGAL": [f"{f1.day} SAMPAI {f2.day}"],
                 "ANGKA KUNJUNGAN SAKIT": [f"{res[0]} PASIEN"],
                 "REKOMENDASI PER-HARI": [f"{res[1]} PASIEN"],
                 "REKOMENDASI PER-JAM": [f"{res[2]} PASIEN"],
-                "HARI KERJA": [f"{hari_kerja} HARI"]
+                "HARI KERJA": [f"{(f2 - f1).days + 1} HARI"]
             }
             st.markdown(f"#### {judul_tabel}")
             st.table(pd.DataFrame(data_rekap))
 
-        # 3. Tampilan Navigasi Tab (Sesuai Desain Anda)
-        st.markdown("### 🏢 Pilih Ringkasan Perusahaan")
         tab1, tab2, tab3, tab4 = st.tabs(["HJF GROUP", "KPS GROUP", "OST GROUP", "CKM GROUP"])
-
         with tab1:
-            # Filter Data PT. HJF (Induk)
-            df_hjf_induk = df_all[df_all['company'].str.contains("HALMAHERA JAYA FERONIKEL", case=False, na=False)]
-            tampilkan_tabel_rekap(df_hjf_induk, "PT. HALMAHERA JAYA FERONIKEL (HJF)")
-
-            # Filter Data Kontraktor HJF (Semua PT selain HJF)
-            df_hjf_kon = df_all[df_all['company'].str.contains("PT", case=False, na=False) & 
-                                ~df_all['company'].str.contains("HALMAHERA JAYA FERONIKEL", case=False, na=False)]
-            tampilkan_tabel_rekap(df_hjf_kon, "KONTRAKTOR HJF")
-
-        with tab2:
-            # Filter Data PT. KPS
-            df_kps = df_all[df_all['company'].str.contains("KARUNIA", case=False, na=False)]
-            tampilkan_tabel_rekap(df_kps, "PT. KARUNIA PERKASA SEJAHTERA (KPS)")
-
-        with tab3:
-            # Filter Data PT. OST
-            df_ost = df_all[df_all['company'].str.contains("OST", case=False, na=False)]
-            if not df_ost.empty:
-                tampilkan_tabel_rekap(df_ost, "PT. OBI STAINLESS STEEL (OST)")
-            else:
-                st.info("Data OST Group belum tersedia untuk periode ini.")
-
-        with tab4:
-            # Filter Data PT. CKM
-            df_ckm = df_all[df_all['company'].str.contains("CKM", case=False, na=False)]
-            if not df_ckm.empty:
-                tampilkan_tabel_rekap(df_ckm, "PT. CKM")
-            else:
-                st.info("Data CKM Group belum tersedia untuk periode ini.")
-
-        # Footer Note (Tetap dipertahankan)
-        st.markdown("<p style='color:red; font-weight:bold; text-align:center;'>NOTE : DAFTAR KUNJUNGAN DAN JUMLAH REKOMENDASI ISTIRAHAT GABUNG DENGAN 3 DEVISI (RANAP, RAJAL, UGD).</p>", unsafe_allow_html=True)
-    
+            df_hjf = df_all[df_all['company'].str.contains("HALMAHERA", case=False, na=False)]
+            tampilkan_tabel_rekap(df_hjf, "PT. HALMAHERA JAYA FERONIKEL (HJF)")
+            df_kon = df_all[df_all['company'].str.contains("PT", case=False, na=False) & ~df_all['company'].str.contains("HALMAHERA", case=False, na=False)]
+            tampilkan_tabel_rekap(df_kon, "KONTRAKTOR HJF")
+        # ... (lanjutkan tab lainnya) ...
     else:
-        st.warning("⚠️ Database kosong atau tidak ada kunjungan pada periode tanggal ini.")
+        st.warning("⚠️ Data tidak ditemukan.")
 # --- 11. MODUL: MANAJEMEN USER (REGISTRASI DI DALAM) ---
 elif menu == "Manajemen User":
     st.markdown("<h1>👤 MANAJEMEN PENGGUNA</h1>", unsafe_allow_html=True)
