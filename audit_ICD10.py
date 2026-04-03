@@ -98,7 +98,7 @@ if menu == "Instrumen Audit (Mhs 1)":
             else:
                 st.warning("Mohon lengkapi data No RM dan Kode RS!")
 
-# --- MODUL 2: DASHBOARD MONITORING (MAHASISWA 3: ANALISIS DATA) ---
+# --- MODUL 2: DASHBOARD MONITORING (VERSI TANPA PLOTLY) ---
 elif menu == "Dashboard Mutu (Mhs 3)":
     st.header("📊 Dashboard Monitoring Kualitas Data (QC)")
     
@@ -107,7 +107,6 @@ elif menu == "Dashboard Mutu (Mhs 3)":
     conn.close()
     
     if not df.empty:
-        # Metrik Utama
         total = len(df)
         akurat = len(df[df['akurasi_kode'] == 'AKURAT'])
         persen_akurat = (akurat/total) * 100
@@ -117,21 +116,14 @@ elif menu == "Dashboard Mutu (Mhs 3)":
         col_m2.metric("Coding Akurat", f"{akurat}")
         col_m3.metric("Persentase Akurasi", f"{persen_akurat:.1f}%")
         
-        # Grafik Analisis (Plotly)
         st.markdown("---")
-        g1, g2 = st.columns(2)
+        # MENGGUNAKAN GRAFIK BAWAAN STREAMLIT (TIDAK PERLU INSTAL PLOTLY)
+        st.subheader("Distribusi Kategori Kesalahan")
+        chart_data = df['kategori_error'].value_counts()
+        st.bar_chart(chart_data) # Ini fungsi bawaan, pasti jalan!
         
-        with g1:
-            st.subheader("Tren Kesalahan Coding")
-            fig_error = px.pie(df, names='kategori_error', hole=0.4, color_discrete_sequence=px.colors.sequential.RdBu)
-            st.plotly_chart(fig_error, use_container_width=True)
-            
-        with g2:
-            st.subheader("Akurasi per Unit Layanan")
-            fig_unit = px.bar(df, x='unit_layanan', color='akurasi_kode', barmode='group')
-            st.plotly_chart(fig_unit, use_container_width=True)
     else:
-        st.info("Dashboard akan muncul setelah ada data audit yang diinput.")
+        st.info("Dashboard akan muncul setelah ada data audit.")
 
 # --- MODUL 3: RIWAYAT & LAPORAN OTOMATIS ---
 elif menu == "Riwayat & Laporan":
