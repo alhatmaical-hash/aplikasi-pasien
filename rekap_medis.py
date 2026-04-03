@@ -293,79 +293,80 @@ elif menu == "Analisis Dept & Perusahaan":
             with c1:
                 # Menampilkan Tabel
                 st.dataframe(dept_counts, hide_index=True, use_container_width=True)
+            
             with c2:
                 # Menampilkan Grafik
                 st.bar_chart(dept_counts.set_index('Nama Departemen'))
+                
+                # --- TOMBOL DOWNLOAD DEPARTEMEN ---
                 st.markdown("---")
                 cd1, cd2 = st.columns(2)
+                
                 with cd1:
-                    # Download CSV
                     csv_dept = dept_counts.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="📥 Download CSV (Dept)",
                         data=csv_dept,
-                        file_name=f'rekap_dept_{start}_sd_{end}.csv',
+                        file_name=f'rekap_dept_{start_date}_sd_{end_date}.csv',
                         mime='text/csv',
-                        use_container_width=True
+                        use_container_width=True,
+                        key="btn_csv_dept"
                     )
                 
                 with cd2:
-                    # Download Excel
                     output_dept = io.BytesIO()
                     with pd.ExcelWriter(output_dept, engine='xlsxwriter') as writer:
                         dept_counts.to_excel(writer, index=False, sheet_name='Rekap_Departemen')
-                    
                     st.download_button(
                         label="📊 Download Excel (Dept)",
                         data=output_dept.getvalue(),
-                        file_name=f'rekap_dept_{start}_sd_{end}.xlsx',
+                        file_name=f'rekap_dept_{start_date}_sd_{end_date}.xlsx',
                         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        use_container_width=True
+                        use_container_width=True,
+                        key="btn_xlsx_dept"
                     )
-         with tab2:
-              st.write("### Rekapitulasi Kunjungan Per Perusahaan")
-              # Membuat tabel perhitungan berdasarkan kolom perusahaan
-              pers_counts = df_data['perusahaan'].value_counts().reset_index()
-              pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
+
+        with tab2:
+            st.write("### Rekapitulasi Kunjungan Per Perusahaan")
+            # Membuat tabel perhitungan
+            pers_counts = df_data['perusahaan'].value_counts().reset_index()
+            pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
             
-              p1, p2 = st.columns([1, 2])
-              with p1:
-                   # Menampilkan Tabel
-                   st.dataframe(pers_counts, hide_index=True, use_container_width=True)
+            p1, p2 = st.columns([1, 2])
+            with p1:
+                # Menampilkan Tabel
+                st.dataframe(pers_counts, hide_index=True, use_container_width=True)
             
-              with p2:
-                   # Menampilkan Grafik
-                   st.bar_chart(pers_counts.set_index('Nama Perusahaan'))
+            with p2:
+                # Menampilkan Grafik
+                st.bar_chart(pers_counts.set_index('Nama Perusahaan'))
                 
                 # --- TOMBOL DOWNLOAD PERUSAHAAN ---
                 st.markdown("---")
                 cp1, cp2 = st.columns(2)
                 
                 with cp1:
-                    # Download CSV
                     csv_pers = pers_counts.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="📥 Download CSV (Pers)",
                         data=csv_pers,
-                        file_name=f'rekap_perusahaan_{start}_sd_{end}.csv',
+                        file_name=f'rekap_pers_{start_date}_sd_{end_date}.csv',
                         mime='text/csv',
                         use_container_width=True,
-                        key="btn_csv_pers" # Key unik agar tidak bentrok dengan tab1
+                        key="btn_csv_pers"
                     )
                 
                 with cp2:
-                    # Download Excel
                     output_pers = io.BytesIO()
                     with pd.ExcelWriter(output_pers, engine='xlsxwriter') as writer:
                         pers_counts.to_excel(writer, index=False, sheet_name='Rekap_Perusahaan')
-                    
                     st.download_button(
                         label="📊 Download Excel (Pers)",
                         data=output_pers.getvalue(),
-                        file_name=f'rekap_perusahaan_{start}_sd_{end}.xlsx',
+                        file_name=f'rekap_pers_{start_date}_sd_{end_date}.xlsx',
                         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         use_container_width=True,
-                        key="btn_xlsx_pers" # Key unik
+                        key="btn_xlsx_pers"
                     )
     else:
         st.warning("Data tidak ditemukan pada periode ini.")
