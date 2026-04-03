@@ -587,10 +587,10 @@ elif menu == "Analisis Istirahat":
             df_view['Istirahat Jam'] = df_final['istirahat_jam'].replace(0, '-')
             
             st.dataframe(df_view, hide_index=True, use_container_width=True)
-        else:
-            st.warning("⚠️ Tidak ada data untuk kategori filter ini.")
-        else:
-            st.info("ℹ️ Database kosong pada periode ini.")
+    else:
+        st.warning("⚠️ Tidak ada data untuk kategori filter ini.")
+    else:
+        st.info("ℹ️ Database kosong pada periode ini.")
 
 # --- 11. MODUL: MANAJEMEN USER (REGISTRASI DI DALAM) ---
 elif menu == "Manajemen User":
