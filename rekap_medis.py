@@ -469,7 +469,7 @@ elif menu == "Lihat Semua Data":
     else:
         st.info("Database kosong pada periode ini.")
     conn.close()
-# --- 10. MODUL: ANALISIS ISTIRAHAT (KODE LENGKAP & RAPI) ---
+# --- 10. MODUL: ANALISIS ISTIRAHAT (TAMPILKAN SEMUA DATA & HITUNG) ---
 elif menu == "Analisis Istirahat":
     st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
     
@@ -481,74 +481,71 @@ elif menu == "Analisis Istirahat":
         f2 = c2.date_input("Sampai Tanggal", t_akhir, key="ana_date_2")
 
     conn = sqlite3.connect(DB_PATH)
+    # Mengambil semua data tanpa filter DISTINCT agar data double tetap muncul
     df = pd.read_sql_query("SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", conn, params=[f1, f2])
     conn.close()
 
     if not df.empty:
-        # 1. Normalisasi Data (Menghilangkan None agar sesuai data asli)
-        df = df.fillna("-") 
+        # 1. Normalisasi tampilan agar TIDAK ADA "NONE"
+        # Semua sel kosong diisi "-" agar tabel terlihat bersih
+        df = df.fillna("-")
+        
+        # Konversi kolom istirahat ke angka hanya untuk keperluan perhitungan statistik
+        df['istirahat_hari_num'] = pd.to_numeric(df['istirahat_hari'], errors='coerce').fillna(0)
+        df['istirahat_jam_num'] = pd.to_numeric(df['istirahat_jam'], errors='coerce').fillna(0)
         df['status_clean'] = df['rest_status'].astype(str).str.strip().str.lower()
         
-        # Pastikan durasi adalah angka untuk filter
-        df['istirahat_hari'] = pd.to_numeric(df['istirahat_hari'], errors='coerce').fillna(0)
-        df['istirahat_jam'] = pd.to_numeric(df['istirahat_jam'], errors='coerce').fillna(0)
-        
-        # 2. Pengelompokan Data
+        # 2. Perhitungan Statistik (Hanya Menghitung)
         df_istirahat = df[df['status_clean'].isin(['ya', 'yes', 'y'])].copy()
         df_tidak = df[~df['status_clean'].isin(['ya', 'yes', 'y'])].copy()
         
-        df_hari_only = df_istirahat[df_istirahat['istirahat_hari'] > 0]
-        df_jam_only = df_istirahat[df_istirahat['istirahat_jam'] > 0]
+        df_hari_only = df_istirahat[df_istirahat['istirahat_hari_num'] > 0]
+        df_jam_only = df_istirahat[df_istirahat['istirahat_jam_num'] > 0]
         
-        # 3. Statistik & Tombol Interaktif
+        # 3. Tampilan Ringkasan (Metric)
         st.subheader("📌 Ringkasan Status Pasien")
         
-        # Inisialisasi session state untuk filter jika belum ada
-        if 'filter_aktif' not in st.session_state:
-            st.session_state.filter_aktif = "Semua"
+        if 'filter_pilihan' not in st.session_state:
+            st.session_state.filter_pilihan = "Semua"
 
         m1, m2, m3 = st.columns(3)
         m1.metric("Total Data", f"{len(df)} Orang")
-        if m1.button("Lihat Semua Data", use_container_width=True):
-            st.session_state.filter_aktif = "Semua"
+        if m1.button("Lihat Semua Data (Termasuk Double)", use_container_width=True):
+            st.session_state.filter_pilihan = "Semua"
             
-        if m2.button(f"✅ Total Istirahat: {len(df_istirahat)}", use_container_width=True):
-            st.session_state.filter_aktif = "Istirahat"
+        m2.metric("Total Istirahat", f"{len(df_istirahat)} Orang")
+        if m2.button("Lihat Daftar Istirahat", use_container_width=True):
+            st.session_state.filter_pilihan = "Istirahat"
             
-        if m3.button(f"❌ Tidak Istirahat: {len(df_tidak)}", use_container_width=True):
-            st.session_state.filter_aktif = "Tidak"
+        m3.metric("Kembali Bekerja", f"{len(df_tidak)} Orang")
+        if m3.button("Lihat Daftar Kembali Kerja", use_container_width=True):
+            st.session_state.filter_pilihan = "Tidak"
 
-        # 4. Detail Pembagian Durasi
+        # 4. Statistik Durasi
         st.markdown("---")
-        st.write("### 📂 Detail Pembagian Istirahat")
         s1, s2 = st.columns(2)
         s1.metric("🛌 Kategori HARI", f"{len(df_hari_only)} Orang")
         s2.metric("⏱️ Kategori JAM", f"{len(df_jam_only)} Orang")
         
-        if s1.button("Filter Pasien (HARI)", use_container_width=True):
-            st.session_state.filter_aktif = "Hari"
-        if s2.button("Filter Pasien (JAM)", use_container_width=True):
-            st.session_state.filter_aktif = "Jam"
+        if s1.button("Filter Kategori HARI", use_container_width=True):
+            st.session_state.filter_pilihan = "Hari"
+        if s2.button("Filter Kategori JAM", use_container_width=True):
+            st.session_state.filter_pilihan = "Jam"
 
-        # 5. Logika Penentuan Data Tampil
-        if st.session_state.filter_aktif == "Istirahat":
+        # 5. Penentuan Data yang Ditampilkan Tabel
+        if st.session_state.filter_pilihan == "Istirahat":
             df_final = df_istirahat
-            judul = "Daftar Pasien Istirahat (YA)"
-        elif st.session_state.filter_aktif == "Tidak":
+        elif st.session_state.filter_pilihan == "Tidak":
             df_final = df_tidak
-            judul = "Daftar Pasien Kembali Bekerja (TIDAK)"
-        elif st.session_state.filter_aktif == "Hari":
+        elif st.session_state.filter_pilihan == "Hari":
             df_final = df_hari_only
-            judul = "Daftar Pasien Kategori Istirahat HARI"
-        elif st.session_state.filter_aktif == "Jam":
+        elif st.session_state.filter_pilihan == "Jam":
             df_final = df_jam_only
-            judul = "Daftar Pasien Kategori Istirahat JAM"
         else:
             df_final = df
-            judul = "Menampilkan Semua Data"
 
-        # 6. Penyusunan Tabel (Sejajar dengan blok IF di atas)
-        st.markdown(f"### 📋 {judul}")
+        # 6. Tampilkan Tabel Apa Adanya (Sesuai Data Mentah)
+        st.write(f"### 📋 Menampilkan: {st.session_state.filter_pilihan}")
         
         if not df_final.empty:
             df_view = pd.DataFrame()
@@ -561,16 +558,16 @@ elif menu == "Analisis Istirahat":
             df_view['Perusahaan'] = df_final['company']
             df_view['Status'] = df_final['rest_status'].astype(str).str.upper()
             
-            # Ganti angka 0 dengan '-' agar tabel bersih dan tidak "None"
+            # Tampilkan angka asli dari database, ganti 0 dengan "-" untuk kerapian
             df_view['Istirahat Hari'] = df_final['istirahat_hari'].replace(0, '-')
             df_view['Istirahat Jam'] = df_final['istirahat_jam'].replace(0, '-')
             
             st.dataframe(df_view, hide_index=True, use_container_width=True)
         else:
-            st.warning("⚠️ Tidak ada data untuk kategori filter ini.")
+            st.warning("Data tidak ditemukan untuk kategori ini.")
             
     else:
-        st.info("ℹ️ Database kosong pada periode ini.")
+        st.info("ℹ️ Database kosong untuk periode tanggal ini.")
 # --- 11. MODUL: MANAJEMEN USER (REGISTRASI DI DALAM) ---
 elif menu == "Manajemen User":
     st.markdown("<h1>👤 MANAJEMEN PENGGUNA</h1>", unsafe_allow_html=True)
