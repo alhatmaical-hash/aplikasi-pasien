@@ -143,9 +143,8 @@ if st.sidebar.button("🔴 KELUAR APLIKASI", type="primary", use_container_width
 if menu == "Upload Data CSV":
     st.markdown("<h1>📤 UPLOAD DATA PASIEN</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
-    
-    if uploaded_file is not None:
-        try:
+if uploaded_file is not None:
+    try:
             df = pd.read_csv(uploaded_file)
             # Normalisasi nama kolom: huruf kecil dan ganti spasi dengan underscore
             df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
