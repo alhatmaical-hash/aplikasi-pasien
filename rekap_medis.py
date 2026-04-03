@@ -5,6 +5,33 @@ from datetime import date
 import io
 import hashlib
 import xlsxwriter
+
+import io
+
+def unduh_semua_rekap(df_data, start, end):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        # Sheet 1: Data Departemen
+        dept_counts = df_data['departemen'].value_counts().reset_index()
+        dept_counts.columns = ['Nama Departemen', 'Total Kunjungan']
+        dept_counts.to_excel(writer, sheet_name='Rekap_Departemen', index=False)
+        
+        # Sheet 2: Data Perusahaan
+        if 'company' in df_data.columns:
+            pers_counts = df_data['company'].value_counts().reset_index()
+            pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
+            pers_counts.to_excel(writer, sheet_name='Rekap_Perusahaan', index=False)
+            
+        # Sheet 3: Rekap Data Sick (BARU)
+        # Kita ambil data yang sudah difilter status_lower-nya
+        df_sick = df_data[df_data['rest_status'].fillna('tidak').str.lower().str.strip().isin(['ya', 'yes', 'y'])]
+        df_sick.to_excel(writer, sheet_name='Data_Istirahat_Sick', index=False)
+
+        # Sheet 4: Data Lengkap
+        df_data.to_excel(writer, sheet_name='Data_Lengkap_Kunjungan', index=False)
+        
+    return output.getvalue()
+
 # --- 0. KONFIGURASI HALAMAN ---
 DB_PATH = 'klinik_data.db'
 st.set_page_config(
@@ -369,8 +396,31 @@ elif menu == "Analisis Dept & Perusahaan":
 elif menu == "Keterangan Istirahat":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
-    # 1. Filter Tanggal
+    # 1. Filter Tanggal (Ambil input user dulu)
     t_awal, t_akhir = get_date_range()
+    t1, t2 = st.columns(2)
+    start = t1.date_input("Mulai", value=t_awal, key="r1")
+    end = t2.date_input("Sampai", value=t_akhir, key="r2")
+
+    # 2. Ambil Data dari Database berdasarkan 'start' dan 'end'
+    conn = sqlite3.connect(DB_PATH)
+    query = "SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?"
+    df_raw = pd.read_sql_query(query, conn, params=[start, end])
+    conn.close()
+
+    # 3. BARU TAMPILKAN TOMBOL DOWNLOAD (Gunakan df_raw yang baru diambil)
+    if not df_raw.empty:
+        # Gunakan fungsi sakti yang sudah kita buat di atas
+        excel_data = unduh_semua_rekap(df_raw, start, end)
+        
+        st.download_button(
+            label="📥 Download Laporan Terpadu (Semua Sheet)",
+            data=excel_data,
+            file_name=f'Laporan_Sick_Terpadu_{start}_sd_{end}.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            use_container_width=True,
+            key="btn_download_sick_modul"
+        )
     t1, t2 = st.columns(2)
     start = t1.date_input("Mulai", value=t_awal, key="r1")
     end = t2.date_input("Sampai", value=t_akhir, key="r2")
