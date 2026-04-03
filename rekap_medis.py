@@ -263,39 +263,45 @@ elif menu == "Analisis Dept & Perusahaan":
     else:
         st.warning("Data tidak ditemukan pada periode ini.")
 
-# --- 8. MODUL 4: ANALISIS ISTIRAHAT (SISTEM TABS & RINGKASAN GRUP) ---
+# --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI PERBAIKAN RUMUS) ---
 elif menu == "Keterangan Istirahat":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
     # 1. Filter Tanggal
+    t_awal, t_akhir = get_date_range()
     t1, t2 = st.columns(2)
-    start = t1.date_input("Mulai", value=get_date_range()[0], key="r1")
-    end = t2.date_input("Sampai", value=get_date_range()[1], key="r2")
+    start = t1.date_input("Mulai", value=t_awal, key="r1")
+    end = t2.date_input("Sampai", value=t_akhir, key="r2")
 
     conn = sqlite3.connect(DB_PATH)
-    # Menarik data company untuk kebutuhan filtering per tab
-    query = f"SELECT departemen, company, rest_status, rest_duration FROM rekap_penyakit WHERE visit_time BETWEEN '{start}' AND '{end}'"
-    df_raw = pd.read_sql_query(query, conn)
+    # AMBIL SEMUA KOLOM TERKAIT (Termasuk istirahat_hari dan istirahat_jam)
+    query = "SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?"
+    df_raw = pd.read_sql_query(query, conn, params=[start, end])
     conn.close()
 
     if not df_raw.empty:
-        # --- PRE-PROCESSING DATA ---
+        # --- PRE-PROCESSING DATA (PEMBERSIHAN) ---
         df_raw['company'] = df_raw['company'].fillna('UNKNOWN').str.upper().str.strip()
         df_raw['status_lower'] = df_raw['rest_status'].fillna('tidak').str.lower().str.strip()
-        df_raw['dur_num'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
+        
+        # Konversi kolom durasi ke angka agar bisa dihitung
+        df_raw['h_num'] = pd.to_numeric(df_raw['istirahat_hari'], errors='coerce').fillna(0)
+        df_raw['j_num'] = pd.to_numeric(df_raw['istirahat_jam'], errors='coerce').fillna(0)
         
         selisih_hari = (end - start).days + 1
         bulan_nama = start.strftime("%B").upper()
 
-        # Helper Fungsi untuk Membuat Tabel Ringkasan (Executive Summary)
+        # --- RUMUS BARU: MENGHITUNG BERDASARKAN KOLOM SPESIFIK ---
         def get_summary_table(df_filtered):
             if df_filtered.empty:
                 return None
             
             total_pasien = len(df_filtered)
-            # Filter Istirahat Hari (1-7) & Jam (>7)
-            ist_hari = len(df_filtered[(df_filtered['status_lower'] == 'ya') & (df_filtered['dur_num'] >= 1) & (df_filtered['dur_num'] <= 7)])
-            ist_jam = len(df_filtered[(df_filtered['status_lower'] == 'ya') & (df_filtered['dur_num'] > 7)])
+            
+            # Hitung baris yang memiliki nilai > 0 di masing-masing kolom
+            # Syarat: Status harus 'Ya' DAN angkanya bukan 0
+            ist_hari = len(df_filtered[(df_filtered['status_lower'].isin(['ya', 'yes', 'y'])) & (df_filtered['h_num'] > 0)])
+            ist_jam = len(df_filtered[(df_filtered['status_lower'].isin(['ya', 'yes', 'y'])) & (df_filtered['j_num'] > 0)])
             
             summary = pd.DataFrame({
                 "TAHUN": [start.year],
@@ -308,19 +314,19 @@ elif menu == "Keterangan Istirahat":
             })
             return summary
 
-        # --- DAFTAR LIST KONTRAKTOR (Sesuai Permintaan) ---
+        # --- DAFTAR LIST KONTRAKTOR ---
         list_hjf = ["PT INDO FUDONG (HJF)", "PT IMJ ( INOVASI MAJU JAYA) HJF", "PT BTG-ZJYC (ONC)", "PT. ZJYC ONC", "PT. GDSK (HJF)", "PT GLOBEL DARMA SARANA KARYA GDSK (HJF)", "PT GOBEL DHARMA SARANA KARYA GDSK (HJF)", "PT GEOSERVICES MAKASSAR", "PT. RENTOKIL INDONESIA", "PT.MATAHARI PUTRA PRIMA (HYPERMART) HJF"]
         list_kps = ["PT MCC BAOYE (KPS)", "PT MCC6 (KPS)", "PT. JINRUI KPS", "PT YAOHUA (KPS)", "PT CREC (KPS)", "PT. CISDI (KPS)", "PT CISDI-KPS", "PT JME-KPS", "PT. ETGH-KPS", "PT. BTG ZJYC (KPS)"]
         list_ost = ["PT. MCCBY DCM", "PT LONGI & CENTER OST", "PT CREC (OST)", "PT STHB (OST)", "PT ZTPI -OST", "PT ZTPI-(OST)", "ZTPI (OST)", "PT. ZTPI/ OST", "PT ZTPI (OST)", "PT JIANGXI (OST)", "PT. CCEPC OST", "PT INDO FUDONG (OST)", "PT CSCEC (OST)"]
         list_ckm = ["PT. MCC BAOYE (CKM)"]
 
-        # --- TAMPILAN SISTEM TAB (SHEETS) ---
+        # --- TAMPILAN SISTEM TAB ---
         st.write("### 🏢 Pilih Ringkasan Perusahaan")
         tab1, tab2, tab3, tab4 = st.tabs(["HJF GROUP", "KPS GROUP", "OST GROUP", "CKM GROUP"])
 
         with tab1:
             st.subheader("PT. HALMAHERA JAYA FERONIKEL (HJF)")
-            induk = df_raw[df_raw['company'].str.contains("HALMAHERA JAYA FERONIKEL", na=False, regex=False)]
+            induk = df_raw[df_raw['company'].str.contains("HALMAHERA", na=False)]
             res_induk = get_summary_table(induk)
             if res_induk is not None: st.table(res_induk)
             else: st.info("Data Induk HJF Tidak Ditemukan")
@@ -333,7 +339,7 @@ elif menu == "Keterangan Istirahat":
 
         with tab2:
             st.subheader("PT. KARUNIA PERMAI SENTOSA (KPS)")
-            induk = df_raw[df_raw['company'].str.contains("KARUNIA PERMAI SENTOSA", na=False, regex=False)]
+            induk = df_raw[df_raw['company'].str.contains("KARUNIA", na=False)]
             res_induk = get_summary_table(induk)
             if res_induk is not None: st.table(res_induk)
             else: st.info("Data Induk KPS Tidak Ditemukan")
@@ -346,7 +352,7 @@ elif menu == "Keterangan Istirahat":
 
         with tab3:
             st.subheader("PT. OBI SINAR TIMUR (OST)")
-            induk = df_raw[df_raw['company'].str.contains("OBI SINAR TIMUR", na=False, regex=False)]
+            induk = df_raw[df_raw['company'].str.contains("OBI SINAR", na=False)]
             res_induk = get_summary_table(induk)
             if res_induk is not None: st.table(res_induk)
             else: st.info("Data Induk OST Tidak Ditemukan")
@@ -359,7 +365,7 @@ elif menu == "Keterangan Istirahat":
 
         with tab4:
             st.subheader("PT. CIPTA KEMAKMURAN MITRA (CKM)")
-            induk = df_raw[df_raw['company'].str.contains("CIPTA KEMAKMURAN MITRA", na=False, regex=False)]
+            induk = df_raw[df_raw['company'].str.contains("CIPTA KEMAKMURAN", na=False)]
             res_induk = get_summary_table(induk)
             if res_induk is not None: st.table(res_induk)
             else: st.info("Data Induk CKM Tidak Ditemukan")
@@ -372,11 +378,7 @@ elif menu == "Keterangan Istirahat":
 
         # --- CATATAN KAKI ---
         st.markdown("---")
-        st.markdown("""
-            <p style='color:red; font-weight:bold; font-size:14px; text-align:center;'>
-            NOTE : DAFTAR KUNJUNGAN DAN JUMLAH REKOMENDASI ISTIRAHAT GABUNG DENGAN 3 DEVISI , RANAP RAJAL UGD.
-            </p>
-            """, unsafe_allow_html=True)
+        st.markdown("<p style='color:red; font-weight:bold; text-align:center;'>NOTE : DAFTAR KUNJUNGAN DAN JUMLAH REKOMENDASI ISTIRAHAT GABUNG DENGAN 3 DEVISI (RANAP, RAJAL, UGD).</p>", unsafe_allow_html=True)
     else:
         st.info("ℹ️ Belum ada data untuk periode tanggal ini.")
 # --- 9. MODUL: LIHAT SEMUA DATA (DENGAN DURASI, DEPT, & PERUSAHAAN) ---
