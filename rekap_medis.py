@@ -158,30 +158,33 @@ if menu == "Upload Data CSV":
             st.write("### 🔍 Pratinjau Data:")
             st.dataframe(df.head(), use_container_width=True)
             
-            if st.button("💾 SIMPAN KE DATABASE", use_container_width=True, type="primary"):
+           if st.button("💾 SIMPAN KE DATABASE", use_container_width=True, type="primary"):
                 conn = sqlite3.connect(DB_PATH)
                 
-                # Pembersihan Baris Kosong
+                # Pembersihan data standar
                 df = df.dropna(subset=['patient_name'])
                 df['p_name_check'] = df['patient_name'].astype(str).str.strip().str.lower()
                 df = df[~df['p_name_check'].isin(['none', 'nan', '', 'null'])].copy()
 
                 if not df.empty:
-                    # Pastikan format tanggal aman
                     df['visit_time'] = pd.to_datetime(df['visit_time']).dt.strftime('%Y-%m-%d')
                     
-                    # Tambahkan kolom yang kurang secara otomatis agar tidak error
-                    kolom_wajib = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'departemen', 'company', 'rest_status', 'rest_type', 'rest_duration']
+                    # Kolom wajib sesuai gambar (gunakan underscore agar konsisten di DB)
+                    kolom_wajib = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'departemen', 'company', 'rest_status', 'istirahat_hari', 'istirahat_jam']
+                    
+                    # Cek kolom, jika tidak ada di CSV, isi 0
                     for col in kolom_wajib:
                         if col not in df.columns:
-                            df[col] = 0 if col == 'rest_duration' else "-"
+                            df[col] = 0 if 'istirahat' in col else "-"
                     
-                    # Simpan hanya kolom yang dibutuhkan
-                    df_to_save = df[kolom_wajib]
+                    # Simpan data aktual tanpa mengubah angka (sesuai permintaan Anda)
+                    df_to_save = df[kolom_wajib].copy()
+                    df_to_save['istirahat_hari'] = pd.to_numeric(df_to_save['istirahat_hari'], errors='coerce').fillna(0).astype(int)
+                    df_to_save['istirahat_jam'] = pd.to_numeric(df_to_save['istirahat_jam'], errors='coerce').fillna(0).astype(int)
+
                     df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
                     conn.commit()
                     conn.close()
-                    
                     st.success(f"✅ Berhasil menyimpan {len(df_to_save)} data pasien.")
                     st.balloons()
                 else:
@@ -409,33 +412,22 @@ elif menu == "Lihat Semua Data":
             st.metric(f"Data Terfilter ({st_filter})", f"{len(df_tampil)} Orang")
             st.markdown("---")
 
-            # --- PENYUSUNAN TABEL (KOLOM LENGKAP) ---
+           # --- PENYUSUNAN TABEL SESUAI GAMBAR EXCEL ---
             df_display = pd.DataFrame()
             df_display['No.'] = range(1, len(df_tampil) + 1)
             df_display['Pilih'] = False
             df_display['Tanggal'] = df_tampil['visit_time']
             df_display['Nama Pasien'] = df_tampil['patient_name']
             df_display['Diagnosa'] = df_tampil['diagnosa']
-            
-            # Menampilkan Clinic DAN Departemen
             df_display['Clinic'] = df_tampil['clinic']
-            
-            # Sesuaikan 'departemen' dengan nama kolom asli di database/CSV Anda
-            if 'departemen' in df_tampil.columns:
-                df_display['Departemen'] = df_tampil['departemen']
-            elif 'department' in df_tampil.columns:
-                df_display['Departemen'] = df_tampil['department']
-            else:
-                df_display['Departemen'] = "-"
-            
+            df_display['Departemen'] = df_tampil['departemen']
             df_display['Perusahaan'] = df_tampil['company']
-            
-            # Kolom Istirahat (Hari/Jam)
-            df_display['Istirahat'] = df_tampil['dur_num'].apply(
-                lambda x: f"{int(x)} Hari" if 1 <= x <= 7 else (f"{int(x)} Jam" if x > 7 else "-")
-            )
-            
             df_display['Status'] = df_tampil['rest_status'].str.upper()
+            
+            # Menampilkan kolom terpisah dan mengganti angka 0 dengan '-' agar rapi
+            df_display['Istirahat Hari'] = df_tampil['istirahat_hari'].replace(0, '-')
+            df_display['Istirahat Jam'] = df_tampil['istirahat_jam'].replace(0, '-')
+            
             df_display['db_id'] = df_tampil['id']
 
             # Render Tabel
