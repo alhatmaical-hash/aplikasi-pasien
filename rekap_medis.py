@@ -416,7 +416,7 @@ elif menu == "Lihat Semua Data":
             st.metric(f"Data Terfilter ({st_filter})", f"{len(df_tampil)} Orang")
             st.markdown("---")
 
-           # --- PENYUSUNAN TABEL SESUAI GAMBAR EXCEL ---
+          # --- PERBAIKAN PENYUSUNAN TABEL (AGAR HARI & JAM TAMPIL) ---
             df_display = pd.DataFrame()
             df_display['No.'] = range(1, len(df_tampil) + 1)
             df_display['Pilih'] = False
@@ -426,11 +426,12 @@ elif menu == "Lihat Semua Data":
             df_display['Clinic'] = df_tampil['clinic']
             df_display['Departemen'] = df_tampil['departemen']
             df_display['Perusahaan'] = df_tampil['company']
-            df_display['Status'] = df_tampil['rest_status'].str.upper()
+            df_display['Status'] = df_tampil['rest_status'].astype(str).str.upper()
             
-            # Menampilkan kolom terpisah dan mengganti angka 0 dengan '-' agar rapi
-            df_display['Istirahat Hari'] = df_tampil['istirahat_hari'].replace(0, '-')
-            df_display['Istirahat Jam'] = df_tampil['istirahat_jam'].replace(0, '-')
+            # 1. Pastikan data None/NaN diubah jadi 0 dulu agar bisa diproses
+            # 2. Kemudian ubah angka 0 menjadi '-' agar tampilan di tabel rapi
+            df_display['Istirahat Hari'] = pd.to_numeric(df_tampil['istirahat_hari'], errors='coerce').fillna(0).replace(0, '-')
+            df_display['Istirahat Jam'] = pd.to_numeric(df_tampil['istirahat_jam'], errors='coerce').fillna(0).replace(0, '-')
             
             df_display['db_id'] = df_tampil['id']
 
