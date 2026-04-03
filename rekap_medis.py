@@ -4,6 +4,13 @@ import sqlite3
 from datetime import date
 import io
 import hashlib
+import subprocess
+import sys
+
+try:
+    import xlsxwriter
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "xlsxwriter"])
 
 # --- 0. KONFIGURASI HALAMAN ---
 DB_PATH = 'klinik_data.db'
