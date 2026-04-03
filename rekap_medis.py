@@ -396,23 +396,23 @@ elif menu == "Analisis Dept & Perusahaan":
 elif menu == "Keterangan Istirahat":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
-    # 1. Filter Tanggal (Ambil input user dulu)
+    # 1. Filter Tanggal
     t_awal, t_akhir = get_date_range()
     t1, t2 = st.columns(2)
-    start = t1.date_input("Mulai", value=t_awal, key="r1")
-    end = t2.date_input("Sampai", value=t_akhir, key="r2")
+    
+    # UBAH KEY DI SINI AGAR UNIK
+    start = t1.date_input("Mulai", value=t_awal, key="sick_start") 
+    end = t2.date_input("Sampai", value=t_akhir, key="sick_end")
 
-    # 2. Ambil Data dari Database berdasarkan 'start' dan 'end'
+    # 2. Ambil Data dari Database
     conn = sqlite3.connect(DB_PATH)
     query = "SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?"
     df_raw = pd.read_sql_query(query, conn, params=[start, end])
     conn.close()
 
-    # 3. BARU TAMPILKAN TOMBOL DOWNLOAD (Gunakan df_raw yang baru diambil)
+    # 3. Tampilkan Tombol Download
     if not df_raw.empty:
-        # Gunakan fungsi sakti yang sudah kita buat di atas
         excel_data = unduh_semua_rekap(df_raw, start, end)
-        
         st.download_button(
             label="📥 Download Laporan Terpadu (Semua Sheet)",
             data=excel_data,
@@ -421,6 +421,7 @@ elif menu == "Keterangan Istirahat":
             use_container_width=True,
             key="btn_download_sick_modul"
         )
+        st.markdown("---")
     t1, t2 = st.columns(2)
     start = t1.date_input("Mulai", value=t_awal, key="r1")
     end = t2.date_input("Sampai", value=t_akhir, key="r2")
