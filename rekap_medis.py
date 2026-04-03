@@ -513,7 +513,7 @@ elif menu == "Analisis Istirahat":
 
         m1, m2, m3 = st.columns(3)
         m1.metric("Total Data", f"{len(df)} Orang")
-        if m1.button("Lihat Semua Data (Termasuk Double)", use_container_width=True):
+        if m1.button("Lihat Semua Data", use_container_width=True):
             st.session_state.filter_pilihan = "Semua"
             
         m2.metric("Total Istirahat", f"{len(df_istirahat)} Orang")
