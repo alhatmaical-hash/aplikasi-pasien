@@ -7,11 +7,6 @@ import hashlib
 import subprocess
 import sys
 
-try:
-    import xlsxwriter
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "xlsxwriter"])
-
 # --- 0. KONFIGURASI HALAMAN ---
 DB_PATH = 'klinik_data.db'
 st.set_page_config(
