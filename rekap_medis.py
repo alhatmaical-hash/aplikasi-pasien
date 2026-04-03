@@ -323,43 +323,49 @@ elif menu == "Analisis Dept & Perusahaan":
 
         with tab2:
             st.write("### Rekapitulasi Kunjungan Per Perusahaan")
-            pers_counts = df_data['perusahaan'].value_counts().reset_index()
-            pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
             
-            p1, p2 = st.columns([1, 2])
-            with p1:
-                st.dataframe(pers_counts, hide_index=True, use_container_width=True)
+            # Cek apakah kolom 'perusahaan' ada (abaikan huruf besar/kecil)
+            df_data.columns = [c.lower() for c in df_data.columns]
             
-            with p2:
-                st.bar_chart(pers_counts.set_index('Nama Perusahaan'))
-                st.markdown("---")
-                cp1, cp2 = st.columns(2)
+            if 'perusahaan' in df_data.columns:
+                # Membuat tabel perhitungan
+                pers_counts = df_data['perusahaan'].value_counts().reset_index()
+                pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
                 
-                with cp1:
-                    csv_pers = pers_counts.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📥 Download CSV (Pers)",
-                        data=csv_pers,
-                        file_name=f'rekap_pers_{start}_sd_{end}.csv', # <-- Sudah diperbaiki
-                        mime='text/csv',
-                        use_container_width=True,
-                        key="btn_csv_pers"
-                    )
+                p1, p2 = st.columns([1, 2])
+                with p1:
+                    st.dataframe(pers_counts, hide_index=True, use_container_width=True)
                 
-                with cp2:
-                    output_pers = io.BytesIO()
-                    with pd.ExcelWriter(output_pers, engine='xlsxwriter') as writer:
-                        pers_counts.to_excel(writer, index=False, sheet_name='Rekap_Perusahaan')
-                    st.download_button(
-                        label="📊 Download Excel (Pers)",
-                        data=output_pers.getvalue(),
-                        file_name=f'rekap_pers_{start}_sd_{end}.xlsx', # <-- Sudah diperbaiki
-                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        use_container_width=True,
-                        key="btn_xlsx_pers"
-                    )
-    else:
-        st.warning("Data tidak ditemukan pada periode ini.")
+                with p2:
+                    st.bar_chart(pers_counts.set_index('Nama Perusahaan'))
+                    st.markdown("---")
+                    cp1, cp2 = st.columns(2)
+                    
+                    with cp1:
+                        csv_pers = pers_counts.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="📥 Download CSV (Pers)",
+                            data=csv_pers,
+                            file_name=f'rekap_pers_{start}_sd_{end}.csv',
+                            mime='text/csv',
+                            use_container_width=True,
+                            key="btn_csv_pers"
+                        )
+                    
+                    with cp2:
+                        output_pers = io.BytesIO()
+                        with pd.ExcelWriter(output_pers, engine='xlsxwriter') as writer:
+                            pers_counts.to_excel(writer, index=False, sheet_name='Rekap_Perusahaan')
+                        st.download_button(
+                            label="📊 Download Excel (Pers)",
+                            data=output_pers.getvalue(),
+                            file_name=f'rekap_pers_{start}_sd_{end}.xlsx',
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            use_container_width=True,
+                            key="btn_xlsx_pers"
+                        )
+            else:
+                st.error(f"Kolom 'perusahaan' tidak ditemukan. Kolom yang ada adalah: {list(df_data.columns)}")
 
 # --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI PERBAIKAN RUMUS) ---
 elif menu == "Keterangan Istirahat":
