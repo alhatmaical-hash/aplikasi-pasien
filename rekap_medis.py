@@ -568,8 +568,8 @@ elif menu == "Analisis Istirahat":
             st.dataframe(df_view, hide_index=True, use_container_width=True)
         else:
             st.warning("⚠️ Tidak ada data untuk kategori filter ini.")
-        else:
-            st.info("ℹ️ Database kosong pada periode ini.")
+    else:
+        st.info("ℹ️ Database kosong pada periode ini.")
        # 6. Penyusunan Tabel agar Tidak "None"
         st.markdown(f"### 📋 {judul}")
         if not df_final.empty:
@@ -589,8 +589,8 @@ elif menu == "Analisis Istirahat":
             st.dataframe(df_view, hide_index=True, use_container_width=True)
         else:
             st.warning("⚠️ Tidak ada data untuk kategori filter ini.")
-    else:
-        st.info("ℹ️ Database kosong pada periode ini.")
+        else:
+            st.info("ℹ️ Database kosong pada periode ini.")
 
 # --- 11. MODUL: MANAJEMEN USER (REGISTRASI DI DALAM) ---
 elif menu == "Manajemen User":
