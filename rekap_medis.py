@@ -570,7 +570,7 @@ elif menu == "Analisis Istirahat":
             st.warning("⚠️ Tidak ada data untuk kategori filter ini.")
     else:
         st.info("ℹ️ Database kosong pada periode ini.")
-       # 6. Penyusunan Tabel agar Tidak "None"
+      # 6. Penyusunan Tabel (PASTIKAN SEJAJAR DENGAN BLOK DI ATASNYA)
         st.markdown(f"### 📋 {judul}")
         if not df_final.empty:
             df_view = pd.DataFrame()
@@ -581,17 +581,17 @@ elif menu == "Analisis Istirahat":
             df_view['Clinic'] = df_final['clinic']
             df_view['Departemen'] = df_final['departemen']
             df_view['Perusahaan'] = df_final['company']
-            df_view['Status'] = df_final['rest_status'].str.upper()
+            df_view['Status'] = df_final['rest_status'].astype(str).str.upper()
             
+            # Membersihkan tampilan angka 0 menjadi '-'
             df_view['Istirahat Hari'] = df_final['istirahat_hari'].replace(0, '-')
             df_view['Istirahat Jam'] = df_final['istirahat_jam'].replace(0, '-')
             
             st.dataframe(df_view, hide_index=True, use_container_width=True)
-       else:
+        else:
             st.warning("⚠️ Tidak ada data untuk kategori filter ini.")
     else:
         st.info("ℹ️ Database kosong pada periode ini.")
-
 # --- 11. MODUL: MANAJEMEN USER (REGISTRASI DI DALAM) ---
 elif menu == "Manajemen User":
     st.markdown("<h1>👤 MANAJEMEN PENGGUNA</h1>", unsafe_allow_html=True)
