@@ -322,21 +322,20 @@ elif menu == "Analisis Dept & Perusahaan":
                         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         use_container_width=True
                     )
-
-       with tab2:
-            st.write("### Rekapitulasi Kunjungan Per Perusahaan")
-            # Membuat tabel perhitungan berdasarkan kolom perusahaan
-            pers_counts = df_data['perusahaan'].value_counts().reset_index()
-            pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
+         with tab2:
+              st.write("### Rekapitulasi Kunjungan Per Perusahaan")
+              # Membuat tabel perhitungan berdasarkan kolom perusahaan
+              pers_counts = df_data['perusahaan'].value_counts().reset_index()
+              pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
             
-            p1, p2 = st.columns([1, 2])
-            with p1:
-                # Menampilkan Tabel
-                st.dataframe(pers_counts, hide_index=True, use_container_width=True)
+              p1, p2 = st.columns([1, 2])
+              with p1:
+                   # Menampilkan Tabel
+                   st.dataframe(pers_counts, hide_index=True, use_container_width=True)
             
-            with p2:
-                # Menampilkan Grafik
-                st.bar_chart(pers_counts.set_index('Nama Perusahaan'))
+              with p2:
+                   # Menampilkan Grafik
+                   st.bar_chart(pers_counts.set_index('Nama Perusahaan'))
                 
                 # --- TOMBOL DOWNLOAD PERUSAHAAN ---
                 st.markdown("---")
