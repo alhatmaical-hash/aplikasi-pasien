@@ -285,20 +285,15 @@ elif menu == "Analisis Dept & Perusahaan":
         
         with tab1:
             st.write("### Rekapitulasi Kunjungan Per Departemen")
-            # Membuat tabel perhitungan
             dept_counts = df_data['departemen'].value_counts().reset_index()
             dept_counts.columns = ['Nama Departemen', 'Total Kunjungan']
             
             c1, c2 = st.columns([1, 2])
             with c1:
-                # Menampilkan Tabel
                 st.dataframe(dept_counts, hide_index=True, use_container_width=True)
             
             with c2:
-                # Menampilkan Grafik
                 st.bar_chart(dept_counts.set_index('Nama Departemen'))
-                
-                # --- TOMBOL DOWNLOAD DEPARTEMEN ---
                 st.markdown("---")
                 cd1, cd2 = st.columns(2)
                 
@@ -307,7 +302,7 @@ elif menu == "Analisis Dept & Perusahaan":
                     st.download_button(
                         label="📥 Download CSV (Dept)",
                         data=csv_dept,
-                        file_name=f'rekap_dept_{start_date}_sd_{end_date}.csv',
+                        file_name=f'rekap_dept_{start}_sd_{end}.csv', # <-- Sudah diperbaiki
                         mime='text/csv',
                         use_container_width=True,
                         key="btn_csv_dept"
@@ -320,7 +315,7 @@ elif menu == "Analisis Dept & Perusahaan":
                     st.download_button(
                         label="📊 Download Excel (Dept)",
                         data=output_dept.getvalue(),
-                        file_name=f'rekap_dept_{start_date}_sd_{end_date}.xlsx',
+                        file_name=f'rekap_dept_{start}_sd_{end}.xlsx', # <-- Sudah diperbaiki
                         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         use_container_width=True,
                         key="btn_xlsx_dept"
@@ -328,20 +323,15 @@ elif menu == "Analisis Dept & Perusahaan":
 
         with tab2:
             st.write("### Rekapitulasi Kunjungan Per Perusahaan")
-            # Membuat tabel perhitungan
             pers_counts = df_data['perusahaan'].value_counts().reset_index()
             pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
             
             p1, p2 = st.columns([1, 2])
             with p1:
-                # Menampilkan Tabel
                 st.dataframe(pers_counts, hide_index=True, use_container_width=True)
             
             with p2:
-                # Menampilkan Grafik
                 st.bar_chart(pers_counts.set_index('Nama Perusahaan'))
-                
-                # --- TOMBOL DOWNLOAD PERUSAHAAN ---
                 st.markdown("---")
                 cp1, cp2 = st.columns(2)
                 
@@ -350,7 +340,7 @@ elif menu == "Analisis Dept & Perusahaan":
                     st.download_button(
                         label="📥 Download CSV (Pers)",
                         data=csv_pers,
-                        file_name=f'rekap_pers_{start_date}_sd_{end_date}.csv',
+                        file_name=f'rekap_pers_{start}_sd_{end}.csv', # <-- Sudah diperbaiki
                         mime='text/csv',
                         use_container_width=True,
                         key="btn_csv_pers"
@@ -363,7 +353,7 @@ elif menu == "Analisis Dept & Perusahaan":
                     st.download_button(
                         label="📊 Download Excel (Pers)",
                         data=output_pers.getvalue(),
-                        file_name=f'rekap_pers_{start_date}_sd_{end_date}.xlsx',
+                        file_name=f'rekap_pers_{start}_sd_{end}.xlsx', # <-- Sudah diperbaiki
                         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         use_container_width=True,
                         key="btn_xlsx_pers"
