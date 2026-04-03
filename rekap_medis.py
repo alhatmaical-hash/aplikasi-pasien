@@ -206,8 +206,14 @@ elif menu == "Laporan 10 Penyakit":
     conn.close()
     
     if not df_top.empty:
-        st.dataframe(df_top, use_container_width=True)
-        st.bar_chart(df_top.set_index('diagnosa'))
+        # --- PERBAIKAN NOMOR URUT (MULAI DARI 1) ---
+        df_top.index = range(1, len(df_top) + 1) # Mengubah index agar mulai dari 1
+        df_top.index.name = 'No' # Memberi nama kolom index menjadi 'No'
+        
+        # Menampilkan tabel (gunakan reset_index agar kolom 'No' muncul di tabel)
+        st.dataframe(df_top.reset_index(), use_container_width=True, hide_index=True)
+        
+        st.bar_chart(df_top.set_index('diagnosa')['jumlah'])
     else:
         st.warning("Data tidak tersedia.")
 
