@@ -41,18 +41,26 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+def tampilkan_laporan_klb():
+    st.title("🚨 LAPORAN KEJADIAN LUAR BIASA (KLB)")
+    # Masukkan semua kode logika laporan KLB kamu di sini
+    # Contoh:
+    # df = pd.read_sql("SELECT * FROM rekap_penyakit", conn)
+    # st.write(df)
+    st.info("Halaman ini hanya menampilkan Laporan KLB.")
+
+# --- STEP 2: LOGIKA HALAMAN (TARUH DI BAGIAN BAWAH) ---
 if st.query_params.get("page") == "klb":
     # Sembunyikan sidebar menggunakan CSS
     st.markdown("""
         <style>
             [data-testid="stSidebar"] {display: none;}
             section[data-testid="stSidebar"] {width: 0px; visibility: hidden;}
+            .stAppHeader {display: none;}
         </style>
     """, unsafe_allow_html=True)
     
-    # Jalankan fungsi laporan KLB
-    # PASTIKAN fungsi 'tampilkan_laporan_klb' sudah dibuat di bagian atas kode
-    tampilkan_laporan_klb() 
+   
 else:
     # --- 1. LOGIKA LOGIN (USER & PASSWORD DATABASE) ---
     # Lanjutkan kode menu utama atau login kamu di sini
