@@ -215,12 +215,25 @@ if menu == "Upload Data CSV":
                     df = df[~df['p_name_check'].isin(['none', 'nan', '', 'null'])].copy()
 
                     if not df.empty:
-                        # 5. Fix Tanggal: Aturan Bulan-Hari-Tahun Jam
+                    # 5. Fix Tanggal: Versi Pintar (Otomatis deteksi format)
+                    try:
+                        # Coba konversi dengan mendeteksi format secara otomatis
+                        # Kita hapus parameter format kaku dan biarkan pandas menebak
                         df['visit_time'] = pd.to_datetime(
                             df['visit_time'], 
-                            format='%m-%d-%Y %H:%M', 
                             errors='coerce'
                         ).dt.strftime('%Y-%m-%d')
+                    except:
+                        # Jika gagal, gunakan cara manual yang lebih aman
+                        df['visit_time'] = pd.to_datetime(
+                            df['visit_time'], 
+                            dayfirst=False, # Karena kamu mau Bulan dulu baru Hari
+                            errors='coerce'
+                        ).dt.strftime('%Y-%m-%d')
+                    st.write(f"DEBUG: Berhasil konversi {df['visit_time'].notna().sum()} baris tanggal.")
+# PENTING: Cek apakah ada data yang berhasil dikonversi
+st.write(f"DEBUG: Berhasil konversi {df['visit_time'].notna().sum()} baris tanggal.")
+                        
                         
                         # 6. Kolom Wajib (Pastikan sesuai dengan struktur tabel database kamu)
                         kolom_wajib = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'departemen', 'company', 'rest_status', 'istirahat_hari', 'istirahat_jam']
