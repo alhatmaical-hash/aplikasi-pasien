@@ -640,7 +640,7 @@ elif menu == "Database Rekam Medis":
                         else:
                             st.error("❌ Sandi salah!")
 
-else:
+    else:
         st.info("ℹ️ Tidak ada data untuk ditampilkan.")
             
         
