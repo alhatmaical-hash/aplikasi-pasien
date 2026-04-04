@@ -641,7 +641,7 @@ elif menu == "Database Rekam Medis":
             
 else:
         st.info("Database kosong pada periode ini.")
-    conn.close()
+   conn.close()
 # --- 10. MODUL: ANALISIS ISTIRAHAT (TAMPILKAN SEMUA DATA & HITUNG) ---
 elif menu == "Analisis Istirahat":
     st.markdown("<h1>📊 ANALISIS DETAIL ISTIRAHAT</h1>", unsafe_allow_html=True)
