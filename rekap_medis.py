@@ -409,10 +409,11 @@ elif menu == "Laporan Analisis Kunjungan":
         with tab2:
             st.write("### Rekapitulasi Kunjungan Per Perusahaan")
             
+            # 1. Menghitung rekapitulasi awal
             corp_counts = df_raw['company'].value_counts().reset_index()
             corp_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
             
-            # State & Tombol Kontrol Perusahaan (Sudah ada di kode sebelumnya)
+            # 2. State & Tombol Kontrol (Cukup dipanggil sekali)
             p_btn1, p_btn2, _ = st.columns([1, 1, 3])
             if p_btn1.button("✅ Pilih Semua Perusahaan", key="btn_all_corp"):
                 st.session_state.chk_corp = True
@@ -421,25 +422,40 @@ elif menu == "Laporan Analisis Kunjungan":
                 st.session_state.chk_corp = False
                 st.rerun()
 
+            # Masukkan kolom Pilih berdasarkan state
             corp_counts.insert(0, "Pilih", st.session_state.chk_corp)
             
+            # 3. Layout Tabel dan Grafik
             p1, p2 = st.columns([1.2, 1.8])
+            
             with p1:
                 edited_corp = st.data_editor(
                     corp_counts,
-                    column_config={"Pilih": st.column_config.CheckboxColumn("Pilih", default=st.session_state.chk_corp)},
+                    column_config={
+                        "Pilih": st.column_config.CheckboxColumn("Pilih", default=st.session_state.chk_corp)
+                    },
                     disabled=["Nama Perusahaan", "Total Kunjungan"],
-                    hide_index=True, use_container_width=True, key="editor_corp_kunjungan"
+                    hide_index=True, 
+                    use_container_width=True, 
+                    key="editor_corp_kunjungan"
                 )
             
-            # Filter data berdasarkan pilihan ceklis untuk grafik & download
+            # 4. Filter data final untuk Grafik & Download
             df_corp_final = edited_corp[edited_corp["Pilih"] == True]
 
             with p2:
+                # PASTIKAN: st.bar_chart hanya dipanggil di sini satu kali saja
                 if not df_corp_final.empty:
-                    st.bar_chart(df_corp_final.set_index('Nama Perusahaan')['Total Kunjungan'])
+                    # Menyiapkan data chart agar label terbaca dengan baik
+                    chart_data = df_corp_final.set_index('Nama Perusahaan')['Total Kunjungan']
+                    st.bar_chart(chart_data)
                 else:
                     st.warning("⚠️ Silakan pilih minimal satu perusahaan.")
+
+            # 5. Tombol Download
+            st.markdown("---")
+            cp1, cp2 = st.columns(2)
+            # ... (kode download button tetap sama) ...
 
             # --- TAMBAHKAN TOMBOL DOWNLOAD DI SINI (BAGIAN YANG HILANG) ---
             st.markdown("---")
