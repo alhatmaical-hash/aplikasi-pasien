@@ -41,19 +41,22 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-if query_params.get("page") == "klb":
+if st.query_params.get("page") == "klb":
     # Sembunyikan sidebar menggunakan CSS
     st.markdown("""
         <style>
             [data-testid="stSidebar"] {display: none;}
+            section[data-testid="stSidebar"] {width: 0px; visibility: hidden;}
         </style>
     """, unsafe_allow_html=True)
     
-    # Langsung jalankan fungsi laporan KLB
+    # Jalankan fungsi laporan KLB
+    # PASTIKAN fungsi 'tampilkan_laporan_klb' sudah dibuat di bagian atas kode
     tampilkan_laporan_klb() 
 else:
-    # Jalankan navigasi normal dengan sidebar untuk kamu
-    tampilkan_menu_utama()
+    # --- 1. LOGIKA LOGIN (USER & PASSWORD DATABASE) ---
+    # Lanjutkan kode menu utama atau login kamu di sini
+    pass
 # --- 1. LOGIKA LOGIN (USER & PASSWORD DATABASE) ---
 
 def make_hashes(password):
