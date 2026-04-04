@@ -597,15 +597,6 @@ elif menu == "Database Rekam Medis":
                         else:
                             st.error("❌ Sandi salah!")
             
-            with col_btn2:
-                with st.expander("⚠️ Hapus Semua"):
-                    if st.button("🔥 YA, HAPUS SEMUA DATA INI", use_container_width=True, type="primary"):
-                        all_ids = df_display['db_id'].tolist()
-                        if all_ids:
-                            conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(all_ids))})", all_ids)
-                            conn.commit()
-                            st.success("💥 Database untuk filter ini telah dibersihkan.")
-                            st.rerun()
     else:
         st.info("Database kosong pada periode ini.")
     conn.close()
