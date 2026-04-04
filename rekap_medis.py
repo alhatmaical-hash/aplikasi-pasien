@@ -314,7 +314,7 @@ elif menu == "Laporan 10 Penyakit":
         st.warning(f"Tidak ada data ditemukan untuk rentang tanggal {start} sampai {end}.")
 
 # --- MENU 1: ANALISIS KUNJUNGAN ---
-if menu == "Analisis Kunjungan":
+    if menu == "Analisis Kunjungan":
     st.title("📊 Analisis Kunjungan Pasien")
     
     # Pastikan data tersedia
@@ -435,7 +435,7 @@ if menu == "Analisis Kunjungan":
         st.info("ℹ️ Tidak ada data pada periode ini.")
     
 # --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI FINAL DOWNLOAD PER GRUP) ---
-elif menu == "Laporan Data Sick":
+    elif menu == "Laporan Data Sick":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
     # 1. Filter Tanggal (Cukup Sekali dengan Key Unik)
