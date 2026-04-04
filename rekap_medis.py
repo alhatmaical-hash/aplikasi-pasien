@@ -215,10 +215,10 @@ if menu == "Upload Data CSV":
                     df = df[~df['p_name_check'].isin(['none', 'nan', '', 'null'])].copy()
 
                     if not df.empty:
-                        # 5. Fix Tanggal: Gunakan dayfirst=True agar format Indo 03-01-26 tidak error
+                        # 5. Fix Tanggal: Aturan Bulan-Hari-Tahun Jam
                         df['visit_time'] = pd.to_datetime(
                             df['visit_time'], 
-                            dayfirst=True, 
+                            format='%m-%d-%Y %H:%M', 
                             errors='coerce'
                         ).dt.strftime('%Y-%m-%d')
                         
