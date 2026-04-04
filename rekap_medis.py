@@ -638,6 +638,9 @@ elif menu == "Database Rekam Medis":
                             st.warning("Silakan masukkan sandi.")
                         else:
                             st.error("❌ Sandi salah!")
+
+else:
+        st.info("ℹ️ Tidak ada data untuk ditampilkan.")
             
         
 # --- 10. MODUL: ANALISIS ISTIRAHAT (TAMPILKAN SEMUA DATA & HITUNG) ---
