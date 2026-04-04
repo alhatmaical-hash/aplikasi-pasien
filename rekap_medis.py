@@ -438,7 +438,8 @@ if not df_raw.empty:
                 df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap')
             st.download_button(label="📊 Download Excel (Pers)", data=output_corp.getvalue(), file_name=f'rekap_corp_{t1}.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', use_container_width=True, key="dl_xlsx_corp")
 
-else: st.info("ℹ️ Tidak ada data pada periode ini.")
+     else: st.info("ℹ️ Tidak ada data pada periode ini.")
+    
 # --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI FINAL DOWNLOAD PER GRUP) ---
 elif menu == "Laporan Data Sick":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
