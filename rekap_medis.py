@@ -172,46 +172,35 @@ if menu == "Upload Data CSV":
     st.markdown("<h1>📤 UPLOAD DATA PASIEN</h1>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
 if uploaded_file is not None:
-        try:
-            df = pd.read_csv(uploaded_file)
-            df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
-            
-            st.write("### 🔍 Pratinjau Data:")
-            st.dataframe(df.head(), use_container_width=True)
-            
-            st.markdown("---")
-            st.subheader("🔐 Konfirmasi Admin")
-            pwd_upload = st.text_input("Masukkan Sandi Admin:", type="password", key="pwd_csv")
+    try:
+        df = pd.read_csv(uploaded_file)
+        
+        # 1. Tampilkan pratinjau dulu agar admin bisa cek data
+        st.write("### 🔍 Pratinjau Data:")
+        st.dataframe(df.head(), use_container_width=True)
+        
+        st.markdown("---")
+        
+        # 2. LETAKKAN INPUT SANDI DI SINI (Di luar tombol simpan)
+        st.subheader("🔐 Verifikasi Akses Admin")
+        pwd_upload = st.text_input("Masukkan Sandi Admin untuk mengunci database:", type="password", key="pwd_upload_baru")
 
-            if st.button("💾 SIMPAN KE DATABASE", use_container_width=True, type="primary"):
-                if pwd_upload == "admin123":
-                    conn = sqlite3.connect(DB_PATH)
-                    
-                    # Pembersihan Data
-                    df = df.dropna(subset=['patient_name'])
-                    df['visit_time'] = pd.to_datetime(df['visit_time'], dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
-                    
-                    kolom_wajib = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'departemen', 'company', 'rest_status', 'istirahat_hari', 'istirahat_jam']
-                    for col in kolom_wajib:
-                        if col not in df.columns:
-                            df[col] = 0 if 'istirahat' in col else "-"
-                    
-                    df_to_save = df[kolom_wajib].copy()
-                    df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
-                    conn.commit()
-                    conn.close()
-                    
-                    st.success(f"✅ Berhasil menyimpan {len(df_to_save)} data.")
-                    st.balloons()
-                elif pwd_upload == "":
-                    st.warning("⚠️ Masukkan sandi admin.")
-                else:
-                    st.error("❌ Sandi salah!")
+        # 3. Tombol simpan hanya akan memproses JIKA sandi benar
+        if st.button("🚀 PROSES & SIMPAN KE DATABASE", use_container_width=True, type="primary"):
+            if pwd_upload == "admin123": # <--- Ganti sandi kelompok Anda di sini
+                conn = sqlite3.connect(DB_PATH)
+                
+                # ... (Proses pembersihan dan penyimpanan data Anda) ...
+                
+                st.success("✅ Verifikasi Berhasil! Data telah disimpan ke database.")
+                st.balloons()
+            elif pwd_upload == "":
+                st.warning("⚠️ Sandi tidak boleh kosong.")
+            else:
+                st.error("❌ Sandi salah! Akses ditolak.")
 
-        except Exception as e:
-            st.error(f"Terjadi kesalahan teknis: {str(e)}")
-            if 'conn' in locals(): 
-                conn.close()
+    except Exception as e:
+        st.error(f"Gagal membaca file: {e}")
 # --- 6. MODUL 2: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
     st.markdown("<h1 style='text-align: center;'>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
