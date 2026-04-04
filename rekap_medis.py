@@ -639,7 +639,6 @@ elif menu == "Database Rekam Medis":
                         else:
                             st.error("❌ Sandi salah!")
             
-else:
         
 # --- 10. MODUL: ANALISIS ISTIRAHAT (TAMPILKAN SEMUA DATA & HITUNG) ---
 elif menu == "Analisis Istirahat":
