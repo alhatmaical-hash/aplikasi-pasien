@@ -412,7 +412,7 @@ elif menu == "Laporan Analisis Kunjungan":
             corp_counts = df_raw['company'].value_counts().reset_index()
             corp_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
             
-            # TOMBOL PILIH/KOSONGKAN PERUSAHAAN
+            # State & Tombol Kontrol Perusahaan (Sudah ada di kode sebelumnya)
             p_btn1, p_btn2, _ = st.columns([1, 1, 3])
             if p_btn1.button("✅ Pilih Semua Perusahaan", key="btn_all_corp"):
                 st.session_state.chk_corp = True
@@ -421,23 +421,54 @@ elif menu == "Laporan Analisis Kunjungan":
                 st.session_state.chk_corp = False
                 st.rerun()
 
-            # Masukkan kolom Pilih berdasarkan state
             corp_counts.insert(0, "Pilih", st.session_state.chk_corp)
             
             p1, p2 = st.columns([1.2, 1.8])
             with p1:
                 edited_corp = st.data_editor(
                     corp_counts,
-                    column_config={
-                        "Pilih": st.column_config.CheckboxColumn(
-                            "Pilih", 
-                            default=st.session_state.chk_corp
-                        )
-                    },
+                    column_config={"Pilih": st.column_config.CheckboxColumn("Pilih", default=st.session_state.chk_corp)},
                     disabled=["Nama Perusahaan", "Total Kunjungan"],
-                    hide_index=True,
+                    hide_index=True, use_container_width=True, key="editor_corp_kunjungan"
+                )
+            
+            # Filter data berdasarkan pilihan ceklis untuk grafik & download
+            df_corp_final = edited_corp[edited_corp["Pilih"] == True]
+
+            with p2:
+                if not df_corp_final.empty:
+                    st.bar_chart(df_corp_final.set_index('Nama Perusahaan')['Total Kunjungan'])
+                else:
+                    st.warning("⚠️ Silakan pilih minimal satu perusahaan.")
+
+            # --- TAMBAHKAN TOMBOL DOWNLOAD DI SINI (BAGIAN YANG HILANG) ---
+            st.markdown("---")
+            cp1, cp2 = st.columns(2)
+            
+            with cp1:
+                # Download CSV Perusahaan
+                csv_corp = df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download CSV (Perusahaan Terpilih)",
+                    data=csv_corp,
+                    file_name=f'rekap_perusahaan_{t1}.csv',
+                    mime='text/csv',
                     use_container_width=True,
-                    key="editor_corp_kunjungan"
+                    key="dl_csv_corp_pilihan"
+                )
+                
+            with cp2:
+                # Download Excel Perusahaan
+                output_corp = io.BytesIO()
+                with pd.ExcelWriter(output_corp, engine='xlsxwriter') as writer:
+                    df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap_Perusahaan')
+                st.download_button(
+                    label="📊 Download Excel (Perusahaan Terpilih)",
+                    data=output_corp.getvalue(),
+                    file_name=f'rekap_perusahaan_{t1}.xlsx',
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    use_container_width=True,
+                    key="dl_xlsx_corp_pilihan"
                 )
             
             df_corp_final = edited_corp[edited_corp["Pilih"] == True]
