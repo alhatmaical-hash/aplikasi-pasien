@@ -577,14 +577,25 @@ elif menu == "Database Rekam Medis":
 
             # Tombol Aksi
             col_btn1, col_btn2 = st.columns(2)
-            with col_btn1:
-                if st.button("🗑️ HAPUS DATA TERPILIH", use_container_width=True):
-                    ids = edited_df[edited_df['Pilih'] == True]['db_id'].tolist()
-                    if ids:
-                        conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(ids))})", ids)
-                        conn.commit()
-                        st.success(f"✅ Berhasil menghapus {len(ids)} data.")
-                        st.rerun()
+            with col_btn2:
+                with st.expander("🔐 Hapus Semua (Admin Only)"):
+                    st.write("Tindakan ini akan menghapus data pada periode yang dipilih.")
+                    
+                    # Input sandi admin
+                    pwd_admin = st.text_input("Masukkan Sandi Admin:", type="password", key="pwd_all")
+                    
+                    if st.button("🔥 KONFIRMASI HAPUS SEMUA", use_container_width=True, type="primary"):
+                        if pwd_admin == "admin123": # <--- Ganti sandi di sini
+                            all_ids = df_display['db_id'].tolist()
+                            if all_ids:
+                                conn.cursor().execute(f"DELETE FROM rekap_penyakit WHERE id IN ({','.join(['?']*len(all_ids))})", all_ids)
+                                conn.commit()
+                                st.success("💥 Data periode ini telah dibersihkan.")
+                                st.rerun()
+                        elif pwd_admin == "":
+                            st.warning("Silakan masukkan sandi.")
+                        else:
+                            st.error("❌ Sandi salah!")
             
             with col_btn2:
                 with st.expander("⚠️ Hapus Semua"):
