@@ -173,7 +173,7 @@ if menu == "Upload Data CSV":
     uploaded_file = st.file_uploader("Pilih file CSV", type=["csv"])
     
     if uploaded_file is not None:
-        try:
+       try:
             df = pd.read_csv(uploaded_file)
             # Normalisasi nama kolom agar spasi jadi underscore
             df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
@@ -181,40 +181,54 @@ if menu == "Upload Data CSV":
             st.write("### 🔍 Pratinjau Data:")
             st.dataframe(df.head(), use_container_width=True)
             
+            st.markdown("---")
+            
+            # --- AREA BARU: VALIDASI ADMIN ---
+            st.subheader("🔐 Konfirmasi Admin")
+            pwd_upload = st.text_input("Masukkan Sandi Admin untuk memproses upload:", type="password", key="pwd_csv")
+
             if st.button("💾 SIMPAN KE DATABASE", use_container_width=True, type="primary"):
-                conn = sqlite3.connect(DB_PATH)
+                # 1. Cek apakah sandi benar
+                if pwd_upload == "admin123": # <--- Kamu bisa ganti sandinya di sini
+                    conn = sqlite3.connect(DB_PATH)
+                    
+                    # 2. Pembersihan Baris Kosong
+                    df = df.dropna(subset=['patient_name'])
+                    df['p_name_check'] = df['patient_name'].astype(str).str.strip().str.lower()
+                    df = df[~df['p_name_check'].isin(['none', 'nan', '', 'null'])].copy()
+
+                    if not df.empty:
+                        # 3. Perbaikan Tanggal (Penting agar tidak error seperti sebelumnya)
+                        df['visit_time'] = pd.to_datetime(df['visit_time'], dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
+                        
+                        # 4. Pengaturan Kolom Wajib
+                        kolom_wajib = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'departemen', 'company', 'rest_status', 'istirahat_hari', 'istirahat_jam']
+                        
+                        for col in kolom_wajib:
+                            if col not in df.columns:
+                                df[col] = 0 if 'istirahat' in col else "-"
+                        
+                        # 5. Siapkan data untuk disimpan
+                        df_to_save = df[kolom_wajib].copy()
+                        df_to_save['istirahat_hari'] = pd.to_numeric(df_to_save['istirahat_hari'], errors='coerce').fillna(0).astype(int)
+                        df_to_save['istirahat_jam'] = pd.to_numeric(df_to_save['istirahat_jam'], errors='coerce').fillna(0).astype(int)
+
+                        # 6. Eksekusi simpan ke database
+                        df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
+                        conn.commit()
+                        conn.close()
+                        
+                        st.success(f"✅ Berhasil! {len(df_to_save)} data pasien telah tersimpan.")
+                        st.balloons()
+                    else:
+                        st.warning("⚠️ File CSV tidak berisi data valid.")
+                        conn.close()
                 
-                # Pembersihan Baris Kosong
-                df = df.dropna(subset=['patient_name'])
-                df['p_name_check'] = df['patient_name'].astype(str).str.strip().str.lower()
-                df = df[~df['p_name_check'].isin(['none', 'nan', '', 'null'])].copy()
-
-                if not df.empty:
-                    # Pastikan format tanggal aman
-                    df['visit_time'] = pd.to_datetime(df['visit_time'], dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
-                    # Kolom wajib sesuai gambar (istirahat_hari & istirahat_jam terpisah)
-                    kolom_wajib = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'departemen', 'company', 'rest_status', 'istirahat_hari', 'istirahat_jam']
-                    
-                    # Tambahkan kolom jika tidak ada di CSV
-                    for col in kolom_wajib:
-                        if col not in df.columns:
-                            df[col] = 0 if 'istirahat' in col else "-"
-                    
-                    # Ambil data aktual tanpa merubah angka (sesuai permintaan)
-                    df_to_save = df[kolom_wajib].copy()
-                    df_to_save['istirahat_hari'] = pd.to_numeric(df_to_save['istirahat_hari'], errors='coerce').fillna(0).astype(int)
-                    df_to_save['istirahat_jam'] = pd.to_numeric(df_to_save['istirahat_jam'], errors='coerce').fillna(0).astype(int)
-
-                    # Simpan ke tabel rekap_penyakit
-                    df_to_save.to_sql('rekap_penyakit', conn, if_exists='append', index=False)
-                    conn.commit()
-                    conn.close()
-                    
-                    st.success(f"✅ Berhasil menyimpan {len(df_to_save)} data pasien.")
-                    st.balloons()
+                # 7. Respon jika sandi salah atau kosong
+                elif pwd_upload == "":
+                    st.warning("⚠️ Silakan masukkan sandi admin terlebih dahulu.")
                 else:
-                    st.warning("⚠️ File CSV tidak berisi data valid.")
-                    if 'conn' in locals(): conn.close()
+                    st.error("❌ Sandi salah! Anda tidak memiliki izin untuk menambah data.")
 
         except Exception as e:
             st.error(f"Terjadi kesalahan teknis: {str(e)}")
