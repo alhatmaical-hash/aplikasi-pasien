@@ -296,7 +296,7 @@ elif menu == "Laporan 10 Penyakit":
         st.warning(f"Tidak ada data ditemukan untuk rentang tanggal {start} sampai {end}.")
 
 # --- 7. MODUL 3: ANALISIS DEPT & PERUSAHAAN (VERSI TABEL & GRAFIK) ---
-elif menu == "Analisis Dept & Perusahaan":
+elif menu == "Laporan Analisis Kunjungan":
     st.markdown("<h1>🏢 ANALISIS KUNJUNGAN</h1>", unsafe_allow_html=True)
     start, end = st.columns(2)
     t1 = start.date_input("Mulai", value=get_date_range()[0], key="a1")
@@ -394,7 +394,7 @@ elif menu == "Analisis Dept & Perusahaan":
                 st.error("Kolom 'company' tidak ditemukan di database.")
 
 # --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI FINAL DOWNLOAD PER GRUP) ---
-elif menu == "Keterangan Istirahat":
+elif menu == "Laporan Data Sick":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
     # 1. Filter Tanggal (Cukup Sekali dengan Key Unik)
