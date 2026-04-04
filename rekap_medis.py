@@ -314,43 +314,55 @@ elif menu == "Laporan 10 Penyakit":
         st.warning(f"Tidak ada data ditemukan untuk rentang tanggal {start} sampai {end}.")
 
 # --- MENU 1: ANALISIS KUNJUNGAN ---
-if menu == "Analisis Kunjungan":
+elif menu == "Laporan Analisis Kunjungan":
     st.title("📊 Analisis Kunjungan Pasien")
     
-    # Pastikan data tersedia
+    # 1. SETUP TANGGAL (Penting agar variabel t1/t2 tersedia untuk nama file)
+    t_awal, t_akhir = get_date_range()
+    c1, c2 = st.columns(2)
+    start = c1.date_input("Mulai", value=t_awal, key="visit_start")
+    end = c2.date_input("Sampai", value=t_akhir, key="visit_end")
+    t1_str = start.strftime('%d%m%Y') # Untuk penamaan file download
+
+    # 2. TARIK DATA DARI DATABASE (Solusi Utama agar tidak Blank)
+    conn = sqlite3.connect(DB_PATH)
+    df_raw = pd.read_sql_query(
+        "SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?", 
+        conn, params=[start, end]
+    )
+    conn.close()
+
+    # 3. LOGIKA CHECBOX & TAB
     if not df_raw.empty:
-        # 1. Inisialisasi State agar tombol "Pilih Semua" & Reset Key berfungsi
+        # Inisialisasi Session State untuk Reset Checkbox
         if 'count_dept' not in st.session_state: st.session_state.count_dept = 0
         if 'chk_dept' not in st.session_state: st.session_state.chk_dept = True
         if 'count_corp' not in st.session_state: st.session_state.count_corp = 0
         if 'chk_corp' not in st.session_state: st.session_state.chk_corp = True
 
-        # Membuat Tab
         tab1, tab2 = st.tabs(["📊 Departemen", "🏢 Perusahaan"])
         
         # --- TAB 1: DEPARTEMEN ---
         with tab1:
             st.write("### Rekapitulasi Kunjungan Per Departemen")
-            
             dept_counts = df_raw['departemen'].value_counts().reset_index()
             dept_counts.columns = ['Nama Departemen', 'Total Kunjungan']
             
-            # Tombol Kontrol (Pilih Semua / Kosongkan)
-            c_btn1, c_btn2, _ = st.columns([1, 1, 3])
-            if c_btn1.button("✅ Pilih Semua Dept", key="btn_all_dept"):
+            # Tombol Kontrol
+            cb1, cb2, _ = st.columns([1, 1, 3])
+            if cb1.button("✅ Pilih Semua Dept", key="btn_all_dept"):
                 st.session_state.chk_dept = True
                 st.session_state.count_dept += 1
                 st.rerun()
-            if c_btn2.button("❌ Kosongkan Dept", key="btn_none_dept"):
+            if cb2.button("❌ Kosongkan Dept", key="btn_none_dept"):
                 st.session_state.chk_dept = False
                 st.session_state.count_dept += 1
                 st.rerun()
 
             dept_counts.insert(0, "Pilih", st.session_state.chk_dept)
-
+            
             col1, col2 = st.columns([1.2, 1.8])
             with col1:
-                # Tabel dengan Checkbox (Key dinamis untuk Reset)
                 edited_dept = st.data_editor(
                     dept_counts,
                     column_config={"Pilih": st.column_config.CheckboxColumn("Pilih", default=st.session_state.chk_dept)},
@@ -359,7 +371,6 @@ if menu == "Analisis Kunjungan":
                     key=f"editor_dept_{st.session_state.count_dept}" 
                 )
             
-            # Filter data berdasarkan pilihan checkbox untuk Grafik & Download
             df_dept_final = edited_dept[edited_dept["Pilih"] == True]
             
             with col2:
@@ -368,32 +379,32 @@ if menu == "Analisis Kunjungan":
                 else:
                     st.warning("⚠️ Pilih minimal satu departemen.")
 
-            # Tombol Download (CSV & Excel)
+            # Tombol Download Dept
             st.markdown("---")
             cd1, cd2 = st.columns(2)
-            with cd1:
-                csv_dept = df_dept_final[["Nama Departemen", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download CSV (Dept)", data=csv_dept, file_name=f'rekap_dept_{t1}.csv', mime='text/csv', use_container_width=True, key="dl_csv_dept")
-            with cd2:
-                output_dept = io.BytesIO()
-                with pd.ExcelWriter(output_dept, engine='xlsxwriter') as writer:
-                    df_dept_final[["Nama Departemen", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap')
-                st.download_button("📊 Download Excel (Dept)", data=output_dept.getvalue(), file_name=f'rekap_dept_{t1}.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', use_container_width=True, key="dl_xlsx_dept")
+            if not df_dept_final.empty:
+                with cd1:
+                    csv_dept = df_dept_final[["Nama Departemen", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
+                    st.download_button("📥 CSV (Dept)", data=csv_dept, file_name=f'dept_{t1_str}.csv', mime='text/csv', use_container_width=True)
+                with cd2:
+                    output_dept = io.BytesIO()
+                    with pd.ExcelWriter(output_dept, engine='xlsxwriter') as writer:
+                        df_dept_final[["Nama Departemen", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap')
+                    st.download_button("📊 Excel (Dept)", data=output_dept.getvalue(), file_name=f'dept_{t1_str}.xlsx', use_container_width=True)
 
         # --- TAB 2: PERUSAHAAN ---
         with tab2:
             st.write("### Rekapitulasi Kunjungan Per Perusahaan")
-            
             corp_counts = df_raw['company'].value_counts().reset_index()
             corp_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
             
-            # Tombol Kontrol (Pilih Semua / Kosongkan)
-            p_btn1, p_btn2, _ = st.columns([1, 1, 3])
-            if p_btn1.button("✅ Pilih Semua Perusahaan", key="btn_all_corp"):
+            # Tombol Kontrol
+            pb1, pb2, _ = st.columns([1, 1, 3])
+            if pb1.button("✅ Pilih Semua Pers", key="btn_all_corp"):
                 st.session_state.chk_corp = True
                 st.session_state.count_corp += 1
                 st.rerun()
-            if p_btn2.button("❌ Kosongkan Perusahaan", key="btn_none_corp"):
+            if pb2.button("❌ Kosongkan Pers", key="btn_none_corp"):
                 st.session_state.chk_corp = False
                 st.session_state.count_corp += 1
                 st.rerun()
@@ -418,19 +429,19 @@ if menu == "Analisis Kunjungan":
                 else:
                     st.warning("⚠️ Pilih minimal satu perusahaan.")
 
-            # Tombol Download (CSV & Excel)
+            # Tombol Download Pers
             st.markdown("---")
             cp1, cp2 = st.columns(2)
-            with cp1:
-                csv_corp = df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download CSV (Pers)", data=csv_corp, file_name=f'rekap_corp_{t1}.csv', mime='text/csv', use_container_width=True, key="dl_csv_corp")
-            with cp2:
-                output_corp = io.BytesIO()
-                with pd.ExcelWriter(output_corp, engine='xlsxwriter') as writer:
-                    df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap')
-                st.download_button("📊 Download Excel (Pers)", data=output_corp.getvalue(), file_name=f'rekap_corp_{t1}.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', use_container_width=True, key="dl_xlsx_corp")
+            if not df_corp_final.empty:
+                with cp1:
+                    csv_corp = df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
+                    st.download_button("📥 CSV (Pers)", data=csv_corp, file_name=f'corp_{t1_str}.csv', mime='text/csv', use_container_width=True)
+                with cp2:
+                    output_corp = io.BytesIO()
+                    with pd.ExcelWriter(output_corp, engine='xlsxwriter') as writer:
+                        df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap')
+                    st.download_button("📊 Excel (Pers)", data=output_corp.getvalue(), file_name=f'corp_{t1_str}.xlsx', use_container_width=True)
 
-   
     else:
         st.info("ℹ️ Tidak ada data pada periode ini.")
 
