@@ -231,8 +231,7 @@ if menu == "Upload Data CSV":
                                 errors='coerce'
                             ).dt.strftime('%Y-%m-%d')
                         st.write(f"DEBUG: Berhasil konversi {df['visit_time'].notna().sum()} baris tanggal.")
-# PENTING: Cek apakah ada data yang berhasil dikonversi
-st.write(f"DEBUG: Berhasil konversi {df['visit_time'].notna().sum()} baris tanggal.")
+                   
                         
                         
                         # 6. Kolom Wajib (Pastikan sesuai dengan struktur tabel database kamu)
