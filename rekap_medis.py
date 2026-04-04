@@ -161,7 +161,7 @@ st.markdown("""
 # --- 4. SIDEBAR NAVIGASI ---
 st.sidebar.title("🏥 MENU KLINIK")
 menu = st.sidebar.radio("NAVIGASI", 
-    ["Upload Data CSV", "Laporan 10 Penyakit", "Laporan Analisis Kunjungan", "Laporan Data Sick", "Analisis Istirahat", "Laporan KLB", "Lihat Semua Data", "Manajemen User"])
+    ["Upload Data CSV", "Laporan 10 Penyakit", "Laporan Analisis Kunjungan", "Laporan Data Sick", "Analisis Istirahat", "Laporan KLB", "Database Rekam Medis", "Manajemen User"])
 
 if st.sidebar.button("🔴 KELUAR APLIKASI", type="primary", use_container_width=True):
     st.session_state["authenticated"] = False
@@ -508,7 +508,7 @@ elif menu == "Laporan Data Sick":
     else:
         st.info("ℹ️ Belum ada data untuk periode tanggal ini.")
 # --- 9. MODUL: LIHAT SEMUA DATA (DENGAN DURASI, DEPT, & PERUSAHAAN) ---
-elif menu == "Lihat Semua Data":
+elif menu == "Database Rekam Medis":
     st.markdown("<h1>📂 DATABASE REKAM MEDIS</h1>", unsafe_allow_html=True)
     
     t_awal, t_akhir = get_date_range()
