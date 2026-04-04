@@ -329,30 +329,41 @@ elif menu == "Laporan Analisis Kunjungan":
     conn.close()
     
     if not df_raw.empty:
-        # --- TABEL DENGAN CEKLIS (MENGGANTIKAN FILTER MERAH) ---
+        # --- INISIALISASI STATE (Wajib agar tombol berfungsi) ---
+        if 'chk_dept' not in st.session_state:
+            st.session_state.chk_dept = True
+        if 'chk_corp' not in st.session_state:
+            st.session_state.chk_corp = True
+
         tab1, tab2 = st.tabs(["📊 Departemen", "🏢 Perusahaan"])
         
+        # --- TAB 1: DEPARTEMEN ---
         with tab1:
             st.write("### Rekapitulasi Kunjungan Per Departemen")
             
-            # Siapkan data rekap awal
             dept_counts = df_raw['departemen'].value_counts().reset_index()
             dept_counts.columns = ['Nama Departemen', 'Total Kunjungan']
             
-            # Tambahkan kolom ceklis di paling kiri
-            dept_counts.insert(0, "Pilih", True)
+            # TOMBOL PILIH/KOSONGKAN DEPARTEMEN
+            c_btn1, c_btn2, _ = st.columns([1, 1, 3])
+            if c_btn1.button("✅ Pilih Semua Dept", key="btn_all_dept"):
+                st.session_state.chk_dept = True
+                st.rerun()
+            if c_btn2.button("❌ Kosongkan Dept", key="btn_none_dept"):
+                st.session_state.chk_dept = False
+                st.rerun()
+
+            # Masukkan kolom Pilih berdasarkan state
+            dept_counts.insert(0, "Pilih", st.session_state.chk_dept)
 
             c1, c2 = st.columns([1.2, 1.8])
-            
             with c1:
-                # Gunakan data_editor sebagai pengganti tabel biasa agar bisa dicentang
                 edited_dept = st.data_editor(
                     dept_counts,
                     column_config={
                         "Pilih": st.column_config.CheckboxColumn(
                             "Pilih",
-                            help="Ceklis untuk memfilter laporan",
-                            default=True,
+                            default=st.session_state.chk_dept,
                         )
                     },
                     disabled=["Nama Departemen", "Total Kunjungan"], 
@@ -361,19 +372,17 @@ elif menu == "Laporan Analisis Kunjungan":
                     key="editor_dept_kunjungan"
                 )
             
-            # Data yang akan diproses hanya yang DICENTANG
             df_dept_final = edited_dept[edited_dept["Pilih"] == True]
 
             with c2:
                 if not df_dept_final.empty:
                     st.bar_chart(df_dept_final.set_index('Nama Departemen')['Total Kunjungan'])
                 else:
-                    st.warning("⚠️ Silakan pilih minimal satu departemen pada tabel di samping.")
+                    st.warning("⚠️ Silakan pilih minimal satu departemen.")
 
             st.markdown("---")
             cd1, cd2 = st.columns(2)
             with cd1:
-                # Download hanya data yang dicentang
                 csv_dept = df_dept_final[["Nama Departemen", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="📥 Download CSV (Pilihan)",
@@ -396,17 +405,35 @@ elif menu == "Laporan Analisis Kunjungan":
                     key="dl_xlsx_dept_pilihan"
                 )
 
+        # --- TAB 2: PERUSAHAAN ---
         with tab2:
             st.write("### Rekapitulasi Kunjungan Per Perusahaan")
+            
             corp_counts = df_raw['company'].value_counts().reset_index()
             corp_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
-            corp_counts.insert(0, "Pilih", True)
+            
+            # TOMBOL PILIH/KOSONGKAN PERUSAHAAN
+            p_btn1, p_btn2, _ = st.columns([1, 1, 3])
+            if p_btn1.button("✅ Pilih Semua Perusahaan", key="btn_all_corp"):
+                st.session_state.chk_corp = True
+                st.rerun()
+            if p_btn2.button("❌ Kosongkan Perusahaan", key="btn_none_corp"):
+                st.session_state.chk_corp = False
+                st.rerun()
+
+            # Masukkan kolom Pilih berdasarkan state
+            corp_counts.insert(0, "Pilih", st.session_state.chk_corp)
             
             p1, p2 = st.columns([1.2, 1.8])
             with p1:
                 edited_corp = st.data_editor(
                     corp_counts,
-                    column_config={"Pilih": st.column_config.CheckboxColumn("Pilih", default=True)},
+                    column_config={
+                        "Pilih": st.column_config.CheckboxColumn(
+                            "Pilih", 
+                            default=st.session_state.chk_corp
+                        )
+                    },
                     disabled=["Nama Perusahaan", "Total Kunjungan"],
                     hide_index=True,
                     use_container_width=True,
