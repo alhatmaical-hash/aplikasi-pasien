@@ -315,7 +315,7 @@ elif menu == "Laporan 10 Penyakit":
 
 # --- MENU 1: ANALISIS KUNJUNGAN ---
     if menu == "Analisis Kunjungan":
-    st.title("📊 Analisis Kunjungan Pasien")
+        st.title("📊 Analisis Kunjungan Pasien")
     
     # Pastikan data tersedia
     if not df_raw.empty:
