@@ -191,8 +191,7 @@ if menu == "Upload Data CSV":
 
                 if not df.empty:
                     # Pastikan format tanggal aman
-                    df['visit_time'] = pd.to_datetime(df['visit_time']).dt.strftime('%Y-%m-%d')
-                    
+                    df['visit_time'] = pd.to_datetime(df['visit_time'], dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
                     # Kolom wajib sesuai gambar (istirahat_hari & istirahat_jam terpisah)
                     kolom_wajib = ['visit_time', 'patient_name', 'diagnosa', 'clinic', 'departemen', 'company', 'rest_status', 'istirahat_hari', 'istirahat_jam']
                     
