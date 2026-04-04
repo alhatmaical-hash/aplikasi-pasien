@@ -531,7 +531,8 @@ elif menu == "Lihat Semua Data":
         if not df_raw.empty:
             # Normalisasi Status & Durasi untuk tampilan
             df_raw['status_clean'] = df_raw['rest_status'].fillna('Tidak').astype(str).str.strip().str.lower()
-            df_raw['dur_num'] = pd.to_numeric(df_raw['rest_duration'], errors='coerce').fillna(0)
+            df_raw['h_num'] = pd.to_numeric(df_raw['istirahat_hari'], errors='coerce').fillna(0)
+            df_raw['j_num'] = pd.to_numeric(df_raw['istirahat_jam'], errors='coerce').fillna(0)
             
             # Eksekusi Filter
             if st_filter == "Ya":
