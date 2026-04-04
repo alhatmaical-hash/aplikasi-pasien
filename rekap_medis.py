@@ -434,10 +434,7 @@ if menu == "Analisis Kunjungan":
     else:
         st.info("ℹ️ Tidak ada data pada periode ini.")
 
-# --- MENU 2: LANJUTAN (Sejajar dengan 'if menu == "Analisis Kunjungan"') ---
-elif menu == "Laporan Data Sick":
-    st.write("### Laporan Data Sick")
-    # Isi kode Anda di sini...
+
 # --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI FINAL DOWNLOAD PER GRUP) ---
     elif menu == "Laporan Data Sick":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
