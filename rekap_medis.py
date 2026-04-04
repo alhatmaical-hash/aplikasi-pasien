@@ -341,10 +341,10 @@ elif menu == "Laporan Analisis Kunjungan":
     with tab1:
     st.write("### Rekapitulasi Kunjungan Per Departemen")
     
-    # 1. Inisialisasi Counter untuk Reset Key (Wajib ada)
-    if 'count_dept' not in st.session_state:
+       # 1. Inisialisasi Counter untuk Reset Key (Wajib ada)
+        if 'count_dept' not in st.session_state:
         st.session_state.count_dept = 0
-    if 'chk_dept' not in st.session_state:
+        if 'chk_dept' not in st.session_state:
         st.session_state.chk_dept = True
     
     dept_counts = df_raw['departemen'].value_counts().reset_index()
@@ -420,6 +420,7 @@ elif menu == "Laporan Analisis Kunjungan":
             key="dl_xlsx_dept_pilihan"
         )
 
+    
         # --- TAB 2: PERUSAHAAN ---
        with tab2:
             st.write("### Rekapitulasi Kunjungan Per Perusahaan")
