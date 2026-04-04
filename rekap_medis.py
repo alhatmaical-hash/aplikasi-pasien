@@ -338,7 +338,7 @@ elif menu == "Laporan Analisis Kunjungan":
         tab1, tab2 = st.tabs(["📊 Departemen", "🏢 Perusahaan"])
         
         # --- TAB 1: DEPARTEMEN ---
-       with tab1:
+    with tab1:
     st.write("### Rekapitulasi Kunjungan Per Departemen")
     
     # 1. Inisialisasi Counter untuk Reset Key (Wajib ada)
