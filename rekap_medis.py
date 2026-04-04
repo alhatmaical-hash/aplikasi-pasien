@@ -406,7 +406,7 @@ elif menu == "Laporan Analisis Kunjungan":
                 )
 
         # --- TAB 2: PERUSAHAAN ---
-       with tab2:
+        with tab2:
             st.write("### Rekapitulasi Kunjungan Per Perusahaan")
             
             # 1. Hitung data rekap
