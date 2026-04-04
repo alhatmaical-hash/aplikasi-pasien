@@ -230,9 +230,9 @@ if menu == "Upload Data CSV":
                 else:
                     st.error("❌ Sandi salah! Anda tidak memiliki izin untuk menambah data.")
 
-        except Exception as e:
-            st.error(f"Terjadi kesalahan teknis: {str(e)}")
-            if 'conn' in locals(): conn.close()
+          except Exception as e:
+              st.error(f"Terjadi kesalahan teknis: {str(e)}")
+              if 'conn' in locals(): conn.close()
 
 # --- 6. MODUL 2: LAPORAN 10 PENYAKIT ---
 elif menu == "Laporan 10 Penyakit":
