@@ -8,28 +8,29 @@ import xlsxwriter
 
 import io
 
-def unduh_semua_rekap(df_data, start, end):
+def unduh_rekap_sick_per_grup(df_raw, list_hjf, list_kps, list_ost, list_ckm):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        # Sheet 1: Data Departemen
-        dept_counts = df_data['departemen'].value_counts().reset_index()
-        dept_counts.columns = ['Nama Departemen', 'Total Kunjungan']
-        dept_counts.to_excel(writer, sheet_name='Rekap_Departemen', index=False)
+        # 1. Sheet HJF GROUP
+        hjf_data = df_raw[df_raw['company'].str.contains("HALMAHERA", na=False) | df_raw['company'].isin(list_hjf)]
+        if not hjf_data.empty:
+            hjf_data.to_excel(writer, sheet_name='HJF_GROUP', index=False)
         
-        # Sheet 2: Data Perusahaan
-        if 'company' in df_data.columns:
-            pers_counts = df_data['company'].value_counts().reset_index()
-            pers_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
-            pers_counts.to_excel(writer, sheet_name='Rekap_Perusahaan', index=False)
+        # 2. Sheet KPS GROUP
+        kps_data = df_raw[df_raw['company'].str.contains("KARUNIA", na=False) | df_raw['company'].isin(list_kps)]
+        if not kps_data.empty:
+            kps_data.to_excel(writer, sheet_name='KPS_GROUP', index=False)
             
-        # Sheet 3: Rekap Data Sick (BARU)
-        # Kita ambil data yang sudah difilter status_lower-nya
-        df_sick = df_data[df_data['rest_status'].fillna('tidak').str.lower().str.strip().isin(['ya', 'yes', 'y'])]
-        df_sick.to_excel(writer, sheet_name='Data_Istirahat_Sick', index=False)
-
-        # Sheet 4: Data Lengkap
-        df_data.to_excel(writer, sheet_name='Data_Lengkap_Kunjungan', index=False)
-        
+        # 3. Sheet OST GROUP
+        ost_data = df_raw[df_raw['company'].str.contains("OBI SINAR", na=False) | df_raw['company'].isin(list_ost)]
+        if not ost_data.empty:
+            ost_data.to_excel(writer, sheet_name='OST_GROUP', index=False)
+            
+        # 4. Sheet CKM GROUP
+        ckm_data = df_raw[df_raw['company'].str.contains("CIPTA KEMAKMURAN", na=False) | df_raw['company'].isin(list_ckm)]
+        if not ckm_data.empty:
+            ckm_data.to_excel(writer, sheet_name='CKM_GROUP', index=False)
+            
     return output.getvalue()
 
 # --- 0. KONFIGURASI HALAMAN ---
@@ -392,15 +393,13 @@ elif menu == "Analisis Dept & Perusahaan":
             else:
                 st.error("Kolom 'company' tidak ditemukan di database.")
 
-# --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI PERBAIKAN RUMUS) ---
+# --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI FINAL DOWNLOAD PER GRUP) ---
 elif menu == "Keterangan Istirahat":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
-    # 1. Filter Tanggal
+    # 1. Filter Tanggal (Cukup Sekali dengan Key Unik)
     t_awal, t_akhir = get_date_range()
     t1, t2 = st.columns(2)
-    
-    # UBAH KEY DI SINI AGAR UNIK
     start = t1.date_input("Mulai", value=t_awal, key="sick_start") 
     end = t2.date_input("Sampai", value=t_akhir, key="sick_end")
 
@@ -410,70 +409,53 @@ elif menu == "Keterangan Istirahat":
     df_raw = pd.read_sql_query(query, conn, params=[start, end])
     conn.close()
 
-    # 3. Tampilkan Tombol Download
-    if not df_raw.empty:
-        excel_data = unduh_semua_rekap(df_raw, start, end)
-        st.download_button(
-            label="📥 Download Laporan Terpadu (Semua Sheet)",
-            data=excel_data,
-            file_name=f'Laporan_Sick_Terpadu_{start}_sd_{end}.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            use_container_width=True,
-            key="btn_download_sick_modul"
-        )
-        st.markdown("---")
-    t1, t2 = st.columns(2)
-    start = t1.date_input("Mulai", value=t_awal, key="r1")
-    end = t2.date_input("Sampai", value=t_akhir, key="r2")
-
-    conn = sqlite3.connect(DB_PATH)
-    # AMBIL SEMUA KOLOM TERKAIT (Termasuk istirahat_hari dan istirahat_jam)
-    query = "SELECT * FROM rekap_penyakit WHERE visit_time BETWEEN ? AND ?"
-    df_raw = pd.read_sql_query(query, conn, params=[start, end])
-    conn.close()
+    # --- DAFTAR LIST KONTRAKTOR ---
+    list_hjf = ["PT INDO FUDONG (HJF)", "PT IMJ ( INOVASI MAJU JAYA) HJF", "PT BTG-ZJYC (ONC)", "PT. ZJYC ONC", "PT. GDSK (HJF)", "PT GLOBEL DARMA SARANA KARYA GDSK (HJF)", "PT GOBEL DHARMA SARANA KARYA GDSK (HJF)", "PT GEOSERVICES MAKASSAR", "PT. RENTOKIL INDONESIA", "PT.MATAHARI PUTRA PRIMA (HYPERMART) HJF"]
+    list_kps = ["PT MCC BAOYE (KPS)", "PT MCC6 (KPS)", "PT. JINRUI KPS", "PT YAOHUA (KPS)", "PT CREC (KPS)", "PT. CISDI (KPS)", "PT CISDI-KPS", "PT JME-KPS", "PT. ETGH-KPS", "PT. BTG ZJYC (KPS)"]
+    list_ost = ["PT. MCCBY DCM", "PT LONGI & CENTER OST", "PT CREC (OST)", "PT STHB (OST)", "PT ZTPI -OST", "PT ZTPI-(OST)", "ZTPI (OST)", "PT. ZTPI/ OST", "PT ZTPI (OST)", "PT JIANGXI (OST)", "PT. CCEPC OST", "PT INDO FUDONG (OST)", "PT CSCEC (OST)"]
+    list_ckm = ["PT. MCC BAOYE (CKM)"]
 
     if not df_raw.empty:
-        # --- PRE-PROCESSING DATA (PEMBERSIHAN) ---
+        # 3. PRE-PROCESSING DATA
         df_raw['company'] = df_raw['company'].fillna('UNKNOWN').str.upper().str.strip()
         df_raw['status_lower'] = df_raw['rest_status'].fillna('tidak').str.lower().str.strip()
-        
-        # Konversi kolom durasi ke angka agar bisa dihitung
         df_raw['h_num'] = pd.to_numeric(df_raw['istirahat_hari'], errors='coerce').fillna(0)
         df_raw['j_num'] = pd.to_numeric(df_raw['istirahat_jam'], errors='coerce').fillna(0)
         
         selisih_hari = (end - start).days + 1
         bulan_nama = start.strftime("%B").upper()
 
-        # --- RUMUS BARU: MENGHITUNG BERDASARKAN KOLOM SPESIFIK ---
+        # 4. TOMBOL DOWNLOAD EXCEL (Satu Tombol untuk Semua Sheet Grup)
+        # Memanggil fungsi yang membagi sheet berdasarkan grup perusahaan
+        excel_data = unduh_rekap_sick_per_grup(df_raw, list_hjf, list_kps, list_ost, list_ckm)
+        
+        st.download_button(
+            label="📥 Download Rekap Sick Semua Grup (Excel)",
+            data=excel_data,
+            file_name=f'Rekap_Sick_Grup_{start}_sd_{end}.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            use_container_width=True,
+            key="btn_download_sick_final"
+        )
+        st.info("💡 Hasil download berupa 1 file Excel dengan sheet terpisah: HJF, KPS, OST, dan CKM.")
+        st.markdown("---")
+
+        # 5. FUNGSI RINGKASAN UNTUK TAMPILAN TABEL DI WEB
         def get_summary_table(df_filtered):
-            if df_filtered.empty:
-                return None
-            
+            if df_filtered.empty: return None
             total_pasien = len(df_filtered)
-            
-            # Hitung baris yang memiliki nilai > 0 di masing-masing kolom
-            # Syarat: Status harus 'Ya' DAN angkanya bukan 0
             ist_hari = len(df_filtered[(df_filtered['status_lower'].isin(['ya', 'yes', 'y'])) & (df_filtered['h_num'] > 0)])
             ist_jam = len(df_filtered[(df_filtered['status_lower'].isin(['ya', 'yes', 'y'])) & (df_filtered['j_num'] > 0)])
-            
-            summary = pd.DataFrame({
-                "TAHUN": [start.year],
-                "BULAN": [bulan_nama],
+            return pd.DataFrame({
+                "TAHUN": [start.year], "BULAN": [bulan_nama],
                 "TANGGAL": [f"{start.day} SAMPAI {end.day}"],
                 "ANGKA KUNJUNGAN SAKIT": [f"{total_pasien} PASIEN"],
                 "REKOMENDASI PER-HARI": [f"{ist_hari} PASIEN"],
                 "REKOMENDASI PER-JAM": [f"{ist_jam} PASIEN"],
                 "HARI KERJA": [f"{selisih_hari} HARI"]
             })
-            return summary
 
-        # --- DAFTAR LIST KONTRAKTOR ---
-        list_hjf = ["PT INDO FUDONG (HJF)", "PT IMJ ( INOVASI MAJU JAYA) HJF", "PT BTG-ZJYC (ONC)", "PT. ZJYC ONC", "PT. GDSK (HJF)", "PT GLOBEL DARMA SARANA KARYA GDSK (HJF)", "PT GOBEL DHARMA SARANA KARYA GDSK (HJF)", "PT GEOSERVICES MAKASSAR", "PT. RENTOKIL INDONESIA", "PT.MATAHARI PUTRA PRIMA (HYPERMART) HJF"]
-        list_kps = ["PT MCC BAOYE (KPS)", "PT MCC6 (KPS)", "PT. JINRUI KPS", "PT YAOHUA (KPS)", "PT CREC (KPS)", "PT. CISDI (KPS)", "PT CISDI-KPS", "PT JME-KPS", "PT. ETGH-KPS", "PT. BTG ZJYC (KPS)"]
-        list_ost = ["PT. MCCBY DCM", "PT LONGI & CENTER OST", "PT CREC (OST)", "PT STHB (OST)", "PT ZTPI -OST", "PT ZTPI-(OST)", "ZTPI (OST)", "PT. ZTPI/ OST", "PT ZTPI (OST)", "PT JIANGXI (OST)", "PT. CCEPC OST", "PT INDO FUDONG (OST)", "PT CSCEC (OST)"]
-        list_ckm = ["PT. MCC BAOYE (CKM)"]
-
-        # --- TAMPILAN SISTEM TAB ---
+        # 6. TAMPILAN SISTEM TAB
         st.write("### 🏢 Pilih Ringkasan Perusahaan")
         tab1, tab2, tab3, tab4 = st.tabs(["HJF GROUP", "KPS GROUP", "OST GROUP", "CKM GROUP"])
 
@@ -482,54 +464,45 @@ elif menu == "Keterangan Istirahat":
             induk = df_raw[df_raw['company'].str.contains("HALMAHERA", na=False)]
             res_induk = get_summary_table(induk)
             if res_induk is not None: st.table(res_induk)
-            else: st.info("Data Induk HJF Tidak Ditemukan")
             
             st.subheader("KONTRAKTOR HJF")
             kon = df_raw[df_raw['company'].isin(list_hjf)]
             res_kon = get_summary_table(kon)
             if res_kon is not None: st.table(res_kon)
-            else: st.info("Data Kontraktor HJF Tidak Ditemukan")
 
         with tab2:
             st.subheader("PT. KARUNIA PERMAI SENTOSA (KPS)")
             induk = df_raw[df_raw['company'].str.contains("KARUNIA", na=False)]
             res_induk = get_summary_table(induk)
             if res_induk is not None: st.table(res_induk)
-            else: st.info("Data Induk KPS Tidak Ditemukan")
             
             st.subheader("KONTRAKTOR KPS")
             kon = df_raw[df_raw['company'].isin(list_kps)]
             res_kon = get_summary_table(kon)
             if res_kon is not None: st.table(res_kon)
-            else: st.info("Data Kontraktor KPS Tidak Ditemukan")
 
         with tab3:
             st.subheader("PT. OBI SINAR TIMUR (OST)")
             induk = df_raw[df_raw['company'].str.contains("OBI SINAR", na=False)]
             res_induk = get_summary_table(induk)
             if res_induk is not None: st.table(res_induk)
-            else: st.info("Data Induk OST Tidak Ditemukan")
             
             st.subheader("KONTRAKTOR OST")
             kon = df_raw[df_raw['company'].isin(list_ost)]
             res_kon = get_summary_table(kon)
             if res_kon is not None: st.table(res_kon)
-            else: st.info("Data Kontraktor OST Tidak Ditemukan")
 
         with tab4:
             st.subheader("PT. CIPTA KEMAKMURAN MITRA (CKM)")
             induk = df_raw[df_raw['company'].str.contains("CIPTA KEMAKMURAN", na=False)]
             res_induk = get_summary_table(induk)
             if res_induk is not None: st.table(res_induk)
-            else: st.info("Data Induk CKM Tidak Ditemukan")
             
             st.subheader("KONTRAKTOR CKM")
             kon = df_raw[df_raw['company'].isin(list_ckm)]
             res_kon = get_summary_table(kon)
             if res_kon is not None: st.table(res_kon)
-            else: st.info("Data Kontraktor CKM Tidak Ditemukan")
 
-        # --- CATATAN KAKI ---
         st.markdown("---")
         st.markdown("<p style='color:red; font-weight:bold; text-align:center;'>NOTE : DAFTAR KUNJUNGAN DAN JUMLAH REKOMENDASI ISTIRAHAT GABUNG DENGAN 3 DEVISI (RANAP, RAJAL, UGD).</p>", unsafe_allow_html=True)
     else:
