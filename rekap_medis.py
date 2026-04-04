@@ -698,6 +698,88 @@ elif menu == "Analisis Istirahat":
             
     else:
         st.info("ℹ️ Database kosong untuk periode tanggal ini.")
+
+# --- MODUL BARU: LAPORAN KLB (KEJADIAN LUAR BIASA) ---
+elif menu == "Laporan KLB":
+    st.markdown("<h1>🚨 LAPORAN KEJADIAN LUAR BIASA (KLB)</h1>", unsafe_allow_html=True)
+    st.write("Menyaring penyakit potensial wabah berdasarkan data yang ada di database.")
+
+    # 1. Pengaturan Filter Bulan dan Tahun
+    c1, c2 = st.columns(2)
+    tahun_pilih = c1.selectbox("Pilih Tahun", [2024, 2025, 2026], index=2)
+    bulan_pilih = c2.selectbox("Pilih Bulan", 
+        ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+         "Juli", "Agustus", "September", "Oktober", "November", "Desember"])
+    
+    bulan_map = {
+        "Januari": "01", "Februari": "02", "Maret": "03", "April": "04",
+        "Mei": "05", "Juni": "06", "Juli": "07", "Agustus": "08",
+        "September": "09", "Oktober": "10", "November": "11", "Desember": "12"
+    }
+    periode_str = f"{tahun_pilih}-{bulan_map[bulan_pilih]}"
+
+    # 2. Daftar Kata Kunci KLB (Input Huruf Kecil)
+    # Kamu bisa bebas menambah kata kunci di sini, sistem akan mencarinya di database
+    keywords_klb = [
+        "Low back pain", "Fever, unspecified", "gastroenteritis", "Diarrhoea and gastroenteritis of presumed infectious origin", 
+        "Acute pharyngitis, unspecified", "Acute nasopharyngitis [common cold]", "Dengue fever [classical dengue]", "Conjunctivitis, unspecified", "Pneumonia, unspecified", 
+        "Dermatitis, unspecified", "varicella", "Typhoid fever", "Fever with chills", "Cough",
+        "Functional diarrhoea", "Acute upper respiratory infection, unspecified", "Allergic contact dermatitis due to other chemical products", "Allergic contact dermatitis, unspecified cause", 
+        "Acute tonsillitis, unspecified", "Allergic contact dermatitis due to metals", "Acute tonsillitis, unspecified", "Influenza with other respiratory manifestations, virus not identified", 
+        "Influenza with other respiratory manifestations, influenza virus identified", "Malaise and fatigue", "Urinary tract infection, site not specified", "Varicella without complication", 
+        "Dengue hemorrhagic fever", " Bacterial foodborne intoxication, unspecified"
+    ]
+
+    # 3. Ambil Data dari Database
+    conn = sqlite3.connect(DB_PATH)
+    query = f"SELECT visit_time, patient_name, diagnosa, company, departemen FROM rekap_penyakit WHERE visit_time LIKE '{periode_str}%'"
+    df_mentah = pd.read_sql_query(query, conn)
+    conn.close()
+
+    if not df_mentah.empty:
+        # Proses Normalisasi: Ubah kolom diagnosa ke huruf kecil untuk pengecekan
+        # Namun kita tetap simpan data aslinya untuk ditampilkan
+        df_mentah['diagnosa_lower'] = df_mentah['diagnosa'].astype(str).str.lower().str.strip()
+        
+        # Filter: Mencari baris yang mengandung salah satu keyword KLB
+        pattern = '|'.join(keywords_klb)
+        df_klb = df_mentah[df_mentah['diagnosa_lower'].str.contains(pattern, na=False)].copy()
+
+        if not df_klb.empty:
+            st.warning(f"⚠️ Terdeteksi {len(df_klb)} kasus potensial KLB pada {bulan_pilih} {tahun_pilih}.")
+            
+            # Statistik Per Penyakit (Tampilkan dalam format yang rapi)
+            st.write("### 📊 Ringkasan Kasus KLB")
+            rekap_klb = df_klb['diagnosa_lower'].value_counts().reset_index()
+            rekap_klb.columns = ['Diagnosa Terdeteksi', 'Jumlah Kasus']
+            st.table(rekap_klb)
+
+            # Detail Pasien
+            st.write("### 📋 Detail Identitas Pasien KLB")
+            # Menghapus kolom pembantu 'diagnosa_lower' sebelum ditampilkan ke user
+            df_display = df_klb[['visit_time', 'patient_name', 'diagnosa', 'company', 'departemen']].copy()
+            df_display.columns = ['Tanggal', 'Nama Pasien', 'Diagnosa Asli', 'Perusahaan', 'Departemen']
+            
+            # Nomor urut mulai dari 1
+            df_display.index = range(1, len(df_display) + 1)
+            st.dataframe(df_display, use_container_width=True)
+
+            # Download Button
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df_display.to_excel(writer, sheet_name='LAPORAN_KLB', index=True)
+            
+            st.download_button(
+                label="📥 Download Laporan KLB (Excel)",
+                data=output.getvalue(),
+                file_name=f'Laporan_KLB_{periode_str}.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                use_container_width=True
+            )
+        else:
+            st.success(f"✅ Tidak ada temuan kasus KLB untuk periode {bulan_pilih} {tahun_pilih}.")
+    else:
+        st.info(f"ℹ️ Belum ada data kunjungan untuk periode {bulan_pilih} {tahun_pilih}.")
 # --- 11. MODUL: MANAJEMEN USER (REGISTRASI DI DALAM) ---
 elif menu == "Manajemen User":
     st.markdown("<h1>👤 MANAJEMEN PENGGUNA</h1>", unsafe_allow_html=True)
