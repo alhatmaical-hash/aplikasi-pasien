@@ -216,21 +216,21 @@ if menu == "Upload Data CSV":
 
                     if not df.empty:
                     # 5. Fix Tanggal: Versi Pintar (Otomatis deteksi format)
-                    try:
-                        # Coba konversi dengan mendeteksi format secara otomatis
-                        # Kita hapus parameter format kaku dan biarkan pandas menebak
-                        df['visit_time'] = pd.to_datetime(
-                            df['visit_time'], 
-                            errors='coerce'
-                        ).dt.strftime('%Y-%m-%d')
-                    except:
-                        # Jika gagal, gunakan cara manual yang lebih aman
-                        df['visit_time'] = pd.to_datetime(
-                            df['visit_time'], 
-                            dayfirst=False, # Karena kamu mau Bulan dulu baru Hari
-                            errors='coerce'
-                        ).dt.strftime('%Y-%m-%d')
-                    st.write(f"DEBUG: Berhasil konversi {df['visit_time'].notna().sum()} baris tanggal.")
+                        try:
+                            # Coba konversi dengan mendeteksi format secara otomatis
+                            # Kita hapus parameter format kaku dan biarkan pandas menebak
+                            df['visit_time'] = pd.to_datetime(
+                                df['visit_time'], 
+                                errors='coerce'
+                            ).dt.strftime('%Y-%m-%d')
+                        except:
+                            # Jika gagal, gunakan cara manual yang lebih aman
+                            df['visit_time'] = pd.to_datetime(
+                                df['visit_time'], 
+                                dayfirst=False, # Karena kamu mau Bulan dulu baru Hari
+                                errors='coerce'
+                            ).dt.strftime('%Y-%m-%d')
+                        st.write(f"DEBUG: Berhasil konversi {df['visit_time'].notna().sum()} baris tanggal.")
 # PENTING: Cek apakah ada data yang berhasil dikonversi
 st.write(f"DEBUG: Berhasil konversi {df['visit_time'].notna().sum()} baris tanggal.")
                         
