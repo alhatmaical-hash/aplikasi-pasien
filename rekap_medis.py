@@ -328,186 +328,118 @@ elif menu == "Laporan Analisis Kunjungan":
     df_raw = pd.read_sql_query(query, conn)
     conn.close()
     
-    if not df_raw.empty:
-        # --- INISIALISASI STATE (Wajib agar tombol berfungsi) ---
-        if 'chk_dept' not in st.session_state:
-            st.session_state.chk_dept = True
-        if 'chk_corp' not in st.session_state:
-            st.session_state.chk_corp = True
 
-        tab1, tab2 = st.tabs(["📊 Departemen", "🏢 Perusahaan"])
-        
-        # --- TAB 1: DEPARTEMEN ---
+if not df_raw.empty:
+    # --- INISIALISASI STATE (Wajib agar tombol berfungsi) ---
+    if 'count_dept' not in st.session_state: st.session_state.count_dept = 0
+    if 'chk_dept' not in st.session_state: st.session_state.chk_dept = True
+    if 'count_corp' not in st.session_state: st.session_state.count_corp = 0
+    if 'chk_corp' not in st.session_state: st.session_state.chk_corp = True
+
+    tab1, tab2 = st.tabs(["📊 Departemen", "🏢 Perusahaan"])
+    
+    # --- TAB 1: DEPARTEMEN ---
     with tab1:
-    st.write("### Rekapitulasi Kunjungan Per Departemen")
-    
-       # 1. Inisialisasi Counter untuk Reset Key (Wajib ada)
-        if 'count_dept' not in st.session_state:
-        st.session_state.count_dept = 0
-        if 'chk_dept' not in st.session_state:
-        st.session_state.chk_dept = True
-    
-    dept_counts = df_raw['departemen'].value_counts().reset_index()
-    dept_counts.columns = ['Nama Departemen', 'Total Kunjungan']
-    
-    # 2. Perbaikan Logika Tombol (Ditambah penambahan counter)
-    c_btn1, c_btn2, _ = st.columns([1, 1, 3])
-    if c_btn1.button("✅ Pilih Semua Dept", key="btn_all_dept"):
-        st.session_state.chk_dept = True
-        st.session_state.count_dept += 1  # Menaikkan angka agar key berubah
-        st.rerun()
-    if c_btn2.button("❌ Kosongkan Dept", key="btn_none_dept"):
-        st.session_state.chk_dept = False
-        st.session_state.count_dept += 1  # Menaikkan angka agar key berubah
-        st.rerun()
-
-    # Masukkan kolom Pilih berdasarkan state
-    dept_counts.insert(0, "Pilih", st.session_state.chk_dept)
-
-    c1, c2 = st.columns([1.2, 1.8])
-    with c1:
-        # 3. Perbaikan pada bagian KEY agar reset berfungsi
-        edited_dept = st.data_editor(
-            dept_counts,
-            column_config={
-                "Pilih": st.column_config.CheckboxColumn(
-                    "Pilih",
-                    default=st.session_state.chk_dept,
-                )
-            },
-            disabled=["Nama Departemen", "Total Kunjungan"], 
-            hide_index=True,
-            use_container_width=True,
-            key=f"editor_dept_{st.session_state.count_dept}" 
-        )
-    
-    # Filter data yang dicentang
-    df_dept_final = edited_dept[edited_dept["Pilih"] == True]
-
-    with c2:
-        if not df_dept_final.empty:
-            st.bar_chart(df_dept_final.set_index('Nama Departemen')['Total Kunjungan'])
-        else:
-            st.warning("⚠️ Silakan pilih minimal satu departemen.")
-
-    # --- TAMBAHKAN BAGIAN DOWNLOAD INI DI BAWAH ---
-    st.markdown("---")
-    cd1, cd2 = st.columns(2)
-    
-    with cd1:
-        # Download CSV
-        csv_dept = df_dept_final[["Nama Departemen", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download CSV (Pilihan)",
-            data=csv_dept,
-            file_name=f'rekap_dept_{t1}.csv',
-            mime='text/csv',
-            use_container_width=True,
-            key="dl_csv_dept_pilihan"
-        )
+        st.write("### Rekapitulasi Kunjungan Per Departemen")
         
-    with cd2:
-        # Download Excel
-        output_dept = io.BytesIO()
-        with pd.ExcelWriter(output_dept, engine='xlsxwriter') as writer:
-            df_dept_final[["Nama Departemen", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap')
-        st.download_button(
-            label="📊 Download Excel (Pilihan)",
-            data=output_dept.getvalue(),
-            file_name=f'rekap_dept_{t1}.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            use_container_width=True,
-            key="dl_xlsx_dept_pilihan"
-        )
+        dept_counts = df_raw['departemen'].value_counts().reset_index()
+        dept_counts.columns = ['Nama Departemen', 'Total Kunjungan']
+        
+        # Tombol Kontrol Departemen
+        c_btn1, c_btn2, _ = st.columns([1, 1, 3])
+        if c_btn1.button("✅ Pilih Semua Dept", key="btn_all_dept"):
+            st.session_state.chk_dept = True
+            st.session_state.count_dept += 1
+            st.rerun()
+        if c_btn2.button("❌ Kosongkan Dept", key="btn_none_dept"):
+            st.session_state.chk_dept = False
+            st.session_state.count_dept += 1
+            st.rerun()
 
-    
-        # --- TAB 2: PERUSAHAAN ---
-       with tab2:
-            st.write("### Rekapitulasi Kunjungan Per Perusahaan")
-            
-            # 1. Inisialisasi Counter untuk Reset Key Perusahaan
-            if 'count_corp' not in st.session_state:
-                st.session_state.count_corp = 0
-            if 'chk_corp' not in st.session_state:
-                st.session_state.chk_corp = True
-            
-            # Hitung data rekapitulasi perusahaan
-            corp_counts = df_raw['company'].value_counts().reset_index()
-            corp_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
-            
-            # 2. Tombol Kontrol Perusahaan
-            p_btn1, p_btn2, _ = st.columns([1, 1, 3])
-            if p_btn1.button("✅ Pilih Semua Perusahaan", key="btn_all_corp"):
-                st.session_state.chk_corp = True
-                st.session_state.count_corp += 1  # Menaikkan angka agar key tabel berubah
-                st.rerun()
-            if p_btn2.button("❌ Kosongkan Perusahaan", key="btn_none_corp"):
-                st.session_state.chk_corp = False
-                st.session_state.count_corp += 1  # Menaikkan angka agar key tabel berubah
-                st.rerun()
+        dept_counts.insert(0, "Pilih", st.session_state.chk_dept)
 
-            # Masukkan kolom Pilih berdasarkan state terbaru
-            corp_counts.insert(0, "Pilih", st.session_state.chk_corp)
-            
-            # 3. Layout Tabel dan Grafik
-            p1, p2 = st.columns([1.2, 1.8])
-            
-            with p1:
-                # Key dinamis menggunakan f-string agar reset berfungsi saat tombol diklik
-                edited_corp = st.data_editor(
-                    corp_counts,
-                    column_config={
-                        "Pilih": st.column_config.CheckboxColumn(
-                            "Pilih", 
-                            default=st.session_state.chk_corp
-                        )
-                    },
-                    disabled=["Nama Perusahaan", "Total Kunjungan"],
-                    hide_index=True,
-                    use_container_width=True,
-                    key=f"editor_corp_{st.session_state.count_corp}"
-                )
-            
-            # 4. Filter data final untuk Grafik & Download
-            df_corp_final = edited_corp[edited_corp["Pilih"] == True]
+        c1, c2 = st.columns([1.2, 1.8])
+        with c1:
+            edited_dept = st.data_editor(
+                dept_counts,
+                column_config={"Pilih": st.column_config.CheckboxColumn("Pilih", default=st.session_state.chk_dept)},
+                disabled=["Nama Departemen", "Total Kunjungan"], 
+                hide_index=True,
+                use_container_width=True,
+                key=f"editor_dept_{st.session_state.count_dept}" 
+            )
+        
+        df_dept_final = edited_dept[edited_dept["Pilih"] == True]
+        with c2:
+            if not df_dept_final.empty:
+                st.bar_chart(df_dept_final.set_index('Nama Departemen')['Total Kunjungan'])
+            else:
+                st.warning("⚠️ Pilih minimal satu departemen.")
 
-            with p2:
-                if not df_corp_final.empty:
-                    # Menyiapkan data chart (Hanya satu bar_chart di sini)
-                    chart_perusahaan = df_corp_final.set_index('Nama Perusahaan')['Total Kunjungan']
-                    st.bar_chart(chart_perusahaan)
-                else:
-                    st.warning("⚠️ Silakan pilih minimal satu perusahaan pada tabel.")
+        # Tombol Download Departemen
+        st.markdown("---")
+        cd1, cd2 = st.columns(2)
+        with cd1:
+            csv_dept = df_dept_final[["Nama Departemen", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
+            st.download_button(label="📥 Download CSV (Dept)", data=csv_dept, file_name=f'rekap_dept_{t1}.csv', mime='text/csv', use_container_width=True, key="dl_csv_dept")
+        with cd2:
+            output_dept = io.BytesIO()
+            with pd.ExcelWriter(output_dept, engine='xlsxwriter') as writer:
+                df_dept_final[["Nama Departemen", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap')
+            st.download_button(label="📊 Download Excel (Dept)", data=output_dept.getvalue(), file_name=f'rekap_dept_{t1}.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', use_container_width=True, key="dl_xlsx_dept")
 
-            # 5. Tombol Download Excel dan CSV
-            st.markdown("---")
-            cp1, cp2 = st.columns(2)
-            
-            with cp1:
-                # Proses Download CSV
-                csv_corp = df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📥 Download CSV (Perusahaan Terpilih)",
-                    data=csv_corp,
-                    file_name=f'rekap_perusahaan_{t1}.csv',
-                    mime='text/csv',
-                    use_container_width=True,
-                    key="dl_csv_corp_lengkap"
-                )
-                
-            with cp2:
-                # Proses Download Excel
-                output_corp = io.BytesIO()
-                with pd.ExcelWriter(output_corp, engine='xlsxwriter') as writer:
-                    df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap_Perusahaan')
-                st.download_button(
-                    label="📊 Download Excel (Perusahaan Terpilih)",
-                    data=output_corp.getvalue(),
-                    file_name=f'rekap_perusahaan_{t1}.xlsx',
-                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    use_container_width=True,
-                    key="dl_xlsx_corp_lengkap"
-                )
+    # --- TAB 2: PERUSAHAAN ---
+    with tab2:
+        st.write("### Rekapitulasi Kunjungan Per Perusahaan")
+        
+        corp_counts = df_raw['company'].value_counts().reset_index()
+        corp_counts.columns = ['Nama Perusahaan', 'Total Kunjungan']
+        
+        # Tombol Kontrol Perusahaan
+        p_btn1, p_btn2, _ = st.columns([1, 1, 3])
+        if p_btn1.button("✅ Pilih Semua Perusahaan", key="btn_all_corp"):
+            st.session_state.chk_corp = True
+            st.session_state.count_corp += 1
+            st.rerun()
+        if p_btn2.button("❌ Kosongkan Perusahaan", key="btn_none_corp"):
+            st.session_state.chk_corp = False
+            st.session_state.count_corp += 1
+            st.rerun()
+
+        corp_counts.insert(0, "Pilih", st.session_state.chk_corp)
+        
+        p1, p2 = st.columns([1.2, 1.8])
+        with p1:
+            edited_corp = st.data_editor(
+                corp_counts,
+                column_config={"Pilih": st.column_config.CheckboxColumn("Pilih", default=st.session_state.chk_corp)},
+                disabled=["Nama Perusahaan", "Total Kunjungan"],
+                hide_index=True,
+                use_container_width=True,
+                key=f"editor_corp_{st.session_state.count_corp}"
+            )
+        
+        df_corp_final = edited_corp[edited_corp["Pilih"] == True]
+        with p2:
+            if not df_corp_final.empty:
+                st.bar_chart(df_corp_final.set_index('Nama Perusahaan')['Total Kunjungan'])
+            else:
+                st.warning("⚠️ Pilih minimal satu perusahaan.")
+
+        # Tombol Download Perusahaan
+        st.markdown("---")
+        cp1, cp2 = st.columns(2)
+        with cp1:
+            csv_corp = df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_csv(index=False).encode('utf-8')
+            st.download_button(label="📥 Download CSV (Pers)", data=csv_corp, file_name=f'rekap_corp_{t1}.csv', mime='text/csv', use_container_width=True, key="dl_csv_corp")
+        with cp2:
+            output_corp = io.BytesIO()
+            with pd.ExcelWriter(output_corp, engine='xlsxwriter') as writer:
+                df_corp_final[["Nama Perusahaan", "Total Kunjungan"]].to_excel(writer, index=False, sheet_name='Rekap')
+            st.download_button(label="📊 Download Excel (Pers)", data=output_corp.getvalue(), file_name=f'rekap_corp_{t1}.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', use_container_width=True, key="dl_xlsx_corp")
+
+else:
+    st.info("ℹ️ Tidak ada data pada periode ini.")
 # --- 8. MODUL 4: ANALISIS ISTIRAHAT (VERSI FINAL DOWNLOAD PER GRUP) ---
 elif menu == "Laporan Data Sick":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
