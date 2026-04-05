@@ -45,23 +45,22 @@ def tampilkan_laporan_klb():
     st.title("🚨 LAPORAN KEJADIAN LUAR BIASA (KLB)")
     
     try:
-        # Koneksi ke database
-        conn = sqlite3.connect("rekap_medis.db") # Sesuaikan dengan nama file .db Anda
+        # Gunakan DB_PATH yang sudah kamu definisikan di atas ('klinik_data.db')
+        conn = sqlite3.connect(DB_PATH) 
         
-        # Ambil data dari tabel (Sesuaikan nama tabel Anda, misal: rekap_penyakit)
+        # Ambil data dari tabel rekap_penyakit
         query = "SELECT visit_time, patient_name, diagnosa, clinic, departemen, company FROM rekap_penyakit ORDER BY id DESC"
         df = pd.read_sql_query(query, conn)
         conn.close()
 
         if not df.empty:
-            st.success(f"Menampilkan {len(df)} data terbaru.")
-            # Menampilkan tabel data
+            st.success(f"✅ Terkoneksi! Menampilkan {len(df)} data pasien dari database.")
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
-            st.warning("Data kosong. Belum ada data yang tersimpan di database.")
+            st.warning("⚠️ Database 'rekap_penyakit' ditemukan, tapi isinya masih kosong. Silakan upload CSV dulu.")
             
     except Exception as e:
-        st.error(f"Gagal mengambil data: {e}")
+        st.error(f"❌ Gagal mengambil data: {e}")
 
 
     
@@ -906,20 +905,13 @@ elif menu == "Manajemen User":
 # --- LOGIKA HALAMAN (TARUH DI BARIS PALING BAWAH) ---
 
 if st.query_params.get("page") == "klb":
-    # 1. Sembunyikan semua elemen UI bawaan Streamlit (Sidebar & Header)
     st.markdown("""
         <style>
             [data-testid="stSidebar"] {display: none !important;}
             section[data-testid="stSidebar"] {width: 0px !important; visibility: hidden !important;}
             .stAppHeader {display: none !important;}
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
         </style>
     """, unsafe_allow_html=True)
-    
-    # 2. Jalankan fungsi laporan
     tampilkan_laporan_klb()
-    
-    # 3. PENTING: Paksa Streamlit berhenti di sini agar kode Admin/Upload di bawah tidak jalan
-    st.stop()
+    st.stop() # Ini yang akan menghilangkan menu upload data
 
