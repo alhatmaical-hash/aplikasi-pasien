@@ -49,16 +49,7 @@ def tampilkan_laporan_klb():
     # st.write(df)
     st.info("Halaman ini hanya menampilkan Laporan KLB.")
 
-# --- STEP 2: LOGIKA HALAMAN (TARUH DI BAGIAN BAWAH) ---
-if st.query_params.get("page") == "klb":
-    # Sembunyikan sidebar menggunakan CSS
-    st.markdown("""
-        <style>
-            [data-testid="stSidebar"] {display: none;}
-            section[data-testid="stSidebar"] {width: 0px; visibility: hidden;}
-            .stAppHeader {display: none;}
-        </style>
-    """, unsafe_allow_html=True)
+
     
    
 else:
@@ -900,3 +891,14 @@ elif menu == "Manajemen User":
         st.table(df_user)
     else:
         st.error("🚫 Maaf, hanya akun 'admin' yang boleh menambah user baru.")
+
+# --- STEP 2: LOGIKA HALAMAN (TARUH DI BAGIAN BAWAH) ---
+if st.query_params.get("page") == "klb":
+    # Sembunyikan sidebar menggunakan CSS
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] {display: none;}
+            section[data-testid="stSidebar"] {width: 0px; visibility: hidden;}
+            .stAppHeader {display: none;}
+        </style>
+    """, unsafe_allow_html=True)
