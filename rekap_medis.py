@@ -52,10 +52,7 @@ def tampilkan_laporan_klb():
 
     
    
-else:
-    # --- 1. LOGIKA LOGIN (USER & PASSWORD DATABASE) ---
-    # Lanjutkan kode menu utama atau login kamu di sini
-    pass
+
 # --- 1. LOGIKA LOGIN (USER & PASSWORD DATABASE) ---
 
 def make_hashes(password):
@@ -901,4 +898,9 @@ if st.query_params.get("page") == "klb":
             section[data-testid="stSidebar"] {width: 0px; visibility: hidden;}
             .stAppHeader {display: none;}
         </style>
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True
+else:
+    # --- 1. LOGIKA LOGIN (USER & PASSWORD DATABASE) ---
+    # Lanjutkan kode menu utama atau login kamu di sini
+    pass
+
