@@ -43,11 +43,25 @@ st.set_page_config(
 )
 def tampilkan_laporan_klb():
     st.title("🚨 LAPORAN KEJADIAN LUAR BIASA (KLB)")
-    # Masukkan semua kode logika laporan KLB kamu di sini
-    # Contoh:
-    # df = pd.read_sql("SELECT * FROM rekap_penyakit", conn)
-    # st.write(df)
-    st.info("Halaman ini hanya menampilkan Laporan KLB.")
+    
+    try:
+        # Koneksi ke database
+        conn = sqlite3.connect("rekap_medis.db") # Sesuaikan dengan nama file .db Anda
+        
+        # Ambil data dari tabel (Sesuaikan nama tabel Anda, misal: rekap_penyakit)
+        query = "SELECT visit_time, patient_name, diagnosa, clinic, departemen, company FROM rekap_penyakit ORDER BY id DESC"
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+
+        if not df.empty:
+            st.success(f"Menampilkan {len(df)} data terbaru.")
+            # Menampilkan tabel data
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.warning("Data kosong. Belum ada data yang tersimpan di database.")
+            
+    except Exception as e:
+        st.error(f"Gagal mengambil data: {e}")
 
 
     
@@ -889,23 +903,23 @@ elif menu == "Manajemen User":
     else:
         st.error("🚫 Maaf, hanya akun 'admin' yang boleh menambah user baru.")
 
-# --- WAJIB DI TARUH DI BARIS PALING AKHIR ---
+# --- LOGIKA HALAMAN (TARUH DI BARIS PALING BAWAH) ---
 
 if st.query_params.get("page") == "klb":
-    # 1. Sembunyikan Sidebar & Header agar rapi
+    # 1. Sembunyikan semua elemen UI bawaan Streamlit (Sidebar & Header)
     st.markdown("""
         <style>
-            [data-testid="stSidebar"] {display: none;}
-            section[data-testid="stSidebar"] {width: 0px; visibility: hidden;}
-            .stAppHeader {display: none;}
+            [data-testid="stSidebar"] {display: none !important;}
+            section[data-testid="stSidebar"] {width: 0px !important; visibility: hidden !important;}
+            .stAppHeader {display: none !important;}
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
         </style>
     """, unsafe_allow_html=True)
     
-    # 2. Panggil fungsi laporan
+    # 2. Jalankan fungsi laporan
     tampilkan_laporan_klb()
     
-    # 3. PENTING: Hentikan semua kode di bawah agar "Upload Data" tidak ikut muncul
+    # 3. PENTING: Paksa Streamlit berhenti di sini agar kode Admin/Upload di bawah tidak jalan
     st.stop()
 
