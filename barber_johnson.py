@@ -114,11 +114,20 @@ with st.form("input_form"):
     p = c1.number_input("Periode Waktu (Hari)", value=30, min_value=1)
     hp = c2.number_input("Total Hari Perawatan (HP)", value=1200, min_value=1)
     pk = c2.number_input("Pasien Keluar (Hidup + Mati)", value=150, min_value=1)
-    submit = st.form_submit_button("🚀 Hitung & Tampilkan Grafik")
-col_space, col_reset = st.columns([0.22, 0.78]) # Mengatur posisi agar sejajar di bawah tombol hitung
-with col_reset:
-    if st.button("➕ Input Data Baru"):
-        st.rerun()
+    # --- BAGIAN TOMBOL SEJAJAR ---
+    # Membuat sub-kolom di dalam form untuk tombol
+    col_btn1, col_btn2, col_filler = st.columns([0.22, 0.22, 0.56])
+    
+    with col_btn1:
+        submit = st.form_submit_button("🚀 Hitung & Tampilkan Grafik")
+    
+    with col_btn2:
+        # Karena di dalam form, kita gunakan submit button juga untuk reset
+        reset = st.form_submit_button("➕ Input Data Baru")
+
+# Logika untuk tombol reset
+if reset:
+    st.rerun()
 
 if submit:
     res = hitung_bj(hp, pk, tt, p)
