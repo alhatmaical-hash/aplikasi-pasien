@@ -87,7 +87,7 @@ def buat_grafik_interaktif(toi, avlos):
         x=[toi], y=[avlos],
         mode='markers+text',
         marker=dict(size=15, color='red', line=dict(width=2, color='black')),
-        name="Posisi Klinik",
+        name="Posisi Data Anda",
         text=["Titik Klinik"],
         textposition="top center"
     ))
