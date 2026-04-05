@@ -7,22 +7,21 @@ import hashlib
 import datetime
 from io import BytesIO
 
-# --- 1. KEAMANAN TANGGAL ---
+# --- 1. KONFIGURASI HALAMAN & KEAMANAN ---
+st.set_page_config(page_title="Klinik Apps - Barber Johnson", layout="wide")
+
+# Keamanan Tanggal (Expired)
 deadline = datetime.date(2026, 4, 28) 
 if datetime.date.today() > deadline:
-    st.error("Masa berlaku aplikasi habis!")
+    st.error("⚠️ Masa berlaku aplikasi telah habis. Silakan hubungi pembuat.")
     st.stop()
 
-# --- 2. KODE AKTIVASI SIDEBAR ---
-if st.sidebar.text_input("🔑 Kode Aktivasi", type="password") != "Rahasia123":
-    st.info("Masukkan kode aktivasi di sidebar.")
-    st.stop()
-
-# --- 3. DATABASE & LOGIN ---
+# --- 2. DATABASE USER ---
 def create_user_table():
     conn = sqlite3.connect('database_klinik.db')
     c = conn.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
+    # Admin default: admin / admin123
     hashed_pw = hashlib.sha256(str.encode('admin123')).hexdigest()
     c.execute("INSERT OR IGNORE INTO users VALUES (?, ?, ?)", ('admin', hashed_pw, 'admin'))
     conn.commit()
@@ -30,6 +29,7 @@ def create_user_table():
 
 create_user_table()
 
+# --- 3. SISTEM LOGIN ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
@@ -45,41 +45,44 @@ if not st.session_state['logged_in']:
         data = c.fetchone()
         conn.close()
         if data:
-            st.session_state['logged_in'], st.session_state['username'], st.session_state['role'] = True, user, data[2]
+            st.session_state['logged_in'] = True
+            st.session_state['username'] = user
+            st.session_state['role'] = data[2]
             st.rerun()
         else:
-            st.error("Salah!")
+            st.error("Username atau Password salah!")
     st.stop()
 
-# --- 4. CONFIG HALAMAN ---
-st.set_page_config(page_title="Klinik Apps", layout="wide")
+# --- 4. SIDEBAR & MANAJEMEN USER ---
+st.sidebar.title(f"👤 {st.session_state['username']}")
+st.sidebar.write(f"Role: {st.session_state['role']}")
 
-# --- 5. FUNGSI PERHITUNGAN ---
+if st.session_state['role'] == 'admin':
+    with st.sidebar.expander("➕ Tambah User Baru"):
+        new_user = st.text_input("Username Baru")
+        new_pw = st.text_input("Password Baru", type="password")
+        new_role = st.selectbox("Role", ["user", "admin"])
+        if st.button("Simpan User"):
+            if new_user and new_pw:
+                h_new_pw = hashlib.sha256(str.encode(new_pw)).hexdigest()
+                try:
+                    conn = sqlite3.connect('database_klinik.db')
+                    c = conn.cursor()
+                    c.execute("INSERT INTO users VALUES (?, ?, ?)", (new_user, h_new_pw, new_role))
+                    conn.commit()
+                    conn.close()
+                    st.sidebar.success(f"User {new_user} berhasil dibuat!")
+                except:
+                    st.sidebar.error("Username sudah ada!")
+            else:
+                st.sidebar.warning("Isi semua kolom!")
+
+if st.sidebar.button("🚪 Logout"):
+    st.session_state['logged_in'] = False
+    st.rerun()
+
+# --- 5. FUNGSI PERHITUNGAN & GRAFIK ---
 def hitung_bj(hp, pk, tt, p):
     bor = (hp / (tt * p)) * 100
     avlos = hp / pk
-    toi = ((tt * p) - hp) / pk
-    bto = pk / tt
-    efisien = (60 <= bor <= 85) and (6 <= avlos <= 9) and (1 <= toi <= 3) and (bto >= 40)
-    return {"BOR": round(bor, 2), "AVLOS": round(avlos, 2), "TOI": round(toi, 2), "BTO": round(bto, 2), "Status": efisien}
-
-# --- 6. TAMPILAN UTAMA ---
-st.title("🏥 Modul Efisiensi Barber Johnson")
-
-with st.form("input_form"):
-    c1, c2 = st.columns(2)
-    tt = c1.number_input("TT", value=50)
-    p = c1.number_input("Periode", value=30)
-    hp = c2.number_input("HP", value=1200)
-    pk = c2.number_input("Pasien Keluar", value=150)
-    if st.form_submit_button("Hitung"):
-        h = hitung_bj(hp, pk, tt, p)
-        st.write(f"BOR: {h['BOR']}% | AVLOS: {h['AVLOS']} | TOI: {h['TOI']} | BTO: {h['BTO']}")
-        
-        # Grafik Sederhana (Anti Error)
-        fig, ax = plt.subplots()
-        ax.set_xlim(0, 15); ax.set_ylim(0, 15)
-        ax.add_patch(plt.Rectangle((1, 6), 2, 3, color='green', alpha=0.2)) # Area Efisien
-        ax.scatter(h['TOI'], h['AVLOS'], color='red', s=100)
-        ax.set_xlabel("TOI"); ax.set_ylabel("AVLOS")
-        st.pyplot(fig)
+    toi =
