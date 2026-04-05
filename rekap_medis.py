@@ -66,72 +66,72 @@ def tampilkan_laporan_klb():
     
    
 
-# --- 1. LOGIKA LOGIN (USER & PASSWORD DATABASE) ---
+# --- 1. LOGIKA LOGIN & MANAJEMEN USER ---
 
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
-def check_hashes(password, hashed_text):
-    if make_hashes(password) == hashed_text:
-        return hashed_text
-    return False
-
 def init_user_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # Membuat tabel untuk menyimpan banyak user
-    c.execute('CREATE TABLE IF NOT EXISTS userstable(username TEXT PRIMARY KEY, password TEXT)')
+    # Pastikan tabel user memiliki kolom role
+    c.execute('CREATE TABLE IF NOT EXISTS userstable(username TEXT PRIMARY KEY, password TEXT, role TEXT)')
     
-    # Cek apakah sudah ada user 'admin' default
+    # Cek admin default
     c.execute('SELECT * FROM userstable WHERE username = "admin"')
     if not c.fetchone():
-        # Username default: admin | Password default: admin123
-        c.execute('INSERT INTO userstable(username, password) VALUES (?,?)', ('admin', make_hashes('admin123')))
+        c.execute('INSERT INTO userstable(username, password, role) VALUES (?,?,?)', 
+                  ('admin', make_hashes('admin123'), 'admin'))
     conn.commit()
     conn.close()
 
 def login_user(username, password):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT password FROM userstable WHERE username = ?', (username,))
+    c.execute('SELECT password, role FROM userstable WHERE username = ?', (username,))
     data = c.fetchone()
     conn.close()
-    if data:
-        return check_hashes(password, data[0])
+    if data and make_hashes(password) == data[0]:
+        return data[1] # Mengembalikan Role (admin/user)
     return False
 
-def add_userdata(username, password):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute('INSERT INTO userstable(username, password) VALUES (?,?)', (username, make_hashes(password)))
-        conn.commit()
-        conn.close()
-        return True
-    except:
-        return False
+def get_all_users():
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query("SELECT username, role FROM userstable", conn)
+    conn.close()
+    return df
 
-# Jalankan inisialisasi tabel user
+def hapus_user_db(username):
+    if username == 'admin':
+        return False
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("DELETE FROM userstable WHERE username=?", (username,))
+    conn.commit()
+    conn.close()
+    return True
+
 init_user_db()
 
+# --- SESSION STATE ---
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
-if "username" not in st.session_state:
-    st.session_state["username"] = ""
+if "role" not in st.session_state:
+    st.session_state["role"] = "user"
 
-# Tampilan Form Login
+# --- Tampilan Form Login ---
 if not st.session_state["authenticated"]:
     st.title("🏥 Akses Terbatas - Klinik Apps")
-    
-    # Menghapus sistem Tab di depan agar tidak bisa registrasi bebas
     with st.container(border=True):
         u_input = st.text_input("Username:", key="login_user")
         p_input = st.text_input("Password:", type="password", key="login_pwd")
         
         if st.button("🚀 MASUK KE SISTEM", use_container_width=True, type="primary"):
-            if login_user(u_input, p_input):
+            role_found = login_user(u_input, p_input)
+            if role_found:
                 st.session_state["authenticated"] = True
                 st.session_state["username"] = u_input
+                st.session_state["role"] = role_found
                 st.rerun()
             else:
                 st.error("❌ Username atau Password Salah!")
@@ -877,36 +877,49 @@ elif menu == "Laporan KLB":
             )
         else:
             st.success(f"✅ Tidak ada temuan kasus KLB untuk periode {bulan_pilih} {tahun_pilih}.")
-# --- 11. MODUL: MANAJEMEN USER (REGISTRASI DI DALAM) ---
+# --- MODUL: MANAJEMEN USER (TEMPEL DI PALING BAWAH) ---
 elif menu == "Manajemen User":
-    st.markdown("<h1>👤 MANAJEMEN PENGGUNA</h1>", unsafe_allow_html=True)
-    
-    # Hanya izinkan user 'admin' yang bisa buka menu ini (Opsional)
-    if st.session_state["username"] == "admin":
-        with st.expander("🆕 Tambah Pengguna Baru", expanded=True):
-            new_u = st.text_input("Username Baru", key="reg_user")
-            new_p = st.text_input("Password Baru", type="password", key="reg_pwd")
-            confirm_p = st.text_input("Konfirmasi Password", type="password", key="reg_confirm")
-            
-            if st.button("✅ DAFTARKAN USER", use_container_width=True):
-                if new_u and new_p == confirm_p:
-                    if add_userdata(new_u, new_p):
-                        st.success(f"Berhasil! Akun '{new_u}' sekarang sudah bisa digunakan.")
-                    else:
-                        st.error("❌ Username sudah ada.")
-                else:
-                    st.warning("⚠️ Cek kembali input password Anda.")
-                    
-        # Tampilkan daftar user yang ada (Opsional)
-        st.markdown("---")
-        st.subheader("📋 Daftar Pengguna Sistem")
-        conn = sqlite3.connect(DB_PATH)
-        df_user = pd.read_sql_query("SELECT username FROM userstable", conn)
-        conn.close()
-        st.table(df_user)
+    if st.session_state["role"] != "admin":
+        st.error("⛔ Anda tidak memiliki akses ke menu ini!")
     else:
-        st.error("🚫 Maaf, hanya akun 'admin' yang boleh menambah user baru.")
+        st.markdown("<h1>👥 MANAJEMEN PENGGUNA</h1>", unsafe_allow_html=True)
+        
+        # TAB 1: TAMBAH USER
+        with st.expander("➕ Tambah User Baru", expanded=True):
+            new_u = st.text_input("Username Baru")
+            new_p = st.text_input("Password Baru", type="password")
+            new_r = st.selectbox("Pilih Role", ["user", "admin"])
+            if st.button("Simpan Akun Baru"):
+                if new_u and new_p:
+                    conn = sqlite3.connect(DB_PATH)
+                    try:
+                        c = conn.cursor()
+                        c.execute("INSERT INTO userstable VALUES (?,?,?)", (new_u, make_hashes(new_p), new_r))
+                        conn.commit()
+                        st.success(f"Akun {new_u} berhasil disimpan!")
+                        st.rerun()
+                    except:
+                        st.error("Username sudah ada!")
+                    finally:
+                        conn.close()
 
+        st.markdown("---")
+        
+        # TAB 2: DAFTAR & HAPUS USER
+        st.subheader("📋 Daftar Akun Tersimpan")
+        df_u = get_all_users()
+        
+        for index, row in df_u.iterrows():
+            c1, c2, c3 = st.columns([2, 1, 1])
+            c1.write(f"**{row['username']}**")
+            c2.code(row['role'])
+            if row['username'] != 'admin':
+                if c3.button("🗑️ Hapus", key=f"del_{row['username']}"):
+                    if hapus_user_db(row['username']):
+                        st.success("Terhapus!")
+                        st.rerun()
+            else:
+                c3.write("🔒 System")
 # --- LOGIKA HALAMAN (TARUH DI BARIS PALING BAWAH) ---
 
 if st.query_params.get("page") == "klb":
