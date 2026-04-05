@@ -837,53 +837,46 @@ elif menu == "Laporan KLB":
         pattern = '|'.join(keywords_klb)
         df_klb = df_mentah[df_mentah['diagnosa_lower'].str.contains(pattern, na=False)].copy()
 
-       if not df_klb.empty:
-    st.warning(f"⚠️ Terdeteksi {len(df_klb)} kasus potensial KLB pada {bulan_pilih} {tahun_pilih}.")
-    
-    # --- BAGIAN YANG DIGANTI ---
-    st.write("### 📊 Ringkasan Kasus KLB")
-    rekap_klb = df_klb['diagnosa_lower'].value_counts().reset_index()
-    rekap_klb.columns = ['Diagnosa Terdeteksi', 'Jumlah Kasus']
-    
-    # Hitung total untuk baris paling bawah
-    total_kasus = rekap_klb['Jumlah Kasus'].sum()
-    row_total = pd.DataFrame({
-        'Diagnosa Terdeteksi': ['**TOTAL KESELURUHAN**'], 
-        'Jumlah Kasus': [f"**{total_kasus}**"]
-    })
-    
-    # Gabungkan tabel asli dengan baris total
-    rekap_dengan_total = pd.concat([rekap_klb, row_total], ignore_index=True)
-    
-    # Tampilkan tabel statis (st.table) agar sesuai dengan gambar referensi
-    st.table(rekap_dengan_total) 
-    # ---------------------------
+       # Pastikan baris 'if' ini sejajar dengan kode di atasnya (biasanya menjorok 8 spasi atau 2 tab)
+        if not df_klb.empty:
+            st.warning(f"⚠️ Terdeteksi {len(df_klb)} kasus potensial KLB pada {bulan_pilih} {tahun_pilih}.")
+            
+            st.write("### 📊 Ringkasan Kasus KLB")
+            rekap_klb = df_klb['diagnosa_lower'].value_counts().reset_index()
+            rekap_klb.columns = ['Diagnosa Terdeteksi', 'Jumlah Kasus']
+            
+            # Hitung total
+            total_kasus = rekap_klb['Jumlah Kasus'].sum()
+            row_total = pd.DataFrame({
+                'Diagnosa Terdeteksi': ['**TOTAL KESELURUHAN**'], 
+                'Jumlah Kasus': [f"**{total_kasus}**"]
+            })
+            
+            rekap_dengan_total = pd.concat([rekap_klb, row_total], ignore_index=True)
+            st.table(rekap_dengan_total)
 
-    # Detail Pasien
-    st.write("### 📋 Detail Identitas Pasien KLB")
-    df_display = df_klb[['visit_time', 'patient_name', 'diagnosa', 'company', 'departemen']].copy()
-    df_display.columns = ['Tanggal', 'Nama Pasien', 'Diagnosa Asli', 'Perusahaan', 'Departemen']
-    
-    # Nomor urut mulai dari 1
-    df_display.index = range(1, len(df_display) + 1)
-    st.dataframe(df_display, use_container_width=True)
+            # Detail Pasien
+            st.write("### 📋 Detail Identitas Pasien KLB")
+            df_display = df_klb[['visit_time', 'patient_name', 'diagnosa', 'company', 'departemen']].copy()
+            df_display.columns = ['Tanggal', 'Nama Pasien', 'Diagnosa Asli', 'Perusahaan', 'Departemen']
+            
+            df_display.index = range(1, len(df_display) + 1)
+            st.dataframe(df_display, use_container_width=True)
 
-    # Download Button (XlsxWriter tetap digunakan sesuai kebutuhan laporan Anda)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df_display.to_excel(writer, sheet_name='LAPORAN_KLB', index=True)
-    
-    st.download_button(
-        label="📥 Download Laporan KLB (Excel)",
-        data=output.getvalue(),
-        file_name=f'Laporan_KLB_{periode_str}.xlsx',
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        use_container_width=True
-    )
+            # Download Button
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df_display.to_excel(writer, sheet_name='LAPORAN_KLB', index=True)
+            
+            st.download_button(
+                label="📥 Download Laporan KLB (Excel)",
+                data=output.getvalue(),
+                file_name=f'Laporan_KLB_{periode_str}.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                use_container_width=True
+            )
         else:
             st.success(f"✅ Tidak ada temuan kasus KLB untuk periode {bulan_pilih} {tahun_pilih}.")
-    else:
-        st.info(f"ℹ️ Belum ada data kunjungan untuk periode {bulan_pilih} {tahun_pilih}.")
 # --- 11. MODUL: MANAJEMEN USER (REGISTRASI DI DALAM) ---
 elif menu == "Manajemen User":
     st.markdown("<h1>👤 MANAJEMEN PENGGUNA</h1>", unsafe_allow_html=True)
