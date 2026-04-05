@@ -43,33 +43,47 @@ def to_image(fig):
 def buat_grafik(bor, avlos, toi, bto):
     fig, ax = plt.subplots(figsize=(10, 8))
     
+    # Judul dan Label
     ax.set_title('Grafik Barber Johnson', fontsize=16, pad=20, fontweight='bold')
     ax.set_xlabel('TOI (Hari)', fontsize=12)
     ax.set_ylabel('AVLOS (Hari)', fontsize=12)
     
+    # Batas Skala (0 - 15 hari) agar grafik tidak terlihat kosong
     ax.set_xlim(0, 15)
     ax.set_ylim(0, 15)
     
-    # Daerah Efisien
+    # 1. Gambar Kotak Efisiensi (Warna Hijau Muda)
+    # Standar Depkes: TOI 1-3 hari, AVLOS 6-9 hari
     rect = plt.Rectangle((1, 6), 2, 3, color='green', alpha=0.15, label='Daerah Efisien (Depkes)')
     ax.add_patch(rect)
     
-    # Garis Bantu BOR
+    # 2. Gambar Garis Bantu BOR (Diagonal)
+    # Rumus: AVLOS = (BOR / (100 - BOR)) * TOI
     x_vals = np.linspace(0.1, 15, 100)
-    for b in [70, 75, 80, 85]:
+    for b in [50, 60, 70, 80, 90]: # Menambahkan beberapa variasi BOR
         y_vals = (b / (100 - b)) * x_vals
-        ax.plot(x_vals, y_vals, '--', color='gray', alpha=0.4, linewidth=1)
-        # Menampilkan teks label BOR di ujung garis
-        idx = -10 # posisi label sedikit sebelum ujung
-        ax.text(x_vals[idx], y_vals[idx], f'{b}%', fontsize=8, alpha=0.7)
+        ax.plot(x_vals, y_vals, '--', color='gray', alpha=0.3, linewidth=1)
+        
+        # Munculkan teks label di ujung garis agar tidak kosong
+        if y_vals[-1] < 15:
+            ax.text(14.5, y_vals[-1], f'{b}%', fontsize=8, verticalalignment='bottom')
+        else:
+            # Jika garis memotong sumbu Y atas (15)
+            x_pos = (15 * (100 - b)) / b
+            ax.text(x_pos, 14.5, f'{b}%', fontsize=8, horizontalalignment='center')
 
-    # Plot Titik Posisi
-    ax.scatter(toi, avlos, color='red', s=200, edgecolors='black', zorder=10, label='Posisi Saat Ini')
-    ax.plot([toi, toi], [0, avlos], 'r--', alpha=0.3)
-    ax.plot([0, toi], [avlos, avlos], 'r--', alpha=0.3)
+    # 3. Plot Titik Posisi Klinik (Titik Merah Besar)
+    ax.scatter(toi, avlos, color='red', s=250, edgecolors='black', zorder=10, label='Posisi Klinik')
     
-    ax.annotate(f'({toi}, {avlos})', (toi, avlos), textcoords="offset points", xytext=(0,15), ha='center', fontweight='bold')
-    ax.grid(True, linestyle=':', alpha=0.6)
+    # Garis Putus-putus bantuan ke arah sumbu X dan Y
+    ax.plot([toi, toi], [0, avlos], 'r--', alpha=0.4)
+    ax.plot([0, toi], [avlos, avlos], 'r--', alpha=0.4)
+    
+    # Anotasi angka koordinat di atas titik merah
+    ax.annotate(f'({toi}, {avlos})', (toi, avlos), textcoords="offset points", 
+                xytext=(0,15), ha='center', fontweight='bold', color='red')
+
+    ax.grid(True, linestyle=':', alpha=0.5)
     ax.legend(loc='upper right')
     
     return fig
