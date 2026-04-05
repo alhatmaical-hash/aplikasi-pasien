@@ -55,35 +55,56 @@ if not st.session_state['logged_in']:
 st.sidebar.title(f"👤 {st.session_state['username']}")
 st.sidebar.write(f"Role: {st.session_state['role']}")
 
-# MENU KHUSUS ADMIN (Tambahkan ini agar menu muncul)
 if st.session_state['role'] == 'admin':
     st.sidebar.markdown("---")
+    
+    # --- FORM TAMBAH USER ---
     with st.sidebar.expander("➕ Tambah User Baru"):
         new_user = st.text_input("Username Baru")
         new_pw = st.text_input("Password Baru", type="password")
-        new_role = st.selectbox("Role", ["user", "admin"])
-        
+        new_role = st.selectbox("Role", ["user", "admin"], key="add_role")
         if st.button("Simpan User"):
             if new_user and new_pw:
                 h_new_pw = hashlib.sha256(str.encode(new_pw)).hexdigest()
                 try:
                     conn = sqlite3.connect('database_klinik.db')
                     c = conn.cursor()
-                    c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", 
-                              (new_user, h_new_pw, new_role))
+                    c.execute("INSERT INTO users VALUES (?, ?, ?)", (new_user, h_new_pw, new_role))
                     conn.commit()
                     conn.close()
                     st.sidebar.success(f"User {new_user} berhasil dibuat!")
-                except Exception as e:
-                    st.sidebar.error("Username sudah ada atau error database!")
+                    st.rerun()
+                except:
+                    st.sidebar.error("Username sudah ada!")
             else:
                 st.sidebar.warning("Isi semua kolom!")
+
+    # --- FORM HAPUS USER (FITUR BARU) ---
+    with st.sidebar.expander("🗑️ Hapus User"):
+        conn = sqlite3.connect('database_klinik.db')
+        df_users = pd.read_sql_query("SELECT username FROM users", conn)
+        conn.close()
+        
+        # Daftar user kecuali admin utama agar tidak terhapus sendiri
+        list_users = [u for u in df_users['username'] if u != 'admin']
+        
+        if list_users:
+            user_to_delete = st.selectbox("Pilih User yang akan dihapus", list_users)
+            if st.button("❌ Hapus Akun"):
+                conn = sqlite3.connect('database_klinik.db')
+                c = conn.cursor()
+                c.execute("DELETE FROM users WHERE username=?", (user_to_delete,))
+                conn.commit()
+                conn.close()
+                st.sidebar.success(f"User {user_to_delete} telah dihapus!")
+                st.rerun()
+        else:
+            st.sidebar.write("Tidak ada user lain untuk dihapus.")
 
 st.sidebar.markdown("---")
 if st.sidebar.button("🚪 Logout"):
     st.session_state['logged_in'] = False
     st.rerun()
-
 # --- 5. FUNGSI PERHITUNGAN & GRAFIK (PLOTLY) ---
 def hitung_bj(hp, pk, tt, p):
     bor = (hp / (tt * p)) * 100
