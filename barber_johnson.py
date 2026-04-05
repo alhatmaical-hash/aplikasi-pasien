@@ -3,23 +3,82 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from io import BytesIO
+import sqlite3
+import hashlib
+import datetime
 
 # 1. Kunci berdasarkan Tanggal (Expired Date)
-deadline = datetime.date(2026, 6, 1) # Setel tanggal kadaluarsa
+deadline = datetime.date(2026, 4, 28) # Setel tanggal kadaluarsa
 if datetime.date.today() > deadline:
     st.error("Masa berlaku aplikasi telah habis. Silakan hubungi pembuat (Nama Kamu).")
     st.stop()
 
 # 2. Kunci berdasarkan Password Sederhana
-password_akses = "klinik-rahasia-123"
+password_akses = "Rahasia123"
 user_input = st.sidebar.text_input("Masukkan Kode Aktivasi", type="password")
 
 if user_input != password_akses:
     st.info("Silakan masukkan kode aktivasi di sidebar untuk menggunakan aplikasi.")
     st.stop()
 
+def create_user_table():
+    conn = sqlite3.connect('database_klinik.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users 
+                 (username TEXT PRIMARY KEY, password TEXT, role TEXT)''')
+    # Tambahkan admin default jika belum ada
+    # Password di-hash (misal: 'admin123') agar aman
+    hashed_pw = hashlib.sha256(str.encode('admin123')).hexdigest()
+    c.execute("INSERT OR IGNORE INTO users VALUES (?, ?, ?)", ('admin', hashed_pw, 'admin'))
+    conn.commit()
+    conn.close()
+create_user_table()
+def login_user(username, password):
+    conn = sqlite3.connect('database_klinik.db')
+    c = conn.cursor()
+    hashed_pw = hashlib.sha256(str.encode(password)).hexdigest()
+    c.execute('SELECT * FROM users WHERE username =? AND password = ?', (username, hashed_pw))
+    data = c.fetchone()
+    conn.close()
+    return data
+
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
+
+if not st.session_state['logged_in']:
+    st.title("🔐 Login Klinik Apps")
+    user = st.text_input("Username")
+    pw = st.text_input("Password", type="password")
+    if st.button("Login"):
+        result = login_user(user, pw)
+        if result:
+            st.session_state['logged_in'] = True
+            st.session_state['username'] = user
+            st.session_state['role'] = result[2] # Simpan role (admin/user)
+            st.rerun()
+        else:
+            st.error("Username atau Password salah")
+    st.stop() # Stop aplikasi jika belum login
+
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps - Barber Johnson", layout="wide")
+if st.session_state['role'] == 'admin':
+    with st.expander("🛠️ Menu Admin: Tambah User Baru"):
+        new_user = st.text_input("Username Baru")
+        new_pw = st.text_input("Password Baru", type="password")
+        new_role = st.selectbox("Role", ["user", "admin"])
+        
+        if st.button("Simpan User"):
+            conn = sqlite3.connect('database_klinik.db')
+            c = conn.cursor()
+            hashed_new_pw = hashlib.sha256(str.encode(new_pw)).hexdigest()
+            try:
+                c.execute("INSERT INTO users VALUES (?, ?, ?)", (new_user, hashed_new_pw, new_role))
+                conn.commit()
+                st.success(f"User {new_user} berhasil ditambahkan!")
+            except:
+                st.error("Username sudah ada!")
+            conn.close()
 
 # --- 2. FUNGSI PERHITUNGAN ---
 def hitung_barber_johnson(hp, pasien_keluar, tt, periode):
