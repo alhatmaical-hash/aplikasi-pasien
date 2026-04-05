@@ -114,8 +114,8 @@ def buat_grafik_interaktif(toi, avlos):
         x=[toi], y=[avlos],
         mode='markers+text',
         marker=dict(size=15, color='red', line=dict(width=2, color='black')),
-        name="Posisi Data Anda",
-        text=["Titik Klinik"],
+        name="Titik Anda",
+        text=["Titik Anda"],
         textposition="top center"
     ))
 
