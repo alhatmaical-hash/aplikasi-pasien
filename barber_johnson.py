@@ -53,6 +53,33 @@ if not st.session_state['logged_in']:
 
 # --- 4. SIDEBAR ---
 st.sidebar.title(f"👤 {st.session_state['username']}")
+st.sidebar.write(f"Role: {st.session_state['role']}")
+
+# MENU KHUSUS ADMIN (Tambahkan ini agar menu muncul)
+if st.session_state['role'] == 'admin':
+    st.sidebar.markdown("---")
+    with st.sidebar.expander("➕ Tambah User Baru"):
+        new_user = st.text_input("Username Baru")
+        new_pw = st.text_input("Password Baru", type="password")
+        new_role = st.selectbox("Role", ["user", "admin"])
+        
+        if st.button("Simpan User"):
+            if new_user and new_pw:
+                h_new_pw = hashlib.sha256(str.encode(new_pw)).hexdigest()
+                try:
+                    conn = sqlite3.connect('database_klinik.db')
+                    c = conn.cursor()
+                    c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", 
+                              (new_user, h_new_pw, new_role))
+                    conn.commit()
+                    conn.close()
+                    st.sidebar.success(f"User {new_user} berhasil dibuat!")
+                except Exception as e:
+                    st.sidebar.error("Username sudah ada atau error database!")
+            else:
+                st.sidebar.warning("Isi semua kolom!")
+
+st.sidebar.markdown("---")
 if st.sidebar.button("🚪 Logout"):
     st.session_state['logged_in'] = False
     st.rerun()
