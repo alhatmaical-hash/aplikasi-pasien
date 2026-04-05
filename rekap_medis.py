@@ -889,18 +889,23 @@ elif menu == "Manajemen User":
     else:
         st.error("🚫 Maaf, hanya akun 'admin' yang boleh menambah user baru.")
 
-# --- STEP 2: LOGIKA HALAMAN (TARUH DI BAGIAN BAWAH) ---
+# --- WAJIB DI TARUH DI BARIS PALING AKHIR ---
+
 if st.query_params.get("page") == "klb":
-    # Sembunyikan sidebar menggunakan CSS
+    # 1. Sembunyikan Sidebar & Header agar rapi
     st.markdown("""
         <style>
             [data-testid="stSidebar"] {display: none;}
             section[data-testid="stSidebar"] {width: 0px; visibility: hidden;}
             .stAppHeader {display: none;}
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
         </style>
     """, unsafe_allow_html=True)
-else:
-    # --- 1. LOGIKA LOGIN (USER & PASSWORD DATABASE) ---
-    # Lanjutkan kode menu utama atau login kamu di sini
-    pass
+    
+    # 2. Panggil fungsi laporan
+    tampilkan_laporan_klb()
+    
+    # 3. PENTING: Hentikan semua kode di bawah agar "Upload Data" tidak ikut muncul
+    st.stop()
 
