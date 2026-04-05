@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go # Library baru untuk grafik interaktif
 import numpy as np
 import sqlite3
 import hashlib
@@ -10,7 +10,6 @@ from io import BytesIO
 # --- 1. KONFIGURASI HALAMAN & KEAMANAN ---
 st.set_page_config(page_title="Klinik Apps - Barber Johnson", layout="wide")
 
-# Keamanan Tanggal (Expired)
 deadline = datetime.date(2026, 4, 28) 
 if datetime.date.today() > deadline:
     st.error("⚠️ Masa berlaku aplikasi telah habis. Silakan hubungi pembuat.")
@@ -21,7 +20,6 @@ def create_user_table():
     conn = sqlite3.connect('database_klinik.db')
     c = conn.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-    # Admin default: admin / admin123
     hashed_pw = hashlib.sha256(str.encode('admin123')).hexdigest()
     c.execute("INSERT OR IGNORE INTO users VALUES (?, ?, ?)", ('admin', hashed_pw, 'admin'))
     conn.commit()
@@ -53,55 +51,57 @@ if not st.session_state['logged_in']:
             st.error("Username atau Password salah!")
     st.stop()
 
-# --- 4. SIDEBAR & MANAJEMEN USER ---
+# --- 4. SIDEBAR ---
 st.sidebar.title(f"👤 {st.session_state['username']}")
-st.sidebar.write(f"Role: {st.session_state['role']}")
-
-if st.session_state['role'] == 'admin':
-    with st.sidebar.expander("➕ Tambah User Baru"):
-        new_user = st.text_input("Username Baru")
-        new_pw = st.text_input("Password Baru", type="password")
-        new_role = st.selectbox("Role", ["user", "admin"])
-        if st.button("Simpan User"):
-            if new_user and new_pw:
-                h_new_pw = hashlib.sha256(str.encode(new_pw)).hexdigest()
-                try:
-                    conn = sqlite3.connect('database_klinik.db')
-                    c = conn.cursor()
-                    c.execute("INSERT INTO users VALUES (?, ?, ?)", (new_user, h_new_pw, new_role))
-                    conn.commit()
-                    conn.close()
-                    st.sidebar.success(f"User {new_user} berhasil dibuat!")
-                except:
-                    st.sidebar.error("Username sudah ada!")
-            else:
-                st.sidebar.warning("Isi semua kolom!")
-
 if st.sidebar.button("🚪 Logout"):
     st.session_state['logged_in'] = False
     st.rerun()
 
-# --- 5. FUNGSI PERHITUNGAN & GRAFIK ---
+# --- 5. FUNGSI PERHITUNGAN & GRAFIK (PLOTLY) ---
 def hitung_bj(hp, pk, tt, p):
     bor = (hp / (tt * p)) * 100
-    avlos = hp / pk
-    toi = ((tt * p) - hp) / pk
-    bto = pk / tt
-    # Standar Depkes
-    efisien = (60 <= bor <= 85) and (6 <= avlos <= 9) and (1 <= toi <= 3) and (bto >= 40)
+    avlos = hp / pk if pk > 0 else 0
+    toi = ((tt * p) - hp) / pk if pk > 0 else 0
+    bto = pk / tt if tt > 0 else 0
+    
+    # Logika Efisiensi disesuaikan: BOR & TOI & AVLOS
+    # BTO disesuaikan proporsional terhadap periode (p)
+    bto_min = (40 / 365) * p
+    efisien = (60 <= bor <= 85) and (3 <= avlos <= 9) and (1 <= toi <= 3)
+    
     return {"BOR": bor, "AVLOS": avlos, "TOI": toi, "BTO": bto, "Status": efisien}
 
-def buat_grafik(toi, avlos):
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.set_xlim(0, 15); ax.set_ylim(0, 15)
-    ax.set_xlabel("TOI (Hari)"); ax.set_ylabel("AVLOS (Hari)")
-    ax.set_title("Grafik Barber Johnson", fontweight='bold')
-    # Area Efisien
-    ax.add_patch(plt.Rectangle((1, 6), 2, 3, color='green', alpha=0.2, label='Daerah Efisien'))
-    # Titik Posisi
-    ax.scatter(toi, avlos, color='red', s=100, edgecolors='black', label='Posisi Klinik')
-    ax.grid(True, linestyle=':', alpha=0.6)
-    ax.legend()
+def buat_grafik_interaktif(toi, avlos):
+    fig = go.Figure()
+
+    # Daerah Efisien (Kotak Hijau)
+    fig.add_shape(
+        type="rect", x0=1, y0=3, x1=3, y1=9,
+        fillcolor="rgba(0, 255, 0, 0.2)",
+        line=dict(width=0),
+        name="Daerah Efisien"
+    )
+
+    # Titik Posisi Klinik
+    fig.add_trace(go.Scatter(
+        x=[toi], y=[avlos],
+        mode='markers+text',
+        marker=dict(size=15, color='red', line=dict(width=2, color='black')),
+        name="Posisi Klinik",
+        text=["Titik Klinik"],
+        textposition="top center"
+    ))
+
+    # Konfigurasi Layout (Auto-scale agar titik tidak hilang)
+    fig.update_layout(
+        title="<b>Grafik Barber Johnson (Interaktif)</b>",
+        xaxis_title="TOI (Hari)",
+        yaxis_title="AVLOS (Hari)",
+        xaxis=dict(range=[0, max(15, toi + 5)], gridcolor='lightgrey'),
+        yaxis=dict(range=[0, max(15, avlos + 5)], gridcolor='lightgrey'),
+        plot_bgcolor='white',
+        hovermode='closest'
+    )
     return fig
 
 # --- 6. TAMPILAN UTAMA MODUL ---
@@ -114,18 +114,13 @@ with st.form("input_form"):
     p = c1.number_input("Periode Waktu (Hari)", value=30, min_value=1)
     hp = c2.number_input("Total Hari Perawatan (HP)", value=1200, min_value=1)
     pk = c2.number_input("Pasien Keluar (Hidup + Mati)", value=150, min_value=1)
-    # --- BAGIAN TOMBOL SEJAJAR ---
-    # Membuat sub-kolom di dalam form untuk tombol
-    col_btn1, col_btn2, col_filler = st.columns([0.22, 0.22, 0.56])
     
+    col_btn1, col_btn2, _ = st.columns([0.25, 0.25, 0.5])
     with col_btn1:
-        submit = st.form_submit_button("🚀 Hitung & Tampilkan Grafik")
-    
+        submit = st.form_submit_button("🚀 Hitung & Tampilkan")
     with col_btn2:
-        # Karena di dalam form, kita gunakan submit button juga untuk reset
         reset = st.form_submit_button("➕ Input Data Baru")
 
-# Logika untuk tombol reset
 if reset:
     st.rerun()
 
@@ -144,23 +139,22 @@ if submit:
     else:
         st.warning("⚠️ Status: **Tidak Efisien** (Di luar range ideal Depkes)")
 
+    # Grafik Interaktif
+    st.markdown("---")
+    st.subheader("Visualisasi Grafik Barber Johnson")
+    fig_interaktif = buat_grafik_interaktif(res['TOI'], res['AVLOS'])
+    st.plotly_chart(fig_interaktif, use_container_width=True)
+
     # --- FITUR DOWNLOAD ---
     st.subheader("📥 Download Laporan")
     d1, d2 = st.columns(2)
     
-    # Excel Download
+    # Excel
     df_res = pd.DataFrame([res])
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df_res.to_excel(writer, index=False, sheet_name='Hasil')
     d1.download_button(label="📄 Download Data (Excel)", data=output.getvalue(), file_name="hasil_bj.xlsx")
 
-    # Grafik Download (JPG)
-    fig_bj = buat_grafik(res['TOI'], res['AVLOS'])
-    buf = BytesIO()
-    fig_bj.savefig(buf, format="jpg")
-    d2.download_button(label="🖼️ Download Grafik (JPG)", data=buf.getvalue(), file_name="grafik_bj.jpg", mime="image/jpg")
-
-    st.markdown("---")
-    st.subheader("Visualisasi Grafik Barber Johnson")
-    st.pyplot(fig_bj)
+    # Gambar (Download via Plotly Toolbar di pojok kanan atas grafik)
+    st.info("💡 Untuk download grafik, klik ikon kamera 📷 di pojok kanan atas grafik.")
