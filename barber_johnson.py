@@ -1,49 +1,46 @@
 import streamlit as st
-import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 
-def hitung_barber_johnson(hp, pasien_keluar, tt, periode):
-    # Perhitungan Indikator
-    bor = (hp / (tt * periode)) * 100
-    avlos = hp / pasien_keluar
-    toi = ((tt * periode) - hp) / pasien_keluar
-    bto = pasien_keluar / tt
+def buat_grafik_barber_johnson(bor, avlos, toi, bto):
+    fig, ax = plt.subplots(figsize=(8, 6))
     
-    # Logika Efisiensi (Standar Depkes)
-    is_efisien = (60 <= bor <= 85) and (6 <= avlos <= 9) and (1 <= toi <= 3) and (bto >= 40)
+    # Setup Sumbu
+    ax.set_xlabel('TOI (Hari)')
+    ax.set_ylabel('AVLOS (Hari)')
+    ax.set_title('Grafik Barber Johnson')
+    ax.set_xlim(0, 15)
+    ax.set_ylim(0, 15)
     
-    return {
-        "BOR (%)": round(bor, 2),
-        "AVLOS (Hari)": round(avlos, 2),
-        "TOI (Hari)": round(toi, 2),
-        "BTO (Kali)": round(bto, 2),
-        "Status": "Efisien" if is_efisien else "Tidak Efisien"
-    }
+    # 1. Gambar Garis BOR (Diagonal dari titik 0)
+    # Rumus: y = (BOR/(100-BOR)) * x
+    x_vals = np.linspace(0.1, 15, 100)
+    for b in [70, 80, 90]: # Garis bantu BOR
+        y_vals = (b / (100 - b)) * x_vals
+        ax.plot(x_vals, y_vals, '--', alpha=0.3, label=f'BOR {b}%')
+        
+    # 2. Gambar Garis BTO (Lengkung)
+    # Rumus: y = (Periode/BTO) - x
+    # (Di sini kita sederhanakan sebagai referensi visual)
+    
+    # 3. Arsir DAERAH EFISIEN (Standard Depkes)
+    # TOI 1-3, AVLOS 6-9
+    ax.axvspan(1, 3, ymin=6/15, ymax=9/15, color='green', alpha=0.2, label='Daerah Efisien')
+    
+    # 4. PLOT TITIK DATA ANDA
+    ax.scatter(toi, avlos, color='red', s=100, edgecolors='black', zorder=5)
+    ax.annotate(f' Posisi Klinik\n (TOI:{toi}, AVLOS:{avlos})', (toi, avlos), textcoords="offset points", xytext=(0,10), ha='center')
 
-st.title("🏥 Modul Efisiensi Barber Johnson")
+    ax.grid(True, linestyle=':', alpha=0.6)
+    ax.legend(loc='upper right', fontsize='small')
+    
+    return fig
 
-with st.form("input_data"):
-    col1, col2 = st.columns(2)
-    with col1:
-        tt = st.number_input("Jumlah Tempat Tidur (TT)", min_value=1, value=50)
-        periode = st.number_input("Periode Waktu (Hari)", min_value=1, value=30)
-    with col2:
-        hp = st.number_input("Total Hari Perawatan (HP)", min_value=1, value=1200)
-        pasien_keluar = st.number_input("Pasien Keluar (Hidup + Mati)", min_value=1, value=150)
+# --- Bagian UI Streamlit ---
+# (Gunakan variabel hasil hitung dari form sebelumnya)
+if 'hasil' in locals() or submit:
+    # ... kode hitung sebelumnya ...
     
-    submit = st.form_submit_button("Hitung Indikator")
-
-if submit:
-    hasil = hitung_barber_johnson(hp, pasien_keluar, tt, periode)
-    
-    # Menampilkan Metric Card
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("BOR", f"{hasil['BOR (%)']}%")
-    c2.metric("AVLOS", f"{hasil['AVLOS (Hari)']} hari")
-    c3.metric("TOI", f"{hasil['TOI (Hari)']} hari")
-    c4.metric("BTO", f"{hasil['BTO (Kali)']} kali")
-    
-    # Status Efisiensi
-    if hasil["Status"] == "Efisien":
-        st.success(f"✅ Status: **{hasil['Status']}** (Memenuhi standar Depkes)")
-    else:
-        st.warning(f"⚠️ Status: **{hasil['Status']}** (Di luar range ideal)")
+    st.subheader("Visualisasi Grafik")
+    fig_bj = buat_grafik_barber_johnson(hasil["BOR (%)"], hasil["AVLOS (Hari)"], hasil["TOI (Hari)"], hasil["BTO (Kali)"])
+    st.pyplot(fig_bj)
