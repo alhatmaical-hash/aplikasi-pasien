@@ -4,6 +4,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 from io import BytesIO
 
+# 1. Kunci berdasarkan Tanggal (Expired Date)
+deadline = datetime.date(2026, 6, 1) # Setel tanggal kadaluarsa
+if datetime.date.today() > deadline:
+    st.error("Masa berlaku aplikasi telah habis. Silakan hubungi pembuat (Nama Kamu).")
+    st.stop()
+
+# 2. Kunci berdasarkan Password Sederhana
+password_akses = "klinik-rahasia-123"
+user_input = st.sidebar.text_input("Masukkan Kode Aktivasi", type="password")
+
+if user_input != password_akses:
+    st.info("Silakan masukkan kode aktivasi di sidebar untuk menggunakan aplikasi.")
+    st.stop()
+
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps - Barber Johnson", layout="wide")
 
@@ -154,3 +168,8 @@ if submit:
     st.markdown("---")
     st.subheader("Visualisasi Grafik Barber Johnson")
     st.pyplot(fig_bj, use_container_width=True)
+
+st.markdown("""
+---
+**© 2026 Developer Klinik Apps.** *Aplikasi ini Dibuat Oleh Alhatma. Dilarang keras memperjualbelikan atau mendistribusikan ulang tanpa izin tertulis.*
+""", unsafe_allow_html=True)
