@@ -288,36 +288,43 @@ elif menu == "SKD / 医生证明":
             except:
                 files = pd.DataFrame(columns=['id', 'nama_pasien', 'nama_file', 'file_data'])
 
-        # --- TAMPILAN LIST DENGAN TOMBOL AKSI (Kotak Kecil) ---
+      # --- TAMPILAN LIST DENGAN TOMBOL AKSI ---
         if not files.empty:
             for i, r in files.iterrows():
-                # Membuat baris dengan kolom (Nama File, Lihat, Download, Hapus)
+                # Membuat baris dengan kolom
                 c_file, c_view, c_down, c_del = st.columns([4, 1.2, 1.2, 1])
                 
                 c_file.text(f"📄 {r['nama_file']}") 
                 
-                # 1. Tombol Lihat Data PDF (Kotak Kecil 1)
-                if c_view.button("👁️ Lihat", key=f"v_{r['id']}"):
-                    st.download_button("Buka PDF di Tab Baru", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"v_btn_{r['id']}")
+                # PERBAIKAN KEY: Tambahkan index 'i' agar tidak ada yang kembar
+                # 1. Tombol Lihat
+                if c_view.button("👁️ Lihat", key=f"btn_view_{r['id']}_{i}"):
+                    st.download_button(
+                        label="Buka PDF", 
+                        data=r['file_data'], 
+                        file_name=r['nama_file'], 
+                        mime='application/pdf', 
+                        key=f"dl_view_{r['id']}_{i}"
+                    )
                     st.info("Klik tombol di atas untuk membuka.")
 
-                # 2. Tombol Download PDF (Kotak Kecil 2)
+                # 2. Tombol Download
                 c_down.download_button(
                     label="📥 Unduh",
                     data=r['file_data'],
                     file_name=r['nama_file'],
                     mime='application/pdf',
-                    key=f"d_{r['id']}"
+                    key=f"btn_down_{r['id']}_{i}"
                 )
 
                 # 3. Tombol Hapus
-                if c_del.button("🗑️ Hapus", key=f"f_del_{r['id']}"):
+                if c_del.button("🗑️", key=f"btn_del_{r['id']}_{i}"):
                     with get_connection() as conn:
                         conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
                         conn.commit()
                     st.rerun()
         else:
-            st.info(f"Tidak ada data ditemukan.")
+            st.info(f"Tidak ada data ditemukan di folder ini.")
 # --- 9. PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
     st.header("⚙️ Pengaturan")
