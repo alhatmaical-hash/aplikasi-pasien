@@ -54,8 +54,13 @@ def get_master(kategori):
         conn.close()
 
 # --- 4. MANAJEMEN LOGIN ---
+# Pastikan semua variabel state sudah ada sejak awal untuk menghindari KeyError
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
+if 'username' not in st.session_state:
+    st.session_state['username'] = ""
+if 'user_role' not in st.session_state:
+    st.session_state['user_role'] = ""
 
 def login_page():
     st.markdown("<h2 style='text-align: center;'>🔐 Login Klinik Apps</h2>", unsafe_allow_html=True)
@@ -69,14 +74,15 @@ def login_page():
             conn.close()
             if res:
                 st.session_state['logged_in'] = True
-                st.session_state['username'] = res[0]
-                st.session_state['user_role'] = res[2]
+                st.session_state['username'] = res[0] # Menyimpan username
+                st.session_state['user_role'] = res[2] # Menyimpan role
                 st.rerun()
             else:
                 st.error("Username atau Password salah")
 
-# Logika Akses: Pasien bisa buka tanpa login via tombol rahasia di sidebar
+# Logika Tampilan
 if not st.session_state['logged_in']:
+    # Tombol pendaftaran untuk pasien (tanpa login)
     if st.sidebar.button("📝 Buka Form Pendaftaran Pasien"):
         st.session_state['page'] = "Pendaftaran"
     
@@ -86,11 +92,16 @@ if not st.session_state['logged_in']:
         login_page()
         st.stop()
 else:
-    st.sidebar.success(f"Login: {st.session_state['username']} ({st.session_state['user_role']})")
+    # Menggunakan .get() agar lebih aman jika terjadi error session
+    u_name = st.session_state.get('username', 'User')
+    u_role = st.session_state.get('user_role', 'Staff')
+    
+    st.sidebar.success(f"Login: {u_name} ({u_role})")
     if st.sidebar.button("🚪 Logout"):
         st.session_state['logged_in'] = False
+        st.session_state['username'] = ""
+        st.session_state['user_role'] = ""
         st.rerun()
-
 # --- 5. NAVIGASI SIDEBAR ---
 st.sidebar.title("🏥 Menu Utama")
 menu_list = ["Pendaftaran / 登记"]
