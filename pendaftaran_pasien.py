@@ -98,8 +98,7 @@ if menu == "Pendaftaran / 登记":
             else:
                 st.error("Nama dan NIK wajib diisi!")
 
-def login_page():
-    st.markdown("<h2 style='text-align: center;'>🔐 Login Klinik Apps</h2>", unsafe_allow_html=True)
+def login_page(): st.markdown("<h2 style='text-align: center;'>🔐 Login Klinik Apps</h2>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1,2,1])
     with c2:
         user = st.text_input("Username")
