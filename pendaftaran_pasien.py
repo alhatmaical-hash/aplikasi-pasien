@@ -7,11 +7,13 @@ import psycopg2
 
 # --- 1. KONEKSI DATABASE ---
 def get_connection():
-    # Gunakan Host Pooler resmi Supabase (Region Singapore)
-    # Ganti 'postgres' menjadi 'postgres.disaykowxavyegpkosvf'
-    
+    # HOST untuk Pooler Singapore
     host = "aws-0-ap-southeast-1.pooler.supabase.com"
+    
+    # PENTING: Format user harus postgres.[PROJECT_ID]
+    # PROJECT_ID Anda adalah: disaykowxavyegpkosvf
     user = "postgres.disaykowxavyegpkosvf"
+    
     password = "Alhatma121299"
     database = "postgres"
     port = "6543"
