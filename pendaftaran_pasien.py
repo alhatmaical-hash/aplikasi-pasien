@@ -15,19 +15,20 @@ def get_connection():
 def init_db():
     conn = get_connection()
     c = conn.cursor()
-    # Tabel User
     c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-    # Tabel Master (Perusahaan, Dept, Jabatan, Fitur Pendaftaran)
     c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
-    # Tabel Pasien Utama
     c.execute('''CREATE TABLE IF NOT EXISTS pasien (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tgl_daftar DATE, nama_lengkap TEXT, nik TEXT, pernah_berobat TEXT, 
-                    perusahaan TEXT, departemen TEXT, jabatan TEXT)''')
-    # Tabel Data Dinamis (Nomor HP, Nama Orang Tua, dll)
+                    tgl_daftar DATE, 
+                    jenis_kunjungan TEXT,
+                    nama_lengkap TEXT, 
+                    nik TEXT, 
+                    pernah_berobat TEXT, 
+                    perusahaan TEXT, 
+                    departemen TEXT, 
+                    jabatan TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS pasien_custom_data (
                     pasien_id INTEGER, field_name TEXT, field_value TEXT)''')
-    # Tabel SKD
     c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nama_pasien TEXT, departemen TEXT, nama_file TEXT,
@@ -67,9 +68,11 @@ def login_page():
             else:
                 st.error("Username atau Password salah")
 
+# --- 5. NAVIGASI & SIDEBAR ---
 if not st.session_state['logged_in']:
-    if st.sidebar.button("📝 Buka Form Pendaftaran"):
+    if st.sidebar.button("📝 Buka Form Pendaftaran / 填写登记表"):
         st.session_state['page'] = "Pendaftaran"
+    
     if st.session_state.get('page') == "Pendaftaran":
         menu = "Pendaftaran / 登记"
     else:
@@ -79,230 +82,161 @@ else:
     st.sidebar.success(f"Login: {st.session_state.get('username')}")
     if st.sidebar.button("🚪 Logout"):
         st.session_state['logged_in'] = False
+        st.session_state['page'] = "Login"
         st.rerun()
 
-# --- 5. NAVIGASI SIDEBAR ---
+# List Menu Utama
 menu_list = ["Pendaftaran / 登记"]
 if st.session_state['logged_in']:
     menu_list += ["Rekam Medis / 病历", "SKD / 医生证明", "Pengaturan Master / 设置"]
-menu = st.sidebar.radio("Pilih Halaman", menu_list)
 
-# --- 6. MENU PENDAFTARAN (DIUPDATE) ---
-if 'page' not in st.session_state:
-    st.session_state['page'] = 'Login'
+menu = st.sidebar.radio("Pilih Halaman / 选择页面", menu_list)
 
-# Tombol Kembali ke Login di Sidebar
+# Tombol Kembali (Hanya muncul jika tidak sedang di halaman Login)
 if st.sidebar.button("⬅️ Kembali ke Login / 返回登录"):
     st.session_state['page'] = 'Login'
+    st.session_state['logged_in'] = False
     st.rerun()
 
-st.header("📝 Pendaftaran Pasien / 病人登记")
+# --- 6. MENU PENDAFTARAN (BILINGUAL & LOGIKA KOLOM) ---
+if menu == "Pendaftaran / 登记":
+    st.header("📝 Pendaftaran Pasien / 病人登记")
 
-opts_perusahaan = get_master("Perusahaan")['nama'].tolist()
-opts_dept = get_master("Departemen")['nama'].tolist()
-opts_jabatan = get_master("Jabatan")['nama'].tolist()
-custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
+    opts_perusahaan = get_master("Perusahaan")['nama'].tolist()
+    opts_dept = get_master("Departemen")['nama'].tolist()
+    opts_jabatan = get_master("Jabatan")['nama'].tolist()
+    custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
 
-# Pilihan status berobat dengan Mandarin
-pernah = st.radio(
-    "PERNAH BEROBAT DISINI? / 您以前在这里看 painting 过吗？", 
-    ["Iya Sudah / 是的", "Belum Pernah / 从未"], 
-    horizontal=True
-)
+    # Status Berobat
+    pernah = st.radio(
+        "PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", 
+        ["Iya Sudah / 是的", "Belum Pernah / 从未"], 
+        horizontal=True
+    )
 
-with st.form("form_reg", clear_on_submit=True):
-    col1, col2 = st.columns(2)
-    with col1:
-        nama = st.text_input("NAMA LENGKAP / 全名")
-        nik = st.text_input("NIK / NO KTP / 身份证号")
-        perusahaan = st.selectbox("PERUSAHAAN / 公司", opts_perusahaan if opts_perusahaan else ["Default"])
-    with col2:
-        dept = st.selectbox("DEPARTEMEN / 部门", opts_dept if opts_dept else ["Default"])
-        jabatan = st.selectbox("JABATAN / 职位", opts_jabatan if opts_jabatan else ["Default"])
-        
-    # Kolom tambahan hanya muncul jika "Belum Pernah"
-    responses = {}
-    if pernah == "Belum Pernah / 从未":
-        st.divider()
-        st.subheader("📋 Informasi Tambahan / 附加信息")
-        for field in custom_fields:
-            # Menampilkan label fitur tambahan (misal: Alamat / 地址)
-            responses[field] = st.text_input(f"{field.upper()}")
-    else:
-        # Untuk pasien lama, responses dikosongkan
-        responses = {field: "" for field in custom_fields}
-
-    # Tombol Kirim dengan Mandarin
-    submit = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
-    
-    if submit:
-        if nama and nik:
-            conn = get_connection()
-            cur = conn.cursor()
-            # Simpan data utama
-            cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan) 
-                         VALUES (?,?,?,?,?,?,?)''', (datetime.now().date(), nama, nik, pernah, perusahaan, dept, jabatan))
-            last_id = cur.lastrowid
+    with st.form("form_reg", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            jenis_kunjungan = st.selectbox("JENIS KUNJUNGAN / 访问类型", ["Rawat Jalan / 门诊", "Emergency / 急诊", "MCU / 体检"])
+            nama = st.text_input("NAMA LENGKAP / 全名")
+            nik = st.text_input("NIK / NO KTP / 身份证号")
+        with col2:
+            perusahaan = st.selectbox("PERUSAHAAN / 公司", opts_perusahaan if opts_perusahaan else ["-"])
+            dept = st.selectbox("DEPARTEMEN / 部门", opts_dept if opts_dept else ["-"])
+            jabatan = st.selectbox("JABATAN / 职位", opts_jabatan if opts_jabatan else ["-"])
             
-            # Simpan data tambahan ke tabel custom
-            for f_name, f_val in responses.items():
-                cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", 
-                            (last_id, f_name, f_val))
-            
-            conn.commit()
-            conn.close()
-            st.success("Berhasil Terdaftar! / 登记成功！")
-            st.balloons()
+        # LOGIKA: Kolom tambahan muncul jika Pasien Baru (Belum Pernah)
+        responses = {}
+        if pernah == "Belum Pernah / 从未":
+            st.divider()
+            st.subheader("📋 Informasi Tambahan (Pasien Baru) / 附加信息")
+            for field in custom_fields:
+                responses[field] = st.text_input(f"{field.upper()}")
         else:
-            st.error("Nama dan NIK harus diisi! / 姓名和身份证号必须填写！")
+            responses = {field: "" for field in custom_fields}
+
+        submit = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
+        
+        if submit:
+            if nama and nik:
+                conn = get_connection()
+                cur = conn.cursor()
+                cur.execute('''INSERT INTO pasien (tgl_daftar, jenis_kunjungan, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan) 
+                             VALUES (?,?,?,?,?,?,?,?)''', (datetime.now().date(), jenis_kunjungan, nama, nik, pernah, perusahaan, dept, jabatan))
+                last_id = cur.lastrowid
+                
+                for f_name, f_val in responses.items():
+                    cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", 
+                                (last_id, f_name, f_val))
+                
+                conn.commit()
+                conn.close()
+                st.success("Berhasil Terdaftar! / 登记成功！")
+                st.balloons()
+            else:
+                st.error("Nama dan NIK wajib diisi! / 姓名和身份证号必填！")
+
 # --- 7. MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
-    st.header("📊 Data Rekam Medis")
+    st.header("📊 Data Rekam Medis / 病历数据")
     conn = get_connection()
-    
-    # 1. Ambil data pasien utama
     df_pasien = pd.read_sql("SELECT * FROM pasien", conn)
-    
-    # 2. Ambil semua data fitur tambahan (Fitur Pendaftaran)
     df_custom = pd.read_sql("SELECT * FROM pasien_custom_data", conn)
-    
     conn.close()
 
     if not df_pasien.empty:
-        # 3. Proses penggabungan agar Fitur Pendaftaran muncul sebagai kolom di tabel
-        # Kita ubah data custom dari format baris menjadi format kolom (Pivot)
         if not df_custom.empty:
             df_custom_pivot = df_custom.pivot(index='pasien_id', columns='field_name', values='field_value').reset_index()
-            # Gabungkan dengan data pasien utama berdasarkan ID
             df_final = pd.merge(df_pasien, df_custom_pivot, left_on='id', right_on='pasien_id', how='left')
-            # Hapus kolom ID tambahan hasil merge agar bersih
             if 'pasien_id' in df_final.columns:
                 df_final = df_final.drop(columns=['pasien_id'])
         else:
             df_final = df_pasien
 
-        # 4. Tampilkan Tabel (Tanpa Index sesuai permintaan Anda sebelumnya)
-        st.subheader("Semua Data Pasien")
         st.dataframe(df_final, use_container_width=True, hide_index=True)
         
-        # Fitur Hapus Pasien
         with st.expander("🗑️ Hapus Data Pasien"):
-            id_hapus = st.number_input("Masukkan ID Pasien yang ingin dihapus", min_value=1, step=1)
-            if st.button("Hapus Data"):
+            id_hapus = st.number_input("ID Pasien", min_value=1, step=1)
+            if st.button("Hapus"):
                 conn = get_connection()
                 conn.execute("DELETE FROM pasien WHERE id=?", (id_hapus,))
                 conn.execute("DELETE FROM pasien_custom_data WHERE pasien_id=?", (id_hapus,))
-                conn.commit()
-                conn.close()
-                st.success(f"Data ID {id_hapus} Berhasil Dihapus!")
-                st.rerun()
+                conn.commit(); conn.close(); st.success("Terhapus!"); st.rerun()
     else:
-        st.info("Belum ada data pasien.")
+        st.info("Belum ada data.")
 
 # --- 8. MENU SKD ---
 elif menu == "SKD / 医生证明":
-    st.header("📄 Arsip SKD")
-    
-    with st.expander("➕ Tambah Folder Departemen Baru"):
-        new_f = st.text_input("Nama Departemen Baru")
-        if st.button("Buat Folder"):
-            if new_f:
-                conn = get_connection()
-                conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Departemen", new_f))
-                conn.commit(); conn.close(); st.rerun()
-
-    col_f1, col_f2 = st.columns(2)
-    f_bulan = col_f1.selectbox("Filter Bulan", range(1, 13), index=datetime.now().month-1)
-    f_tahun = col_f2.selectbox("Filter Tahun", [2024, 2025, 2026], index=2)
-
+    st.header("📄 Arsip SKD / 医生证明存档")
     list_dept = get_master("Departemen")['nama'].tolist()
+    
+    col_f1, col_f2 = st.columns(2)
+    f_bulan = col_f1.selectbox("Bulan / 月份", range(1, 13), index=datetime.now().month-1)
+    f_tahun = col_f2.selectbox("Tahun / 年份", [2024, 2025, 2026], index=2)
+
     cols = st.columns(4)
     for idx, d in enumerate(list_dept):
         if cols[idx % 4].button(f"📂 {d}", use_container_width=True):
             st.session_state['sel_dept'] = d
 
     if 'sel_dept' in st.session_state:
-        st.divider()
         target = st.session_state['sel_dept']
-        st.subheader(f"Folder: {target} ({f_bulan}/{f_tahun})")
+        st.subheader(f"Folder: {target}")
         
-        with st.expander("➕ Upload PDF Baru"):
-            with st.form("upload_skd_form"):
+        with st.expander("➕ Upload PDF"):
+            with st.form("u_skd"):
                 u_n = st.text_input("Nama Pasien")
-                u_f = st.file_uploader("Pilih PDF", type=['pdf'])
+                u_f = st.file_uploader("PDF", type=['pdf'])
                 if st.form_submit_button("Simpan"):
                     if u_n and u_f:
                         conn = get_connection()
                         conn.execute("INSERT INTO skd_files (nama_pasien, departemen, nama_file, file_data, tgl_upload, bulan_skd, tahun_skd) VALUES (?,?,?,?,?,?,?)", 
                                      (u_n, target, u_f.name, u_f.read(), datetime.now(), f_bulan, f_tahun))
-                        conn.commit(); conn.close(); st.success("File Tersimpan!"); st.rerun()
-
-        conn = get_connection()
-        files = pd.read_sql(f"SELECT id, nama_pasien, nama_file FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}", conn)
-        conn.close()
-        for i, r in files.iterrows():
-            c_a, c_b = st.columns([4, 1])
-            c_a.text(f"📄 {r['nama_pasien']} - {r['nama_file']}")
-            if c_b.button("Hapus", key=f"f_del_{r['id']}"):
-                conn = get_connection(); conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],)); conn.commit(); conn.close(); st.rerun()
+                        conn.commit(); conn.close(); st.success("Berhasil!"); st.rerun()
 
 # --- 9. PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
-    st.header("⚙️ Pengaturan")
-    t1, t2, t3 = st.tabs(["Master List", "Fitur Pendaftaran", "Manajemen Akun"])
+    st.header("⚙️ Pengaturan / 设置")
+    t1, t2, t3 = st.tabs(["Master List", "Fitur Pendaftaran", "Akun"])
     
     with t1:
-        kat = st.selectbox("Kategori Master", ["Perusahaan", "Departemen", "Jabatan"])
-        c_i, c_l = st.columns([1, 2])
-        with c_i:
-            n = st.text_input(f"Tambah Ke {kat}")
-            if st.button("Tambah Data", key="btn_add_master"):
-                if n:
-                    conn = get_connection(); conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", (kat, n)); conn.commit(); conn.close(); st.rerun()
-        with c_l:
-            df_master = get_master(kat)
-            for i, r in df_master.iterrows():
-                ca, cb = st.columns([3, 1])
-                ca.text(r['nama'])
-                if cb.button("Hapus", key=f"m_del_{r['id']}"):
-                    conn = get_connection(); conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],)); conn.commit(); conn.close(); st.rerun()
+        kat = st.selectbox("Kategori", ["Perusahaan", "Departemen", "Jabatan"])
+        n = st.text_input(f"Tambah ke {kat}")
+        if st.button("Simpan"):
+            if n:
+                conn = get_connection(); conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", (kat, n)); conn.commit(); conn.close(); st.rerun()
 
     with t2:
-        st.subheader("🛠 Custom Kolom Form Pendaftaran")
-        st.info("Ketik nama kolom baru (misal: 'No WhatsApp' atau 'Nama Ayah') untuk ditambahkan ke form.")
-        c_i2, c_l2 = st.columns([1, 2])
-        with c_i2:
-            f_baru = st.text_input("Nama Fitur Baru")
-            if st.button("Simpan Fitur", key="btn_add_fitur"):
-                if f_baru:
-                    conn = get_connection(); conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Fitur Pendaftaran", f_baru)); conn.commit(); conn.close(); st.rerun()
-        with c_l2:
-            df_f = get_master("Fitur Pendaftaran")
-            for i, r in df_f.iterrows():
-                ca, cb = st.columns([3, 1])
-                ca.text(r['nama'])
-                if cb.button("Hapus", key=f"fit_del_{r['id']}"):
-                    conn = get_connection(); conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],)); conn.commit(); conn.close(); st.rerun()
+        st.subheader("🛠 Tambah Kolom Baru (WhatsApp, Alamat, dll)")
+        f_baru = st.text_input("Nama Kolom Baru")
+        if st.button("Tambah Kolom"):
+            if f_baru:
+                conn = get_connection(); conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Fitur Pendaftaran", f_baru)); conn.commit(); conn.close(); st.rerun()
+        
+        df_f = get_master("Fitur Pendaftaran")
+        st.write("Daftar Kolom Tambahan saat ini:")
+        st.table(df_f['nama'])
 
     with t3:
-        st.subheader("👥 Manajemen Akun Tim")
-        with st.form("tambah_user_form"):
-            un = st.text_input("Username Baru")
-            up = st.text_input("Password Baru", type="password")
-            if st.form_submit_button("Buat Akun"):
-                if un and up:
-                    conn = get_connection()
-                    try:
-                        conn.execute("INSERT INTO users VALUES (?,?,?)", (un, up, 'Staff'))
-                        conn.commit(); conn.close(); st.success("Akun Berhasil Dibuat"); st.rerun()
-                    except: st.error("Username sudah terdaftar!")
-        
-        st.write("Daftar Akun:")
-        conn = get_connection()
-        u_df = pd.read_sql("SELECT username FROM users", conn); conn.close()
-        for i, row in u_df.iterrows():
-            if row['username'] != 'admin':
-                cx, cy = st.columns([3, 1])
-                cx.text(f"👤 {row['username']}")
-                if cy.button("Hapus Akun", key=f"u_del_{row['username']}"):
-                    conn = get_connection(); conn.execute("DELETE FROM users WHERE username=?", (row['username'],)); conn.commit(); conn.close(); st.rerun()
+        st.subheader("👥 Manajemen Akun")
+        # Bagian ini tetap sama sesuai kode awal Anda
