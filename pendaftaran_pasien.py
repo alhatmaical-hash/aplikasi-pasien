@@ -1,42 +1,60 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
 from datetime import datetime
 import io
 import plotly.express as px
+import psycopg2 # Library untuk Supabase
 
-# --- 1. KONFIGURASI HALAMAN ---
+# --- 1. KONEKSI DATABASE (HANYA SATU FUNGSI) ---
+def get_connection():
+    # URI Supabase Anda (Tanpa tanda kurung kotak [])
+    uri = "postgresql://postgres:Alhatma121299@db.disaykowxavyegpkosvf.supabase.co:5432/postgres"
+    conn = psycopg2.connect(uri)
+    return conn
+
+# --- 2. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps", page_icon="🏥", layout="wide")
 
-# --- 2. DATABASE SETUP ---
-def get_connection():
-    return sqlite3.connect('klinik_data.db', check_same_thread=False)
-
+# --- 3. DATABASE SETUP (VERSI POSTGRESQL) ---
 def init_db():
     conn = get_connection()
     c = conn.cursor()
-    # Tabel User
-    c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-    # Tabel Master (Perusahaan, Dept, Jabatan, Fitur Pendaftaran)
-    c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
-    # Tabel Pasien Utama
-    c.execute('''CREATE TABLE IF NOT EXISTS pasien (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tgl_daftar DATE, nama_lengkap TEXT, nik TEXT, pernah_berobat TEXT, 
-                    perusahaan TEXT, departemen TEXT, jabatan TEXT)''')
-    # Tabel Data Dinamis (Nomor HP, Nama Orang Tua, dll)
-    c.execute('''CREATE TABLE IF NOT EXISTS pasien_custom_data (
-                    pasien_id INTEGER, field_name TEXT, field_value TEXT)''')
-    # Tabel SKD
-    c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nama_pasien TEXT, departemen TEXT, nama_file TEXT,
-                    file_data BLOB, tgl_upload TIMESTAMP, bulan_skd INTEGER, tahun_skd INTEGER)''')
     
-    c.execute("INSERT OR IGNORE INTO users VALUES (?,?,?)", ('admin', 'admin123', 'Admin'))
+    # Tabel User (PostgreSQL menggunakan VARCHAR/TEXT)
+    c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
+    
+    # Tabel Master (Gunakan SERIAL untuk ID otomatis)
+    c.execute('CREATE TABLE IF NOT EXISTS master_data (id SERIAL PRIMARY KEY, kategori TEXT, nama TEXT)')
+    
+    # Tabel Pasien (Gunakan SERIAL dan TIMESTAMP)
+    c.execute('''CREATE TABLE IF NOT EXISTS pasien (
+                    id SERIAL PRIMARY KEY,
+                    tgl_kunjungan TIMESTAMP,
+                    nama_lengkap TEXT,
+                    perusahaan TEXT,
+                    departemen TEXT,
+                    kunjungan TEXT,
+                    no_hp TEXT,
+                    tgl_lahir TEXT,
+                    agama TEXT,
+                    blok_mes TEXT)''')
+    
+    # Tabel SKD (Gunakan BYTEA untuk file PDF)
+    c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
+                    id SERIAL PRIMARY KEY,
+                    nama_pasien TEXT, 
+                    departemen TEXT, 
+                    nama_file TEXT,
+                    file_data BYTEA, 
+                    tgl_upload TIMESTAMP, 
+                    bulan_skd INTEGER, 
+                    tahun_skd INTEGER)''')
+    
     conn.commit()
+    c.close()
     conn.close()
 
+# Jalankan inisialisasi
 init_db()
 
 # --- 3. FUNGSI DATA ---
