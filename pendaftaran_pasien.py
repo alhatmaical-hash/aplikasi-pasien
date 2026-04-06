@@ -7,14 +7,16 @@ import psycopg2
 
 # --- 1. KONEKSI DATABASE (HANYA BOLEH ADA SATU) ---
 def get_connection():
-    # Gunakan HOST DIRECT (Sesuai gambar yang Anda kirim tadi)
-    host = "db.disaykowxavyegpkosvf.supabase.co"
-    port = "5432"
-    database = "postgres"
-    user = "postgres"
+    # Gunakan Host Pooler Singapore agar stabil di Streamlit Cloud
+    host = "aws-0-ap-southeast-1.pooler.supabase.com"
+    
+    # FORMAT USER WAJIB: postgres.[PROJECT_ID]
+    user = "postgres.disaykowxavyegpkosvf" 
+    
     password = "Alhatma121299"
-    
-    
+    database = "postgres"
+    port = "6543" # Gunakan port pooler
+
     try:
         conn = psycopg2.connect(
             host=host,
@@ -22,8 +24,7 @@ def get_connection():
             password=password,
             dbname=database,
             port=port,
-            sslmode="require",
-            connect_timeout=10
+            sslmode="require"
         )
         return conn
     except Exception as e:
