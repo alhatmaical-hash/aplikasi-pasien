@@ -180,7 +180,7 @@ elif menu == "Rekam Medis / 病历":
     else:
         st.info("Belum ada data pasien.")
 
-# --- 8. MENU SKD ---
+# --- 8. MENU SKD / 医生证明 ---
 elif menu == "SKD / 医生证明":
     st.header("📄 Arsip SKD")
     
@@ -188,9 +188,10 @@ elif menu == "SKD / 医生证明":
         new_f = st.text_input("Nama Departemen Baru")
         if st.button("Buat Folder"):
             if new_f:
-                conn = get_connection()
-                conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Departemen", new_f))
-                conn.commit(); conn.close(); st.rerun()
+                with get_connection() as conn:
+                    conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Departemen", new_f))
+                    conn.commit()
+                st.rerun()
 
     col_f1, col_f2 = st.columns(2)
     f_bulan = col_f1.selectbox("Filter Bulan", range(1, 13), index=datetime.now().month-1)
@@ -207,25 +208,57 @@ elif menu == "SKD / 医生证明":
         target = st.session_state['sel_dept']
         st.subheader(f"Folder: {target} ({f_bulan}/{f_tahun})")
         
+        # --- BAGIAN UPLOAD (HANYA PDF) ---
         with st.expander("➕ Upload PDF Baru"):
-            with st.form("upload_skd_form"):
+            with st.form("upload_skd_form", clear_on_submit=True):
                 u_f = st.file_uploader("Pilih PDF", type=['pdf'])
-                if st.form_submit_button("Simpan"):
-                    if u_n and u_f:
-                        conn = get_connection()
-                        conn.execute("INSERT INTO skd_files (nama_pasien, departemen, nama_file, file_data, tgl_upload, bulan_skd, tahun_skd) VALUES (?,?,?,?,?,?,?)", 
-                                     (u_n, target, u_f.name, u_f.read(), datetime.now(), f_bulan, f_tahun))
-                        conn.commit(); conn.close(); st.success("File Tersimpan!"); st.rerun()
+                submit_upload = st.form_submit_button("Simpan")
+                
+                if submit_upload:
+                    if u_f:
+                        try:
+                            with get_connection() as conn:
+                                # Pastikan tabel ada
+                                conn.execute('''CREATE TABLE IF NOT EXISTS skd_files (
+                                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                nama_pasien TEXT, departemen TEXT, nama_file TEXT,
+                                                file_data BLOB, tgl_upload TIMESTAMP, 
+                                                bulan_skd INTEGER, tahun_skd INTEGER)''')
+                                
+                                # Simpan data (nama_pasien diisi otomatis dari nama file)
+                                conn.execute("""
+                                    INSERT INTO skd_files 
+                                    (nama_pasien, departemen, nama_file, file_data, tgl_upload, bulan_skd, tahun_skd) 
+                                    VALUES (?,?,?,?,?,?,?)""", 
+                                    (u_f.name, target, u_f.name, u_f.read(), datetime.now(), f_bulan, f_tahun))
+                                conn.commit()
+                            st.success(f"Berhasil: {u_f.name} tersimpan!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error Database: {e}")
+                    else:
+                        st.warning("Pilih file PDF terlebih dahulu!")
 
-        conn = get_connection()
-        files = pd.read_sql(f"SELECT id, nama_pasien, nama_file FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}", conn)
-        conn.close()
-        for i, r in files.iterrows():
-            c_a, c_b = st.columns([4, 1])
-            c_a.text(f"📄 {r['nama_pasien']} - {r['nama_file']}")
-            if c_b.button("Hapus", key=f"f_del_{r['id']}"):
-                conn = get_connection(); conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],)); conn.commit(); conn.close(); st.rerun()
+        # --- BAGIAN TAMPILKAN DAFTAR FILE ---
+        st.write("### Daftar File:")
+        with get_connection() as conn:
+            try:
+                query = f"SELECT id, nama_pasien, nama_file FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}"
+                files = pd.read_sql(query, conn)
+            except:
+                files = pd.DataFrame(columns=['id', 'nama_pasien', 'nama_file'])
 
+        if not files.empty:
+            for i, r in files.iterrows():
+                c_a, c_b = st.columns([4, 1])
+                c_a.text(f"📄 {r['nama_file']}") # Menampilkan nama file
+                if c_b.button("Hapus", key=f"f_del_{r['id']}"):
+                    with get_connection() as conn:
+                        conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
+                        conn.commit()
+                    st.rerun()
+        else:
+            st.info(f"Belum ada data SKD untuk {target} pada periode ini.")
 # --- 9. PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
     st.header("⚙️ Pengaturan")
