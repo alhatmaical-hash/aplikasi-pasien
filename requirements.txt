@@ -4,4 +4,3 @@ xlsxwriter
 matplotlib
 numpy
 plotly
-psycopg2-binary
