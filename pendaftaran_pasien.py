@@ -7,17 +7,15 @@ import psycopg2
 
 # --- 1. KONEKSI DATABASE (HANYA BOLEH ADA SATU) ---
 def get_connection():
-    # Gunakan URI Direct (Port 5432)
-    # Ganti [PASSWORD] dengan Alhatma121299
-    # Tambahkan gssencmode=disable untuk menghindari error di Streamlit Cloud
-    
+    # Pastikan Password Benar: Alhatma121299
+    # Mantra gssencmode=disable wajib untuk Streamlit Cloud
     uri = "postgresql://postgres:Alhatma121299@db.disaykowxavyegpkosvf.supabase.co:5432/postgres?sslmode=require&gssencmode=disable"
     
     try:
         conn = psycopg2.connect(uri)
         return conn
     except Exception as e:
-        st.error(f"Koneksi Gagal: {e}")
+        st.error(f"Database sedang bersiap, tunggu lampu hijau di Supabase. Error: {e}")
         st.stop()
 # --- 2. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps", page_icon="🏥", layout="wide")
