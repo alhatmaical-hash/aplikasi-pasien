@@ -244,37 +244,6 @@ elif menu == "SKD / 医生证明":
                     else:
                         st.warning("Pilih file PDF!")
 
-        # Bagian Pencarian
-        st.write("### Daftar File:")
-        search_query = st.text_input("🔍 Cari Nama Pasien...", placeholder="Ketik nama...", key="search_skd_final")
-
-        # Ambil Data File
-        with get_connection() as conn:
-            query = f"SELECT * FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}"
-            files = pd.read_sql(query, conn)
-            
-            if search_query and not files.empty:
-                files = files[files['nama_pasien'].str.contains(search_query, case=False, na=False)]
-
-        # Tampilkan List File (HANYA SEKALI)
-        if not files.empty:
-            for i, r in files.iterrows():
-                c_file, c_view, c_down, c_del = st.columns([4, 1.2, 1.2, 0.8])
-                c_file.text(f"📄 {r['nama_file']}") 
-                
-                if c_view.button("👁️ Lihat", key=f"v_final_{r['id']}_{i}"):
-                    st.download_button("Buka PDF", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"v_btn_{i}")
-
-                c_down.download_button("📥 Unduh", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"d_btn_{i}")
-
-                if c_del.button("🗑️", key=f"del_btn_{i}"):
-                    with get_connection() as conn:
-                        conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
-                        conn.commit()
-                    st.rerun()
-        else:
-            st.info("Tidak ada file ditemukan di folder ini.")
-
         # --- BAGIAN PENCARIAN & LIST ---
         st.write("### Daftar File:")
         search_query = st.text_input("🔍 Cari Nama Pasien...", placeholder="Ketik nama...")
