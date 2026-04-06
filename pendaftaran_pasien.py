@@ -209,7 +209,6 @@ elif menu == "SKD / 医生证明":
         
         with st.expander("➕ Upload PDF Baru"):
             with st.form("upload_skd_form"):
-                u_n = st.text_input("Nama Pasien")
                 u_f = st.file_uploader("Pilih PDF", type=['pdf'])
                 if st.form_submit_button("Simpan"):
                     if u_n and u_f:
