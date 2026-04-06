@@ -234,7 +234,9 @@ elif menu == "SKD / 医生证明":
             for i, r in files.iterrows(): 
                 c_a, c_b = st.columns([4, 1]) 
                 c_a.text(f"📄 {r['nama_pasien']} - {r['nama_file']}")
-            if c_b.button("Hapus", key=f"f_del_{r['id']}"): conn = get_connection() conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
+            if c_b.button("Hapus", key=f"f_del_{r['id']}"):
+                conn = get_connection()
+                conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
                 conn.commit()
                 conn.close()
                 st.rerun()
