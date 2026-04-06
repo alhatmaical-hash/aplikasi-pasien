@@ -41,8 +41,62 @@ def get_master(kategori):
     return df['nama'].tolist()
 
 # --- 4. MANAJEMEN LOGIN ---
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
+if menu == "Pendaftaran / 登记":
+    st.header("📝 Pendaftaran Pasien / 病人登记")
+    
+    opts_perusahaan = get_master("Perusahaan")
+    opts_dept = get_master("Departemen")
+    opts_jabatan = get_master("Jabatan")
+
+    # LOGIKA PASIEN LAMA/BARU
+    pernah = st.radio("PERNAH BEROBAT DISINI? / 以前来过这里看病吗？", ["Iya Sudah / 是nya", "Belum Pernah / 从未"], horizontal=True)
+
+    with st.form("form_reg", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            kunjungan = st.selectbox("JENIS KUNJUNGAN", ["Berobat", "Kontrol MCU", "Masuk UGD", "Kontrol Post Rujuk", "Kontrol Rawat luka"])
+            nama = st.text_input("NAMA LENGKAP")
+            nik = st.text_input("NIK IDCARD")
+            
+            # Field tambahan hanya jika Pasien Baru
+            if pernah == "Belum Pernah / 从未":
+                hp = st.text_input("NO HP AKTIF")
+                agama = st.selectbox("AGAMA", ["Islam", "Kristen", "Hindu", "Buddha", "Katolik", "Lainnya"])
+                gender = st.selectbox("JENIS KELAMIN", ["Laki-laki", "Perempuan"])
+            else:
+                hp, agama, gender = "", "", ""
+
+        with col2:
+            perusahaan = st.selectbox("PERUSAHAAN", opts_perusahaan if opts_perusahaan else ["Default"])
+            dept = st.selectbox("DEPARTEMEN", opts_dept if opts_dept else ["Default"])
+            jabatan = st.selectbox("JABATAN", opts_jabatan if opts_jabatan else ["Default"])
+            
+            # Field tambahan hanya jika Pasien Baru
+            if pernah == "Belum Pernah / 从未":
+                blok = st.text_input("BLOK MES & NO KAMAR")
+                ttl = st.text_input("TEMPAT & TANGGAL LAHIR")
+                alergi = st.selectbox("JENIS ALERGI", ["Tidak Ada", "Makanan", "Obat", "Cuaca"])
+                darah = st.selectbox("GOLONGAN DARAH", ["A", "B", "AB", "O", "Tidak Tahu"])
+            else:
+                blok, ttl, alergi, darah = "", "", "", ""
+
+        lokasi = st.text_area("LOKASI AREA KERJA") if pernah == "Belum Pernah / 从未" else ""
+
+        if st.form_submit_button("KIRIM PENDAFTARAN"):
+            if nama and nik:
+                conn = get_connection()
+                c = conn.cursor()
+                now = datetime.now()
+                c.execute('''INSERT INTO pasien (tgl_daftar, bulan_daftar, jenis_kunjungan, nama_lengkap, no_hp, blok_mes, agama, nik, gender, pernah_berobat, tempat_tgl_lahir, perusahaan, departemen, jabatan, alergi, gol_darah, lokasi_kerja) 
+                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                          (now.date(), now.strftime("%B %Y"), kunjungan, nama, hp, blok, agama, nik, gender, pernah, ttl, perusahaan, dept, jabatan, alergi, darah, lokasi))
+                conn.commit()
+                conn.close()
+                st.success("Pendaftaran Berhasil! Data sudah masuk ke Rekam Medis.")
+                st.balloons()
+            else:
+                st.error("Nama dan NIK wajib diisi!")
 
 def login_page():
     st.markdown("<h2 style='text-align: center;'>🔐 Login Klinik Apps</h2>", unsafe_allow_html=True)
