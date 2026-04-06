@@ -16,7 +16,7 @@ def get_connection():
     
     password = "Alhatma121299"
     database = "postgres"
-    port = "6543"
+    port = "5432"
 
     try:
         conn = psycopg2.connect(
