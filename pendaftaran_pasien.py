@@ -130,10 +130,21 @@ else:
         st.rerun()
 
 # --- 5. NAVIGASI SIDEBAR ---
-menu_list = ["Pendaftaran / 登记"]
-if st.session_state['logged_in']:
-    menu_list += ["Rekam Medis / 病历", "SKD / 医生证明", "Pengaturan Master / 设置"]
-menu = st.sidebar.radio("Pilih Halaman", menu_list)
+st.sidebar.title("🏥 Menu Utama")
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("🔗 Link Akses")
+base_url = "https://aplikasi-pasien.streamlit.app/" 
+st.sidebar.info(f"**Link Pendaftaran:**\n{base_url}")
+st.sidebar.info(f"**Link SKD:**\n{base_url}")
+st.sidebar.markdown("---")
+
+menu = st.sidebar.radio("Pilih Halaman", [
+    "Pendaftaran / 登记", 
+    "Rekam Medis / 病历", 
+    "SKD / 医生证明", 
+    "Pengaturan Master / 设置"
+])
 
 # --- 6. MENU PENDAFTARAN (BILINGUAL / 双语) ---
 if menu == "Pendaftaran / 登记":
