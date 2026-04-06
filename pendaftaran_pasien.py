@@ -131,10 +131,43 @@ if menu == "Pendaftaran / 登记":
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Data Rekam Medis")
     conn = get_connection()
-    df = pd.read_sql("SELECT * FROM pasien", conn)
+    
+    # 1. Ambil data pasien utama
+    df_pasien = pd.read_sql("SELECT * FROM pasien", conn)
+    
+    # 2. Ambil semua data fitur tambahan (Fitur Pendaftaran)
+    df_custom = pd.read_sql("SELECT * FROM pasien_custom_data", conn)
+    
     conn.close()
-    if not df.empty:
-        st.dataframe(df, use_container_width=True)
+
+    if not df_pasien.empty:
+        # 3. Proses penggabungan agar Fitur Pendaftaran muncul sebagai kolom di tabel
+        # Kita ubah data custom dari format baris menjadi format kolom (Pivot)
+        if not df_custom.empty:
+            df_custom_pivot = df_custom.pivot(index='pasien_id', columns='field_name', values='field_value').reset_index()
+            # Gabungkan dengan data pasien utama berdasarkan ID
+            df_final = pd.merge(df_pasien, df_custom_pivot, left_on='id', right_on='pasien_id', how='left')
+            # Hapus kolom ID tambahan hasil merge agar bersih
+            if 'pasien_id' in df_final.columns:
+                df_final = df_final.drop(columns=['pasien_id'])
+        else:
+            df_final = df_pasien
+
+        # 4. Tampilkan Tabel (Tanpa Index sesuai permintaan Anda sebelumnya)
+        st.subheader("Semua Data Pasien")
+        st.dataframe(df_final, use_container_width=True, hide_index=True)
+        
+        # Fitur Hapus Pasien
+        with st.expander("🗑️ Hapus Data Pasien"):
+            id_hapus = st.number_input("Masukkan ID Pasien yang ingin dihapus", min_value=1, step=1)
+            if st.button("Hapus Data"):
+                conn = get_connection()
+                conn.execute("DELETE FROM pasien WHERE id=?", (id_hapus,))
+                conn.execute("DELETE FROM pasien_custom_data WHERE pasien_id=?", (id_hapus,))
+                conn.commit()
+                conn.close()
+                st.success(f"Data ID {id_hapus} Berhasil Dihapus!")
+                st.rerun()
     else:
         st.info("Belum ada data pasien.")
 
