@@ -7,11 +7,27 @@ import psycopg2
 
 # --- 1. KONEKSI DATABASE (HANYA BOLEH ADA SATU) ---
 def get_connection():
-    # Gunakan URI dari gambar image_8e8867.png Anda
-    # Ganti [YOUR-PASSWORD] dengan Alhatma121299
-    uri = "postgresql://postgres:Alhatma121299@db.disaykowxavyegpkosvf.supabase.co:5432/postgres"
-    conn = psycopg2.connect(uri)
-    return conn
+    # Menggunakan host khusus pooler agar lebih stabil dari Streamlit Cloud
+    # Pastikan USER menggunakan format: postgres.disaykowxavyegpkosvf
+    host = "aws-0-ap-southeast-1.pooler.supabase.com"
+    user = "postgres.disaykowxavyegpkosvf" 
+    password = "Alhatma121299"
+    database = "postgres"
+    port = "5432" 
+
+    try:
+        conn = psycopg2.connect(
+            host=host,
+            user=user,
+            password=password,
+            dbname=database,
+            port=port,
+            sslmode="require"
+        )
+        return conn
+    except Exception as e:
+        st.error(f"Koneksi Gagal: {e}")
+        st.stop()
 
 # --- 2. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps", page_icon="🏥", layout="wide")
