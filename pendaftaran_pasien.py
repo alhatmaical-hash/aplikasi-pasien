@@ -219,14 +219,29 @@ elif menu == "SKD / 医生证明":
                         conn.commit(); conn.close(); st.success("File Tersimpan!"); st.rerun()
 
         conn = get_connection()
-        files = pd.read_sql(f"SELECT id, nama_pasien, nama_file FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}", conn)
-        conn.close()
-        for i, r in files.iterrows():
-            c_a, c_b = st.columns([4, 1])
-            c_a.text(f"📄 {r['nama_pasien']} - {r['nama_file']}")
-            if c_b.button("Hapus", key=f"f_del_{r['id']}"):
-                conn = get_connection(); conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],)); conn.commit(); conn.close(); st.rerun()
+# Gunakan try-except agar jika tabel belum ada, aplikasi tidak crash
+try:
+    query = f"SELECT id, nama_pasien, nama_file FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}"
+    files = pd.read_sql(query, conn)
+except Exception as e:
+    # Jika tabel belum ada, buat dataframe kosong agar tidak error di baris bawahnya
+    files = pd.DataFrame(columns=['id', 'nama_pasien', 'nama_file'])
 
+conn.close()
+
+# Tampilkan daftar file jika ada
+if not files.empty:
+    for i, r in files.iterrows():
+        c_a, c_b = st.columns([4, 1])
+        c_a.text(f"📄 {r['nama_pasien']} - {r['nama_file']}")
+        if c_b.button("Hapus", key=f"f_del_{r['id']}"):
+            conn = get_connection()
+            conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
+            conn.commit()
+            conn.close()
+            st.rerun()
+else:
+    st.info(f"Belum ada data SKD untuk {target} pada periode ini.")
 # --- 9. PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
     st.header("⚙️ Pengaturan")
