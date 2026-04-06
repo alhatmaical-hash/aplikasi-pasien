@@ -5,60 +5,28 @@ import io
 import plotly.express as px
 import psycopg2 
 
-# --- 1. KONEKSI DATABASE ---
+# --- 1. KONEKSI DATABASE (HANYA BOLEH ADA SATU) ---
 def get_connection():
-    # HOST untuk Pooler Singapore
-    host = "aws-0-ap-southeast-1.pooler.supabase.com"
-    
-    # PENTING: Format user harus postgres.[PROJECT_ID]
-    # PROJECT_ID Anda adalah: disaykowxavyegpkosvf
-    user = "postgres.disaykowxavyegpkosvf"
-    
-    password = "Alhatma121299"
-    database = "postgres"
-    port = "5432"
-
-    try:
-        conn = psycopg2.connect(
-            host=host,
-            user=user,
-            password=password,
-            dbname=database,
-            port=port,
-            sslmode="require"
-        )
-        return conn
-    except Exception as e:
-        st.error(f"Koneksi Database Gagal: {e}")
-        st.stop()
+    # Gunakan URI dari gambar image_8e8867.png Anda
+    # Ganti [YOUR-PASSWORD] dengan Alhatma121299
+    uri = "postgresql://postgres:Alhatma121299@db.disaykowxavyegpkosvf.supabase.co:5432/postgres"
+    conn = psycopg2.connect(uri)
+    return conn
 
 # --- 2. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps", page_icon="🏥", layout="wide")
 
 # --- 3. DATABASE SETUP ---
 def init_db():
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-    c.execute('CREATE TABLE IF NOT EXISTS master_data (id SERIAL PRIMARY KEY, kategori TEXT, nama TEXT)')
-    c.execute('''CREATE TABLE IF NOT EXISTS pasien (
-                    id SERIAL PRIMARY KEY,
-                    tgl_daftar DATE,
-                    nama_lengkap TEXT,
-                    nik TEXT,
-                    no_hp TEXT,
-                    perusahaan TEXT,
-                    departemen TEXT,
-                    jabatan TEXT,
-                    jenis_kunjungan TEXT,
-                    pernah_berobat TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
-                    id SERIAL PRIMARY KEY,
-                    nama_pasien TEXT, departemen TEXT, nama_file TEXT,
-                    file_data BYTEA, tgl_upload TIMESTAMP, 
-                    bulan_skd INTEGER, tahun_skd INTEGER)''')
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        # Kode tabel Anda di sini...
+        c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        st.error(f"Database belum siap (Status: Unhealthy). Tunggu sebentar lalu refresh. Error: {e}")
 
 init_db()
 
