@@ -7,14 +7,14 @@ import psycopg2
 
 # --- 1. KONEKSI DATABASE ---
 def get_connection():
-    try:
-        # Gunakan port 6543 jika 5432 error
-        uri = "postgresql://postgres:Alhatma121299@db.disaykowxavyegpkosvf.supabase.co:6543/postgres"
-        conn = psycopg2.connect(uri)
-        return conn
-    except Exception as e:
-        st.error(f"Koneksi Gagal: {e}")
-        st.stop()
+    # Ganti 'db.disay...' menjadi 'aws-0-ap-southeast-1.pooler.supabase.com' 
+    # (Ini adalah alamat Pooler Supabase untuk region Singapore yang lebih stabil)
+    
+    # FORMAT BARU:
+    uri = "postgresql://postgres.disaykowxavyegpkosvf:Alhatma121299@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
+    
+    conn = psycopg2.connect(uri)
+    return conn
 
 # --- 2. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps", page_icon="🏥", layout="wide")
