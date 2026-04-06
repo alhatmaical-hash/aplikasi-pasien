@@ -184,7 +184,7 @@ elif menu == "Rekam Medis / 病历":
 elif menu == "SKD / 医生证明":
     st.header("📄 Arsip SKD")
     
-    # 1. Folder Baru
+    # 1. Tambah Departemen Baru
     with st.expander("➕ Tambah Folder Departemen Baru"):
         new_f = st.text_input("Nama Departemen Baru")
         if st.button("Buat Folder"):
@@ -199,35 +199,32 @@ elif menu == "SKD / 医生证明":
     f_bulan = col_f1.selectbox("Filter Bulan", range(1, 13), index=datetime.now().month-1)
     f_tahun = col_f2.selectbox("Filter Tahun", [2024, 2025, 2026], index=2)
 
-    # 3. Ambil Daftar Departemen untuk Tombol Folder
+    # 3. Ambil Daftar Departemen (Folder)
     try:
-        conn = get_connection()
-        df_dept = pd.read_sql_query("SELECT DISTINCT nama FROM master_data WHERE kategori='Departemen'", conn)
-        conn.close()
-        daftar_folder = df_dept['nama'].tolist()
+        with get_connection() as conn:
+            df_dept = pd.read_sql_query("SELECT DISTINCT nama FROM master_data WHERE kategori='Departemen'", conn)
+            daftar_folder = df_dept['nama'].tolist()
     except:
         daftar_folder = ["PRODUCTION", "OFFICE", "LOGISTIC"]
 
     st.write("### Pilih Departemen:")
     cols = st.columns(4)
     for idx, d in enumerate(daftar_folder):
-        if cols[idx % 4].button(f"📂 {d}", use_container_width=True, key=f"folder_{d}_{idx}"):
+        if cols[idx % 4].button(f"📂 {d}", use_container_width=True, key=f"fldr_{d}_{idx}"):
             st.session_state['sel_dept'] = d
             st.rerun()
 
-    # 4. Jika Folder Dipilih, Tampilkan Isi
+    # 4. Tampilkan Isi Folder Jika Sudah Dipilih
     if 'sel_dept' in st.session_state:
         st.divider()
         target = st.session_state['sel_dept']
         st.subheader(f"Folder: {target} ({f_bulan}/{f_tahun})")
         
-        # Bagian Upload
+        # Form Upload
         with st.expander("➕ Upload PDF Baru"):
             with st.form("upload_skd_form", clear_on_submit=True):
                 u_f = st.file_uploader("Pilih PDF", type=['pdf'])
-                submit_upload = st.form_submit_button("Simpan Ke Folder")
-                
-                if submit_upload:
+                if st.form_submit_button("Simpan Ke Folder"):
                     if u_f:
                         try:
                             with get_connection() as conn:
@@ -237,96 +234,42 @@ elif menu == "SKD / 医生证明":
                                     VALUES (?,?,?,?,?,?,?)""", 
                                     (u_f.name, target, u_f.name, u_f.read(), datetime.now(), f_bulan, f_tahun))
                                 conn.commit()
-                            st.success(f"Berhasil: {u_f.name} tersimpan!")
+                            st.success("Berhasil disimpan!")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Error Database: {e}")
-                    else:
-                        st.warning("Pilih file PDF!")
+                            st.error(f"Error: {e}")
 
-        # --- BAGIAN PENCARIAN & LIST ---
+        # --- BAGIAN PENCARIAN & DAFTAR (HANYA SATU KALI) ---
         st.write("### Daftar File:")
-        search_query = st.text_input("🔍 Cari Nama Pasien...", placeholder="Ketik nama...")
+        search_q = st.text_input("🔍 Cari Nama Pasien...", placeholder="Ketik nama untuk mencari...", key="search_skd_final")
 
         with get_connection() as conn:
             query = f"SELECT * FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}"
             files = pd.read_sql(query, conn)
             
-            if search_query and not files.empty:
-                files = files[files['nama_pasien'].str.contains(search_query, case=False, na=False)]
+            if search_q:
+                files = files[files['nama_pasien'].str.contains(search_q, case=False, na=False)]
 
         if not files.empty:
             for i, r in files.iterrows():
-                c_file, c_view, c_down, c_del = st.columns([4, 1.2, 1.2, 1])
-                c_file.text(f"📄 {r['nama_file']}") 
+                c_n, c_v, c_d, c_x = st.columns([4, 1.2, 1.2, 0.8])
+                c_n.text(f"📄 {r['nama_file']}") 
                 
-                if c_view.button("👁️ Lihat", key=f"v_{r['id']}"):
-                    st.download_button("Klik untuk Buka", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"v_btn_{r['id']}")
+                # Tombol Lihat
+                if c_v.button("👁️ Lihat", key=f"v_btn_{r['id']}_{i}"):
+                    st.download_button("Klik untuk Buka", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"dl_v_{i}")
+                
+                # Tombol Unduh
+                c_d.download_button("📥 Unduh", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"dl_d_{i}")
 
-                c_down.download_button("📥 Unduh", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"d_{r['id']}")
-
-                if c_del.button("🗑️", key=f"f_del_{r['id']}"):
+                # Tombol Hapus
+                if c_x.button("🗑️", key=f"del_btn_{i}"):
                     with get_connection() as conn:
                         conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
                         conn.commit()
                     st.rerun()
         else:
-            st.info("Tidak ada file di folder ini.")
-
-       # --- BAGIAN PENCARIAN (Garis Panjang) ---
-        st.write("### Daftar File:")
-        search_query = st.text_input("🔍 Cari Nama Pasien atau Nama File...", placeholder="Masukkan nama untuk mencari...")
-
-        with get_connection() as conn:
-            try:
-                # Query dasar
-                query = f"SELECT * FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}"
-                files = pd.read_sql(query, conn)
-                
-                # Logika Filter Pencarian
-                if search_query:
-                    files = files[files['nama_pasien'].str.contains(search_query, case=False, na=False) | 
-                                  files['nama_file'].str.contains(search_query, case=False, na=False)]
-            except:
-                files = pd.DataFrame(columns=['id', 'nama_pasien', 'nama_file', 'file_data'])
-
-      # --- TAMPILAN LIST DENGAN TOMBOL AKSI ---
-        if not files.empty:
-            for i, r in files.iterrows():
-                # Membuat baris dengan kolom
-                c_file, c_view, c_down, c_del = st.columns([4, 1.2, 1.2, 1])
-                
-                c_file.text(f"📄 {r['nama_file']}") 
-                
-                # PERBAIKAN KEY: Tambahkan index 'i' agar tidak ada yang kembar
-                # 1. Tombol Lihat
-                if c_view.button("👁️ Lihat", key=f"btn_view_{r['id']}_{i}"):
-                    st.download_button(
-                        label="Buka PDF", 
-                        data=r['file_data'], 
-                        file_name=r['nama_file'], 
-                        mime='application/pdf', 
-                        key=f"dl_view_{r['id']}_{i}"
-                    )
-                    st.info("Klik tombol di atas untuk membuka.")
-
-                # 2. Tombol Download
-                c_down.download_button(
-                    label="📥 Unduh",
-                    data=r['file_data'],
-                    file_name=r['nama_file'],
-                    mime='application/pdf',
-                    key=f"btn_down_{r['id']}_{i}"
-                )
-
-                # 3. Tombol Hapus
-                if c_del.button("🗑️", key=f"btn_del_{r['id']}_{i}"):
-                    with get_connection() as conn:
-                        conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
-                        conn.commit()
-                    st.rerun()
-        else:
-            st.info(f"Tidak ada data ditemukan di folder ini.")
+            st.info("Tidak ada file ditemukan.")
 # --- 9. PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
     st.header("⚙️ Pengaturan")
