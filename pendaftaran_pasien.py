@@ -197,14 +197,23 @@ elif menu == "SKD / 医生证明":
     f_bulan = col_f1.selectbox("Filter Bulan", range(1, 13), index=datetime.now().month-1)
     f_tahun = col_f2.selectbox("Filter Tahun", [2024, 2025, 2026], index=2)
 
-    list_dept = get_master("Departemen")['nama'].tolist()
-    cols = st.columns(4)
-    for idx, d in enumerate(daftar_diagnosa):
+   try:
+            conn = get_connection()
+            # Kita ambil diagnosa unik yang sudah pernah diinput
+            df_diag = pd.read_sql_query("SELECT DISTINCT diagnosa FROM pasien WHERE diagnosa IS NOT NULL", conn)
+            conn.close()
+            daftar_diagnosa = df_diag['diagnosa'].tolist()
+        except:
+            # Jika database masih kosong, buat daftar cadangan agar tidak error
+            daftar_diagnosa = ["Umum", "IGD", "MCU"]
+
+        # --- TAMPILKAN TOMBOL ---
+        cols = st.columns(4)
+        for idx, d in enumerate(daftar_diagnosa):
+            # Key unik untuk mencegah Duplicate ID, Indentasi rapi untuk mencegah SyntaxError
             if cols[idx % 4].button(f"📂 {d}", use_container_width=True, key=f"btn_{d}_{idx}"):
-                # INI BAGIAN YANG TADI ERROR (Baris 206 harus masuk ke dalam)
                 st.session_state['sel_dept'] = d
                 st.rerun()
-
     if 'sel_dept' in st.session_state:
         st.divider()
         target = st.session_state['sel_dept']
