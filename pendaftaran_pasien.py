@@ -87,7 +87,7 @@ if st.session_state['logged_in']:
     menu_list += ["Rekam Medis / 病历", "SKD / 医生证明", "Pengaturan Master / 设置"]
 menu = st.sidebar.radio("Pilih Halaman", menu_list)
 
-# --- 6. MENU PENDAFTARAN ---
+# --- 6. MENU PENDAFTARAN (DIUPDATE) ---
 if menu == "Pendaftaran / 登记":
     st.header("📝 Pendaftaran Pasien / 病人登记")
     
@@ -96,6 +96,7 @@ if menu == "Pendaftaran / 登记":
     opts_jabatan = get_master("Jabatan")['nama'].tolist()
     custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
 
+    # Pilihan status berobat
     pernah = st.radio("PERNAH BEROBAT DISINI?", ["Iya Sudah / 是nya", "Belum Pernah / 从未"], horizontal=True)
 
     with st.form("form_reg", clear_on_submit=True):
@@ -108,25 +109,36 @@ if menu == "Pendaftaran / 登记":
             dept = st.selectbox("DEPARTEMEN", opts_dept if opts_dept else ["Default"])
             jabatan = st.selectbox("JABATAN", opts_jabatan if opts_jabatan else ["Default"])
             
-        st.subheader("Informasi Tambahan")
+        # LOGIKA BARU: Kolom tambahan HANYA muncul jika pilih "Belum Pernah"
         responses = {}
-        for field in custom_fields:
-            responses[field] = st.text_input(field.upper())
+        if pernah == "Belum Pernah / 从未":
+            st.divider()
+            st.subheader("📋 Informasi Tambahan (Pasien Baru)")
+            # Tampilkan semua fitur yang Anda tambah di Pengaturan Master
+            for field in custom_fields:
+                responses[field] = st.text_input(field.upper())
+        else:
+            # Jika pasien lama, biarkan responses kosong agar tidak error saat insert ke DB
+            responses = {field: "" for field in custom_fields}
 
         if st.form_submit_button("KIRIM PENDAFTARAN"):
             if nama and nik:
                 conn = get_connection()
                 cur = conn.cursor()
+                # Simpan data utama
                 cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan) 
                              VALUES (?,?,?,?,?,?,?)''', (datetime.now().date(), nama, nik, pernah, perusahaan, dept, jabatan))
                 last_id = cur.lastrowid
+                
+                # Simpan data tambahan (jika ada)
                 for f_name, f_val in responses.items():
-                    cur.execute("INSERT INTO pasien_custom_data VALUES (?,?,?)", (last_id, f_name, f_val))
+                    cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", 
+                                (last_id, f_name, f_val))
+                
                 conn.commit()
                 conn.close()
                 st.success("Berhasil Terdaftar!")
                 st.balloons()
-
 # --- 7. MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Data Rekam Medis")
