@@ -1,157 +1,147 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-from datetime import date
+from datetime import datetime
+import io
 
-# Konfigurasi Halaman
-st.set_page_config(page_title="Pendaftaran Mandiri Klinik", layout="centered")
+# --- KONFIGURASI HALAMAN ---
+st.set_page_config(page_title="Klinik Apps", layout="wide")
 
-# --- DATABASE SETUP ---
+# --- DATABASE ENGINE ---
 def init_db():
-    conn = sqlite3.connect('klinik_data.db')
+    conn = sqlite3.connect('klinik_pendaftaran.db')
     c = conn.cursor()
-    # Tabel Master untuk dropdown dinamis
+    # Tabel Master
     c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
-    # Tabel Pasien
-    c.execute('''CREATE TABLE IF NOT EXISTS pendaftaran (
+    # Tabel Pasien & Rekam Medis
+    c.execute('''CREATE TABLE IF NOT EXISTS pasien (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tgl_daftar TEXT,
+                    tgl_daftar DATE,
+                    bulan_daftar TEXT,
                     jenis_kunjungan TEXT, nama_lengkap TEXT, no_hp TEXT,
                     blok_mes TEXT, agama TEXT, nik TEXT, gender TEXT,
                     pernah_berobat TEXT, tempat_tgl_lahir TEXT,
                     perusahaan TEXT, departemen TEXT, jabatan TEXT,
                     alergi TEXT, gol_darah TEXT, lokasi_kerja TEXT,
                     file_skd_path TEXT)''')
+    
+    # Pre-fill data perusahaan awal jika kosong
+    c.execute("SELECT count(*) FROM master_data WHERE kategori='Perusahaan'")
+    if c.fetchone()[0] == 0:
+        perusahaan_awal = ["PT. HALMAHERA JAYA FERONIKEL (HJF)", "PT. KARUNIA PERMAI SENTOSA (KPS)", "PT. OBI SINAR TIMUR (OST)"]
+        for p in perusahaan_awal:
+            c.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", ("Perusahaan", p))
+    
     conn.commit()
     conn.close()
 
 init_db()
 
-# --- HELPER FUNCTIONS ---
+# --- FUNGSI HELPER ---
 def get_master(kategori):
-    conn = sqlite3.connect('klinik_data.db')
-    df = pd.read_sql(f"SELECT nama FROM master_data WHERE kategori='{kategori}'", conn)
+    conn = sqlite3.connect('klinik_pendaftaran.db')
+    df = pd.read_sql(f"SELECT nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
     conn.close()
     return df['nama'].tolist()
 
 def add_master(kategori, nama):
-    conn = sqlite3.connect('klinik_data.db')
+    conn = sqlite3.connect('klinik_pendaftaran.db')
     c = conn.cursor()
     c.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", (kategori, nama))
     conn.commit()
     conn.close()
 
 def delete_master(kategori, nama):
-    conn = sqlite3.connect('klinik_data.db')
+    conn = sqlite3.connect('klinik_pendaftaran.db')
     c = conn.cursor()
     c.execute("DELETE FROM master_data WHERE kategori=? AND nama=?", (kategori, nama))
     conn.commit()
     conn.close()
 
-# --- UI LOGIC ---
-menu = ["Pendaftaran Pasien", "Upload SKD (Admin)", "Pengaturan Master Data"]
-choice = st.sidebar.selectbox("Menu Utama", menu)
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.title("🏥 Navigasi Klinik")
+menu = st.sidebar.radio("Pilih Menu:", 
+    ["Pendaftaran Pasien", "Rekam Medis (Admin)", "Upload SKD", "Akses SKD Publik", "Pengaturan Master"])
 
 # --- 1. PENDAFTARAN PASIEN ---
-if choice == "Pendaftaran Pasien":
+if menu == "Pendaftaran Pasien":
     st.header("📝 Form Pendaftaran Pasien")
-    st.info("Silakan isi data Anda dengan benar.")
-
-    with st.form("form_daftar"):
+    st.write("Silakan isi data kunjungan Anda.")
+    
+    with st.form("form_pasien", clear_on_submit=True):
         col1, col2 = st.columns(2)
-        
         with col1:
-            jenis_kunjungan = st.selectbox("Jenis Kunjungan", ["Berobat", "Kontrol MCU", "Masuk UGD", "Kontrol Post Rujuk", "Kontrol Rawat Luka"])
-            nama_lengkap = st.text_input("Nama Lengkap")
-            no_hp = st.text_input("No HP Aktif (WhatsApp)")
-            agama = st.selectbox("Agama", ["Islam", "Kristen", "Hindu", "Buddha", "Katolik", "Tidak Diketahui"])
-            nik = st.text_input("NIK / ID Card")
-            gender = st.radio("Jenis Kelamin", ["Laki-laki", "Perempuan"], horizontal=True)
+            kunjungan = st.selectbox("JENIS KUNJUNGAN", ["Berobat", "Kontrol MCU", "Masuk UGD", "Kontrol Post Rujuk", "Kontrol Rawat luka"])
+            nama = st.text_input("NAMA LENGKAP")
+            hp = st.text_input("NO HP YANG AKTIF")
+            agama = st.selectbox("AGAMA", ["Islam", "Kristen", "Hindu", "Buddah", "Katolik", "Tidak Diketahui"])
+            nik = st.text_input("NIK IDCARD")
+            gender = st.selectbox("JENIS KELAMIN", ["Laki-laki", "Perempuan"])
+            pernah = st.radio("SEBELUMNYA SUDAH PERNAH BEROBAT DISINI?", ["Iya Sudah", "Belum Pernah"], horizontal=True)
 
         with col2:
-            blok_mes = st.text_input("Blok Mes dan No Kamar")
-            pernah_berobat = st.radio("Pernah Berobat Disini?", ["Iya Sudah", "Belum Pernah"], horizontal=True)
-            tgl_lahir = st.text_input("Tempat & Tanggal Lahir (Contoh: Obi, 01-01-1990)")
-            perusahaan = st.selectbox("Perusahaan", get_master("Perusahaan"))
-            dept = st.selectbox("Departemen", get_master("Departemen"))
-            jabatan = st.selectbox("Jabatan", get_master("Jabatan"))
+            blok = st.text_input("BLOK MES DAN NO KAMAR")
+            ttl = st.text_input("TEMPAT DAN TANGGAL LAHIR")
+            perusahaan = st.selectbox("PERUSAHAAN TEMPAT ANDA BEKERJA", get_master("Perusahaan"))
+            dept = st.selectbox("DEPARTEMEN TEMPAT BEKERJA", get_master("Departemen"))
+            jabatan = st.selectbox("JABATAN DAN POSISI ANDA", get_master("Jabatan"))
+            alergi = st.selectbox("JENIS ALERGI", ["Tidak Ada", "Makanan", "Obat", "Cuaca"])
+            darah = st.selectbox("GOLONGAN DARAH", ["A", "B", "AB", "O", "Tidak Tahu"])
+            lokasi = st.text_area("LOKASI AREA BEKERJA")
 
-        alergi = st.multiselect("Jenis Alergi", ["Makanan", "Obat", "Cuaca", "Tidak Ada"])
-        gol_darah = st.selectbox("Golongan Darah", ["A", "B", "AB", "O", "-"])
-        lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik")
+        submit = st.form_submit_button("KIRIM PENDAFTARAN")
         
-        submit = st.form_submit_button("Daftar Sekarang")
-
     if submit:
-        if nama_lengkap and no_hp:
-            conn = sqlite3.connect('klinik_data.db')
-            c = conn.cursor()
-            c.execute('''INSERT INTO pendaftaran (tgl_daftar, jenis_kunjungan, nama_lengkap, no_hp, blok_mes, agama, nik, gender, pernah_berobat, tempat_tgl_lahir, perusahaan, departemen, jabatan, alergi, gol_darah, lokasi_kerja) 
-                         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
-                      (date.today(), jenis_kunjungan, nama_lengkap, no_hp, blok_mes, agama, nik, gender, pernah_berobat, tgl_lahir, perusahaan, dept, jabatan, str(alergi), gol_darah, lokasi_kerja))
-            conn.commit()
-            conn.close()
-            
-            st.success(f"Pendaftaran Berhasil! Halo {nama_lengkap}, silakan menunggu untuk dilayani. Semoga lekas sembuh.")
-            # Simulasi pengiriman pesan (Bisa diintegrasikan dengan API WhatsApp seperti Fonnte/Twilio)
-            st.write(f"📲 *Pesan otomatis dikirim ke {no_hp}...*")
-        else:
-            st.error("Mohon lengkapi Nama dan No HP!")
+        now = datetime.now()
+        tgl = now.strftime("%Y-%m-%d")
+        bulan = now.strftime("%B %Y")
+        
+        conn = sqlite3.connect('klinik_pendaftaran.db')
+        c = conn.cursor()
+        c.execute('''INSERT INTO pasien (tgl_daftar, bulan_daftar, jenis_kunjungan, nama_lengkap, no_hp, blok_mes, agama, nik, gender, pernah_berobat, tempat_tgl_lahir, perusahaan, departemen, jabatan, alergi, gol_darah, lokasi_kerja) 
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                  (tgl, bulan, kunjungan, nama, hp, blok, agama, nik, gender, pernah, ttl, perusahaan, dept, jabatan, alergi, darah, lokasi))
+        conn.commit()
+        conn.close()
+        
+        st.success(f"Pendaftaran anda berhasil silahkan menunggu untuk di layani, semoga lekas sembuh")
+        st.balloons()
 
-# --- 2. UPLOAD SKD (ADMIN) ---
-elif choice == "Upload SKD (Admin)":
-    st.header("📄 Upload Surat Keterangan Dokter")
+# --- 2. REKAM MEDIS (ADMIN) ---
+elif menu == "Rekam Medis (Admin)":
+    st.header("📊 Rekam Medis Pasien")
     
-    conn = sqlite3.connect('klinik_data.db')
-    df_pasien = pd.read_sql("SELECT id, nama_lengkap, no_hp FROM pendaftaran WHERE file_skd_path IS NULL", conn)
+    conn = sqlite3.connect('klinik_pendaftaran.db')
+    df = pd.read_sql("SELECT * FROM pasien", conn)
     conn.close()
 
-    if not df_pasien.empty:
-        pasien_opt = df_pasien.apply(lambda x: f"{x['id']} - {x['nama_lengkap']}", axis=1).tolist()
-        pilih_pasien = st.selectbox("Pilih Pasien", pasien_opt)
-        pasien_id = pilih_pasien.split(" - ")[0]
+    if not df.empty:
+        # Filter
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            f_bulan = st.multiselect("Filter Bulan", df['bulan_daftar'].unique())
+        with col_f2:
+            f_tgl = st.date_input("Filter Tanggal", value=[])
+
+        if f_bulan:
+            df = df[df['bulan_daftar'].isin(f_bulan)]
         
-        uploaded_file = st.file_uploader("Pilih file PDF SKD", type=['pdf'])
+        st.dataframe(df, use_container_width=True)
         
-        if st.button("Simpan & Bagikan Link"):
-            if uploaded_file:
-                # Logika simpan file (Contoh simpan lokal, idealnya ke Cloud Storage untuk link publik)
-                file_path = f"skd_{pasien_id}.pdf"
-                with open(file_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                
-                conn = sqlite3.connect('klinik_data.db')
-                c = conn.cursor()
-                c.execute("UPDATE pendaftaran SET file_skd_path=? WHERE id=?", (file_path, pasien_id))
-                conn.commit()
-                conn.close()
-                st.success("File berhasil diupload!")
-                st.info(f"Link Akses: https://klinik-anda.streamlit.app/view?id={pasien_id}")
+        # Download Excel
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Rekam Medis')
+        st.download_button(label="📥 Download Excel", data=output.getvalue(), file_name=f"Rekam_Medis_{datetime.now().date()}.xlsx")
     else:
-        st.write("Tidak ada data pasien baru.")
+        st.warning("Belum ada data pendaftaran.")
 
-# --- 3. PENGATURAN MASTER DATA ---
-elif choice == "Pengaturan Master Data":
-    st.header("⚙️ Manajemen Perusahaan, Dept & Jabatan")
+# --- 3. UPLOAD SKD ---
+elif menu == "Upload SKD":
+    st.header("📤 Upload Surat Keterangan Dokter (PDF)")
     
-    kat = st.radio("Kategori Master", ["Perusahaan", "Departemen", "Jabatan"], horizontal=True)
+    conn = sqlite3.connect('klinik_pendaftaran.db')
+    df_p = pd.read_sql("SELECT id, nama_lengkap, departemen FROM pasien", conn)
+    conn.close()
     
-    col_add, col_del = st.columns(2)
-    
-    with col_add:
-        st.subheader(f"Tambah {kat}")
-        new_val = st.text_input(f"Nama {kat} Baru")
-        if st.button("Simpan"):
-            add_master(kat, new_val)
-            st.rerun()
-
-    with col_del:
-        st.subheader(f"Hapus {kat}")
-        existing_vals = get_master(kat)
-        to_del = st.selectbox(f"Pilih {kat} yang dihapus", existing_vals)
-        if st.button("Hapus Data"):
-            delete_master(kat, to_del)
-            st.rerun()
-    
-    st.divider()
-    st.write(f"Daftar {kat} Saat Ini:", get_master(kat))
+    if not df_p.empty:
