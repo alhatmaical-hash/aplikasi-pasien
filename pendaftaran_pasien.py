@@ -199,9 +199,11 @@ elif menu == "SKD / 医生证明":
 
     list_dept = get_master("Departemen")['nama'].tolist()
     cols = st.columns(4)
-    for idx, d in enumerate(list_dept):
-        if cols[idx % 4].button(f"📂 {d}", use_container_width=True, key=f"btn_{d}_{idx}"):
-    # Kode aksi tombol Anda...
+    for idx, d in enumerate(daftar_diagnosa):
+            if cols[idx % 4].button(f"📂 {d}", use_container_width=True, key=f"btn_{d}_{idx}"):
+                # INI BAGIAN YANG TADI ERROR (Baris 206 harus masuk ke dalam)
+                st.session_state['sel_dept'] = d
+                st.rerun()
 
     if 'sel_dept' in st.session_state:
         st.divider()
