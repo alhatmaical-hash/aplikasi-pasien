@@ -11,25 +11,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 2. TAMPILAN CSS (VERSI AMAN UNTUK PYTHON 3.14) ---
-# Menggunakan f-string sederhana untuk menghindari masalah karakter multiline
-css_code = """
-<style>
-    .stButton>button {
-        background-color: #007bff !important;
-        color: white !important;
-        border-radius: 8px !important;
-        font-weight: bold !important;
-        width: 100% !important;
-    }
-    [data-testid="stElementToolbar"] {display: none;}
-</style>
-"""
-st.markdown(css_code, unsafe_with_html=True)
-
-# --- 3. DATABASE SETUP ---
+# --- 2. DATABASE SETUP ---
 def get_connection():
-    # check_same_thread=False sangat penting untuk aplikasi web
+    # Menggunakan check_same_thread=False untuk menghindari error pada akses bersamaan
     return sqlite3.connect('klinik_data.db', check_same_thread=False)
 
 def init_db():
@@ -48,7 +32,7 @@ def init_db():
 
 init_db()
 
-# --- 4. FUNGSI DATA ---
+# --- 3. FUNGSI DATA ---
 def get_master(kategori):
     conn = get_connection()
     try:
@@ -59,11 +43,11 @@ def get_master(kategori):
     finally:
         conn.close()
 
-# --- 5. NAVIGASI SIDEBAR ---
+# --- 4. NAVIGASI SIDEBAR ---
 st.sidebar.title("🏥 Menu Utama")
 menu = st.sidebar.radio("Pilih Halaman", ["Pendaftaran", "Rekam Medis", "Pengaturan Master"])
 
-# --- 6. MENU PENDAFTARAN ---
+# --- 5. MENU PENDAFTARAN ---
 if menu == "Pendaftaran":
     st.header("📝 Pendaftaran Pasien")
     
@@ -86,10 +70,73 @@ if menu == "Pendaftaran":
         with col2:
             blok = st.text_input("BLOK MES & NO KAMAR")
             ttl = st.text_input("TEMPAT & TANGGAL LAHIR")
-            perusahaan = st.selectbox("PERUSAHAAN", opts_perusahaan if opts_perusahaan else ["Isi di Pengaturan Master"])
-            dept = st.selectbox("DEPARTEMEN", opts_dept if opts_dept else ["Isi di Pengaturan Master"])
-            jabatan = st.selectbox("JABATAN", opts_jabatan if opts_jabatan else ["Isi di Pengaturan Master"])
+            perusahaan = st.selectbox("PERUSAHAAN", opts_perusahaan if opts_perusahaan else ["Default"])
+            dept = st.selectbox("DEPARTEMEN", opts_dept if opts_dept else ["Default"])
+            jabatan = st.selectbox("JABATAN", opts_jabatan if opts_jabatan else ["Default"])
             alergi = st.selectbox("JENIS ALERGI", ["Tidak Ada", "Makanan", "Obat", "Cuaca"])
             darah = st.selectbox("GOLONGAN DARAH", ["A", "B", "AB", "O", "Tidak Tahu"])
             
-        lokasi = st.text
+        lokasi = st.text_area("LOKASI AREA KERJA")
+        
+        # Tombol submit standar (Tanpa CSS kustom agar tidak error)
+        if st.form_submit_button("KIRIM PENDAFTARAN"):
+            if nama and hp:
+                conn = get_connection()
+                c = conn.cursor()
+                now = datetime.now()
+                c.execute('''INSERT INTO pasien (tgl_daftar, bulan_daftar, jenis_kunjungan, nama_lengkap, no_hp, blok_mes, agama, nik, gender, pernah_berobat, tempat_tgl_lahir, perusahaan, departemen, jabatan, alergi, gol_darah, lokasi_kerja) 
+                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                          (now.date(), now.strftime("%B %Y"), kunjungan, nama, hp, blok, agama, nik, gender, pernah, ttl, perusahaan, dept, jabatan, alergi, darah, lokasi))
+                conn.commit()
+                conn.close()
+                st.success("Pendaftaran berhasil! Silakan menunggu. Semoga lekas sembuh.")
+                st.balloons()
+            else:
+                st.error("Nama dan No HP tidak boleh kosong!")
+
+# --- 6. MENU REKAM MEDIS ---
+elif menu == "Rekam Medis":
+    st.header("📊 Rekam Medis")
+    conn = get_connection()
+    df = pd.read_sql("SELECT * FROM pasien ORDER BY id DESC", conn)
+    conn.close()
+
+    if not df.empty:
+        # Filter Tanggal sederhana
+        f_bln = st.multiselect("Filter Bulan", df['bulan_daftar'].unique())
+        if f_bln:
+            df = df[df['bulan_daftar'].isin(f_bln)]
+            
+        st.dataframe(df, use_container_width=True)
+        
+        towrite = io.BytesIO()
+        df.to_excel(towrite, index=False, engine='xlsxwriter')
+        st.download_button(label="📥 Download Excel", data=towrite.getvalue(), file_name="Data_Pasien.xlsx")
+    else:
+        st.info("Belum ada data.")
+
+# --- 7. PENGATURAN MASTER ---
+elif menu == "Pengaturan Master":
+    st.header("⚙️ Master Data")
+    kat = st.selectbox("Pilih Kategori", ["Perusahaan", "Departemen", "Jabatan"])
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        n_baru = st.text_input(f"Tambah {kat} Baru")
+        if st.button("Simpan Baru"):
+            if n_baru:
+                conn = get_connection()
+                conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", (kat, n_baru))
+                conn.commit()
+                conn.close()
+                st.rerun()
+    with c2:
+        d_lama = get_master(kat)
+        p_hapus = st.selectbox("Hapus Data", ["-- Pilih --"] + d_lama)
+        if st.button("Hapus Terpilih"):
+            if p_hapus != "-- Pilih --":
+                conn = get_connection()
+                conn.execute("DELETE FROM master_data WHERE kategori=? AND nama=?", (kat, p_hapus))
+                conn.commit()
+                conn.close()
+                st.rerun()
