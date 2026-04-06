@@ -3,7 +3,7 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import io
-import time # Tambahkan ini untuk jeda sebentar
+import time
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -57,8 +57,12 @@ if menu == "Pendaftaran / 登记":
 
     with st.form("form_reg", clear_on_submit=True):
         col1, col2 = st.columns(2)
+        
         with col1:
-            kunjungan = st.selectbox("JENIS KUNJUNGAN / 就诊类型", ["Berobat / 看病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat luka / 伤口护理"])
+            kunjungan = st.selectbox("JENIS KUNJUNGAN / 就诊类型", [
+                "Berobat / 看病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", 
+                "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat luka / 伤口护理"
+            ])
             nama = st.text_input("NAMA LENGKAP / 全名")
             hp = st.text_input("NO HP AKTIF / 有效电话号码")
             agama = st.selectbox("AGAMA / 宗教", ["Islam / 伊斯兰教", "Kristen / 基督教", "Hindu / 印度教", "Buddha / 佛教", "Katolik / 天主教", "Tidak Diketahui / 未知"])
@@ -69,7 +73,10 @@ if menu == "Pendaftaran / 登记":
         with col2:
             blok = st.text_input("BLOK MES & NO KAMAR / 宿舍区和房间号")
             ttl = st.text_input("TEMPAT & TANGGAL LAHIR / 出生地点和日期")
-            perusahaan = st.selectbox("PERUSAHAAN / 公司", opts_perusahaan if opts_perusahaan else ["Isi di Pengaturan / 在设置中填写"])
-            dept = st.selectbox("DEPARTEMEN / 部门", opts_dept if opts_dept else ["Isi di Pengaturan / 在设置中填写"])
-            jabatan = st.selectbox("JABATAN / 职位", opts_jabatan if opts_jabatan else ["Isi di Pengaturan / 在设置中填写"])
-            alergi = st.selectbox("JENIS ALERGI / 过敏类型", ["Tidak Ada / 无", "Makanan / 食
+            perusahaan = st.selectbox("PERUSAHAAN / 公司", opts_perusahaan if opts_perusahaan else ["Default"])
+            dept = st.selectbox("DEPARTEMEN / 部门", opts_dept if opts_dept else ["Default"])
+            jabatan = st.selectbox("JABATAN / 职位", opts_jabatan if opts_jabatan else ["Default"])
+            alergi = st.selectbox("JENIS ALERGI / 过敏类型", ["Tidak Ada / 无", "Makanan / 食物", "Obat / 药物", "Cuaca / 天气"])
+            darah = st.selectbox("GOLONGAN DARAH / 血型", ["A", "B", "AB", "O", "Tidak Tahu / 不知道"])
+            
+        lokasi = st.text_area("
