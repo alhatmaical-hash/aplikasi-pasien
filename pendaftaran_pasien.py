@@ -16,46 +16,23 @@ st.set_page_config(page_title="Klinik Apps", page_icon="🏥", layout="wide")
 
 # --- 3. DATABASE SETUP (VERSI POSTGRESQL) ---
 def init_db():
-    conn = get_connection()
-    c = conn.cursor()
-    
-    # Tabel User (PostgreSQL menggunakan VARCHAR/TEXT)
-    c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-    
-    # Tabel Master (Gunakan SERIAL untuk ID otomatis)
-    c.execute('CREATE TABLE IF NOT EXISTS master_data (id SERIAL PRIMARY KEY, kategori TEXT, nama TEXT)')
-    
-    # Tabel Pasien (Gunakan SERIAL dan TIMESTAMP)
-    c.execute('''CREATE TABLE IF NOT EXISTS pasien (
-                    id SERIAL PRIMARY KEY,
-                    tgl_kunjungan TIMESTAMP,
-                    nama_lengkap TEXT,
-                    perusahaan TEXT,
-                    departemen TEXT,
-                    kunjungan TEXT,
-                    no_hp TEXT,
-                    tgl_lahir TEXT,
-                    agama TEXT,
-                    blok_mes TEXT)''')
-    
-    # Tabel SKD (Gunakan BYTEA untuk file PDF)
-    c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
-                    id SERIAL PRIMARY KEY,
-                    nama_pasien TEXT, 
-                    departemen TEXT, 
-                    nama_file TEXT,
-                    file_data BYTEA, 
-                    tgl_upload TIMESTAMP, 
-                    bulan_skd INTEGER, 
-                    tahun_skd INTEGER)''')
-    
-    conn.commit()
-    c.close()
-    conn.close()
+    conn = sqlite3.connect('klinik_pendaftaran.db')
+    c = conn.cursor()
+    c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
+    c.execute('''CREATE TABLE IF NOT EXISTS pasien (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tgl_daftar DATE,
+                    bulan_daftar TEXT,
+                    jenis_kunjungan TEXT, nama_lengkap TEXT, no_hp TEXT,
+                    blok_mes TEXT, agama TEXT, nik TEXT, gender TEXT,
+                    pernah_berobat TEXT, tempat_tgl_lahir TEXT,
+                    perusahaan TEXT, departemen TEXT, jabatan TEXT,
+                    alergi TEXT, gol_darah TEXT, lokasi_kerja TEXT,
+                    file_skd_path TEXT)''')
+    conn.commit()
+    conn.close()
 
-# Jalankan inisialisasi
 init_db()
-
 # --- 3. FUNGSI DATA ---
 def get_master(kategori):
     conn = get_connection()
