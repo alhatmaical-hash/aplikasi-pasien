@@ -48,10 +48,8 @@ menu = st.sidebar.radio("Pilih Halaman / 选择页面", ["Pendaftaran / 登记",
 
 # --- 5. MENU PENDAFTARAN ---
 if menu == "Pendaftaran / 登记":
-    # --- TOGGLE BAHASA ---
     st.header("📝 Pendaftaran Pasien / 病人登记")
     
-    # Opsi Dropdown Master Data
     opts_perusahaan = get_master("Perusahaan")
     opts_dept = get_master("Departemen")
     opts_jabatan = get_master("Jabatan")
@@ -61,11 +59,8 @@ if menu == "Pendaftaran / 登记":
         
         with col1:
             kunjungan = st.selectbox("JENIS KUNJUNGAN / 就诊类型", [
-                "Berobat / 看病", 
-                "Kontrol MCU / 体检复查", 
-                "Masuk UGD / 急诊", 
-                "Kontrol Post Rujuk / 转院后复查", 
-                "Kontrol Rawat luka / 伤口护理"
+                "Berobat / 看病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", 
+                "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat luka / 伤口护理"
             ])
             nama = st.text_input("NAMA LENGKAP / 全名")
             hp = st.text_input("NO HP AKTIF / 有效电话号码")
@@ -85,9 +80,7 @@ if menu == "Pendaftaran / 登记":
             
         lokasi = st.text_area("LOKASI AREA KERJA / 工作地点")
         
-        # Tombol Submit
-        btn_label = "KIRIM PENDAFTARAN / 提交登记"
-        if st.form_submit_button(btn_label):
+        if st.form_submit_button("KIRIM PENDAFTARAN / 提交登记"):
             if nama and hp:
                 conn = get_connection()
                 c = conn.cursor()
@@ -113,7 +106,6 @@ elif menu == "Rekam Medis / 病历":
         f_bln = st.multiselect("Filter Bulan / 按月份筛选", df['bulan_daftar'].unique())
         if f_bln:
             df = df[df['bulan_daftar'].isin(f_bln)]
-            
         st.dataframe(df, use_container_width=True)
         
         towrite = io.BytesIO()
@@ -136,7 +128,12 @@ elif menu == "Pengaturan Master / 设置":
                 conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", (kat, n_baru))
                 conn.commit()
                 conn.close()
+                # Notifikasi Berhasil Simpan
+                st.success(f"Data {kat}: '{n_baru}' Berhasil Tersimpan! / 数据已保存！")
                 st.rerun()
+            else:
+                st.warning("Masukkan nama terlebih dahulu! / 请先输入名称！")
+
     with c2:
         d_lama = get_master(kat)
         p_hapus = st.selectbox("Hapus Data / 删除数据", ["-- Pilih / 选择 --"] + d_lama)
@@ -146,4 +143,8 @@ elif menu == "Pengaturan Master / 设置":
                 conn.execute("DELETE FROM master_data WHERE kategori=? AND nama=?", (kat, p_hapus))
                 conn.commit()
                 conn.close()
+                # Notifikasi Berhasil Hapus
+                st.success(f"Data {kat}: '{p_hapus}' Berhasil Terhapus! / 数据已删除！")
                 st.rerun()
+            else:
+                st.error("Pilih data yang akan dihapus! / 请选择要删除的数据！")
