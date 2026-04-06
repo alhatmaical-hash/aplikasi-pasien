@@ -184,6 +184,7 @@ elif menu == "Rekam Medis / 病历":
 elif menu == "SKD / 医生证明":
     st.header("📄 Arsip SKD")
     
+    # 1. Folder Baru
     with st.expander("➕ Tambah Folder Departemen Baru"):
         new_f = st.text_input("Nama Departemen Baru")
         if st.button("Buat Folder"):
@@ -193,37 +194,38 @@ elif menu == "SKD / 医生证明":
                     conn.commit()
                 st.rerun()
 
+    # 2. Filter Waktu
     col_f1, col_f2 = st.columns(2)
     f_bulan = col_f1.selectbox("Filter Bulan", range(1, 13), index=datetime.now().month-1)
     f_tahun = col_f2.selectbox("Filter Tahun", [2024, 2025, 2026], index=2)
 
-    # PERBAIKAN DI SINI: Mengambil daftar departemen untuk dijadikan tombol folder
+    # 3. Ambil Daftar Departemen untuk Tombol Folder
     try:
         conn = get_connection()
         df_dept = pd.read_sql_query("SELECT DISTINCT nama FROM master_data WHERE kategori='Departemen'", conn)
         conn.close()
         daftar_folder = df_dept['nama'].tolist()
     except:
-        daftar_folder = ["PRODUCTION", "OFFICE", "LOGISTIC"] # Cadangan jika db kosong
+        daftar_folder = ["PRODUCTION", "OFFICE", "LOGISTIC"]
 
-    # --- TAMPILKAN TOMBOL FOLDER ---
     st.write("### Pilih Departemen:")
     cols = st.columns(4)
     for idx, d in enumerate(daftar_folder):
-        if cols[idx % 4].button(f"📂 {d}", use_container_width=True, key=f"btn_{d}_{idx}"):
+        if cols[idx % 4].button(f"📂 {d}", use_container_width=True, key=f"folder_{d}_{idx}"):
             st.session_state['sel_dept'] = d
             st.rerun()
 
+    # 4. Jika Folder Dipilih, Tampilkan Isi
     if 'sel_dept' in st.session_state:
         st.divider()
         target = st.session_state['sel_dept']
         st.subheader(f"Folder: {target} ({f_bulan}/{f_tahun})")
         
-        # --- BAGIAN UPLOAD ---
+        # Bagian Upload
         with st.expander("➕ Upload PDF Baru"):
             with st.form("upload_skd_form", clear_on_submit=True):
                 u_f = st.file_uploader("Pilih PDF", type=['pdf'])
-                submit_upload = st.form_submit_button("Simpan")
+                submit_upload = st.form_submit_button("Simpan Ke Folder")
                 
                 if submit_upload:
                     if u_f:
@@ -240,7 +242,38 @@ elif menu == "SKD / 医生证明":
                         except Exception as e:
                             st.error(f"Error Database: {e}")
                     else:
-                        st.warning("Pilih file PDF terlebih dahulu!")
+                        st.warning("Pilih file PDF!")
+
+        # Bagian Pencarian
+        st.write("### Daftar File:")
+        search_query = st.text_input("🔍 Cari Nama Pasien...", placeholder="Ketik nama...", key="search_skd_final")
+
+        # Ambil Data File
+        with get_connection() as conn:
+            query = f"SELECT * FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}"
+            files = pd.read_sql(query, conn)
+            
+            if search_query and not files.empty:
+                files = files[files['nama_pasien'].str.contains(search_query, case=False, na=False)]
+
+        # Tampilkan List File (HANYA SEKALI)
+        if not files.empty:
+            for i, r in files.iterrows():
+                c_file, c_view, c_down, c_del = st.columns([4, 1.2, 1.2, 0.8])
+                c_file.text(f"📄 {r['nama_file']}") 
+                
+                if c_view.button("👁️ Lihat", key=f"v_final_{r['id']}_{i}"):
+                    st.download_button("Buka PDF", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"v_btn_{i}")
+
+                c_down.download_button("📥 Unduh", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"d_btn_{i}")
+
+                if c_del.button("🗑️", key=f"del_btn_{i}"):
+                    with get_connection() as conn:
+                        conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
+                        conn.commit()
+                    st.rerun()
+        else:
+            st.info("Tidak ada file ditemukan di folder ini.")
 
         # --- BAGIAN PENCARIAN & LIST ---
         st.write("### Daftar File:")
