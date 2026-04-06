@@ -197,7 +197,7 @@ elif menu == "SKD / 医生证明":
     f_bulan = col_f1.selectbox("Filter Bulan", range(1, 13), index=datetime.now().month-1)
     f_tahun = col_f2.selectbox("Filter Tahun", [2024, 2025, 2026], index=2)
 
-   try:
+        try:
             conn = get_connection()
             # Kita ambil diagnosa unik yang sudah pernah diinput
             df_diag = pd.read_sql_query("SELECT DISTINCT diagnosa FROM pasien WHERE diagnosa IS NOT NULL", conn)
