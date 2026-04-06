@@ -35,10 +35,10 @@ def init_db():
 init_db()
 # --- 3. FUNGSI DATA ---
 def get_master(kategori):
-    conn = get_connection()
-    df = pd.read_sql(f"SELECT id, nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
-    conn.close()
-    return df
+    conn = get_connection()
+    df = pd.read_sql(f"SELECT nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
+    conn.close()
+    return df['nama'].tolist()
 
 # --- 4. MANAJEMEN LOGIN ---
 if 'logged_in' not in st.session_state:
