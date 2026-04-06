@@ -108,13 +108,24 @@ if menu == "Pendaftaran / 登记":
         col1, col2 = st.columns(2)
         
         with col1:
-            nama = st.text_input("NAMA LENGKAP / 全名")
-            nik = st.text_input("NIK / NO KTP / 身份证号")
-            perusahaan = st.selectbox("PERUSAHAAN / 公司", opts_perusahaan if opts_perusahaan else ["-"])
-            
+            jenis_kunjungan = st.selectbox("Jenis Kunjungan", ["Berobat", "Kontrol MCU", "Masuk UGD", "Kontrol Post Rujuk", "Kontrol Rawat Luka"])
+            nama_lengkap = st.text_input("Nama Lengkap")
+            no_hp = st.text_input("No HP Aktif (WhatsApp)")
+            agama = st.selectbox("Agama", ["Islam", "Kristen", "Hindu", "Buddha", "Katolik", "Tidak Diketahui"])
+            nik = st.text_input("NIK / ID Card")
+            gender = st.radio("Jenis Kelamin", ["Laki-laki", "Perempuan"], horizontal=True)
+
         with col2:
-            dept = st.selectbox("DEPARTEMEN / 部门", opts_dept if opts_dept else ["-"])
-            jabatan = st.selectbox("JABATAN / 职位", opts_jabatan if opts_jabatan else ["-"])
+            blok_mes = st.text_input("Blok Mes dan No Kamar")
+            pernah_berobat = st.radio("Pernah Berobat Disini?", ["Iya Sudah", "Belum Pernah"], horizontal=True)
+            tgl_lahir = st.text_input("Tempat & Tanggal Lahir (Contoh: Obi, 01-01-1990)")
+            perusahaan = st.selectbox("Perusahaan", get_master("Perusahaan"))
+            dept = st.selectbox("Departemen", get_master("Departemen"))
+            jabatan = st.selectbox("Jabatan", get_master("Jabatan"))
+
+        alergi = st.multiselect("Jenis Alergi", ["Makanan", "Obat", "Cuaca", "Tidak Ada"])
+        gol_darah = st.selectbox("Golongan Darah", ["A", "B", "AB", "O", "-"])
+        lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik")
             
         # LOGIKA: Kolom tambahan HANYA muncul jika pilih "Belum Pernah"
         responses = {}
