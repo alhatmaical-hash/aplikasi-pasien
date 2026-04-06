@@ -3,6 +3,7 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import io
+import time # Tambahkan ini untuk jeda sebentar
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -56,12 +57,8 @@ if menu == "Pendaftaran / 登记":
 
     with st.form("form_reg", clear_on_submit=True):
         col1, col2 = st.columns(2)
-        
         with col1:
-            kunjungan = st.selectbox("JENIS KUNJUNGAN / 就诊类型", [
-                "Berobat / 看病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", 
-                "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat luka / 伤口护理"
-            ])
+            kunjungan = st.selectbox("JENIS KUNJUNGAN / 就诊类型", ["Berobat / 看病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat luka / 伤口护理"])
             nama = st.text_input("NAMA LENGKAP / 全名")
             hp = st.text_input("NO HP AKTIF / 有效电话号码")
             agama = st.selectbox("AGAMA / 宗教", ["Islam / 伊斯兰教", "Kristen / 基督教", "Hindu / 印度教", "Buddha / 佛教", "Katolik / 天主教", "Tidak Diketahui / 未知"])
@@ -75,76 +72,4 @@ if menu == "Pendaftaran / 登记":
             perusahaan = st.selectbox("PERUSAHAAN / 公司", opts_perusahaan if opts_perusahaan else ["Isi di Pengaturan / 在设置中填写"])
             dept = st.selectbox("DEPARTEMEN / 部门", opts_dept if opts_dept else ["Isi di Pengaturan / 在设置中填写"])
             jabatan = st.selectbox("JABATAN / 职位", opts_jabatan if opts_jabatan else ["Isi di Pengaturan / 在设置中填写"])
-            alergi = st.selectbox("JENIS ALERGI / 过敏类型", ["Tidak Ada / 无", "Makanan / 食物", "Obat / 药物", "Cuaca / 天气"])
-            darah = st.selectbox("GOLONGAN DARAH / 血型", ["A", "B", "AB", "O", "Tidak Tahu / 不知道"])
-            
-        lokasi = st.text_area("LOKASI AREA KERJA / 工作地点")
-        
-        if st.form_submit_button("KIRIM PENDAFTARAN / 提交登记"):
-            if nama and hp:
-                conn = get_connection()
-                c = conn.cursor()
-                now = datetime.now()
-                c.execute('''INSERT INTO pasien (tgl_daftar, bulan_daftar, jenis_kunjungan, nama_lengkap, no_hp, blok_mes, agama, nik, gender, pernah_berobat, tempat_tgl_lahir, perusahaan, departemen, jabatan, alergi, gol_darah, lokasi_kerja) 
-                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
-                          (now.date(), now.strftime("%B %Y"), kunjungan, nama, hp, blok, agama, nik, gender, pernah, ttl, perusahaan, dept, jabatan, alergi, darah, lokasi))
-                conn.commit()
-                conn.close()
-                st.success("Pendaftaran berhasil! Silakan menunggu. / 登记成功！请稍候。")
-                st.balloons()
-            else:
-                st.error("Nama dan No HP tidak boleh kosong! / 姓名和电话号码不能为空！")
-
-# --- 6. MENU REKAM MEDIS ---
-elif menu == "Rekam Medis / 病历":
-    st.header("📊 Rekam Medis / 病历数据")
-    conn = get_connection()
-    df = pd.read_sql("SELECT * FROM pasien ORDER BY id DESC", conn)
-    conn.close()
-
-    if not df.empty:
-        f_bln = st.multiselect("Filter Bulan / 按月份筛选", df['bulan_daftar'].unique())
-        if f_bln:
-            df = df[df['bulan_daftar'].isin(f_bln)]
-        st.dataframe(df, use_container_width=True)
-        
-        towrite = io.BytesIO()
-        df.to_excel(towrite, index=False, engine='xlsxwriter')
-        st.download_button(label="📥 Download Excel", data=towrite.getvalue(), file_name="Data_Pasien.xlsx")
-    else:
-        st.info("Belum ada data / 暂无数据。")
-
-# --- 7. PENGATURAN MASTER ---
-elif menu == "Pengaturan Master / 设置":
-    st.header("⚙️ Master Data / 基础数据设置")
-    kat = st.selectbox("Pilih Kategori / 选择类别", ["Perusahaan", "Departemen", "Jabatan"])
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        n_baru = st.text_input(f"Tambah {kat} Baru / 添加新{kat}")
-        if st.button("Simpan Baru / 保存"):
-            if n_baru:
-                conn = get_connection()
-                conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", (kat, n_baru))
-                conn.commit()
-                conn.close()
-                # Notifikasi Berhasil Simpan
-                st.success(f"Data {kat}: '{n_baru}' Berhasil Tersimpan! / 数据已保存！")
-                st.rerun()
-            else:
-                st.warning("Masukkan nama terlebih dahulu! / 请先输入名称！")
-
-    with c2:
-        d_lama = get_master(kat)
-        p_hapus = st.selectbox("Hapus Data / 删除数据", ["-- Pilih / 选择 --"] + d_lama)
-        if st.button("Hapus Terpilih / 删除"):
-            if p_hapus != "-- Pilih / 选择 --":
-                conn = get_connection()
-                conn.execute("DELETE FROM master_data WHERE kategori=? AND nama=?", (kat, p_hapus))
-                conn.commit()
-                conn.close()
-                # Notifikasi Berhasil Hapus
-                st.success(f"Data {kat}: '{p_hapus}' Berhasil Terhapus! / 数据已删除！")
-                st.rerun()
-            else:
-                st.error("Pilih data yang akan dihapus! / 请选择要删除的数据！")
+            alergi = st.selectbox("JENIS ALERGI / 过敏类型", ["Tidak Ada / 无", "Makanan / 食
