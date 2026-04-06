@@ -88,57 +88,73 @@ if st.session_state['logged_in']:
 menu = st.sidebar.radio("Pilih Halaman", menu_list)
 
 # --- 6. MENU PENDAFTARAN (DIUPDATE) ---
-if menu == "Pendaftaran / 登记":
-    st.header("📝 Pendaftaran Pasien / 病人登记")
+if 'page' not in st.session_state:
+    st.session_state['page'] = 'Login'
+
+# Tombol Kembali ke Login di Sidebar
+if st.sidebar.button("⬅️ Kembali ke Login / 返回登录"):
+    st.session_state['page'] = 'Login'
+    st.rerun()
+
+st.header("📝 Pendaftaran Pasien / 病人登记")
+
+opts_perusahaan = get_master("Perusahaan")['nama'].tolist()
+opts_dept = get_master("Departemen")['nama'].tolist()
+opts_jabatan = get_master("Jabatan")['nama'].tolist()
+custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
+
+# Pilihan status berobat dengan Mandarin
+pernah = st.radio(
+    "PERNAH BEROBAT DISINI? / 您以前在这里看 painting 过吗？", 
+    ["Iya Sudah / 是的", "Belum Pernah / 从未"], 
+    horizontal=True
+)
+
+with st.form("form_reg", clear_on_submit=True):
+    col1, col2 = st.columns(2)
+    with col1:
+        nama = st.text_input("NAMA LENGKAP / 全名")
+        nik = st.text_input("NIK / NO KTP / 身份证号")
+        perusahaan = st.selectbox("PERUSAHAAN / 公司", opts_perusahaan if opts_perusahaan else ["Default"])
+    with col2:
+        dept = st.selectbox("DEPARTEMEN / 部门", opts_dept if opts_dept else ["Default"])
+        jabatan = st.selectbox("JABATAN / 职位", opts_jabatan if opts_jabatan else ["Default"])
+        
+    # Kolom tambahan hanya muncul jika "Belum Pernah"
+    responses = {}
+    if pernah == "Belum Pernah / 从未":
+        st.divider()
+        st.subheader("📋 Informasi Tambahan / 附加信息")
+        for field in custom_fields:
+            # Menampilkan label fitur tambahan (misal: Alamat / 地址)
+            responses[field] = st.text_input(f"{field.upper()}")
+    else:
+        # Untuk pasien lama, responses dikosongkan
+        responses = {field: "" for field in custom_fields}
+
+    # Tombol Kirim dengan Mandarin
+    submit = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
     
-    opts_perusahaan = get_master("Perusahaan")['nama'].tolist()
-    opts_dept = get_master("Departemen")['nama'].tolist()
-    opts_jabatan = get_master("Jabatan")['nama'].tolist()
-    custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
-
-    # Pilihan status berobat
-    pernah = st.radio("PERNAH BEROBAT DISINI?", ["Iya Sudah / 是nya", "Belum Pernah / 从未"], horizontal=True)
-
-    with st.form("form_reg", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            nama = st.text_input("NAMA LENGKAP")
-            nik = st.text_input("NIK / NO KTP")
-            perusahaan = st.selectbox("PERUSAHAAN", opts_perusahaan if opts_perusahaan else ["Default"])
-        with col2:
-            dept = st.selectbox("DEPARTEMEN", opts_dept if opts_dept else ["Default"])
-            jabatan = st.selectbox("JABATAN", opts_jabatan if opts_jabatan else ["Default"])
+    if submit:
+        if nama and nik:
+            conn = get_connection()
+            cur = conn.cursor()
+            # Simpan data utama
+            cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan) 
+                         VALUES (?,?,?,?,?,?,?)''', (datetime.now().date(), nama, nik, pernah, perusahaan, dept, jabatan))
+            last_id = cur.lastrowid
             
-        # LOGIKA BARU: Kolom tambahan HANYA muncul jika pilih "Belum Pernah"
-        responses = {}
-        if pernah == "Belum Pernah / 从未":
-            st.divider()
-            st.subheader("📋 Informasi Tambahan (Pasien Baru)")
-            # Tampilkan semua fitur yang Anda tambah di Pengaturan Master
-            for field in custom_fields:
-                responses[field] = st.text_input(field.upper())
+            # Simpan data tambahan ke tabel custom
+            for f_name, f_val in responses.items():
+                cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", 
+                            (last_id, f_name, f_val))
+            
+            conn.commit()
+            conn.close()
+            st.success("Berhasil Terdaftar! / 登记成功！")
+            st.balloons()
         else:
-            # Jika pasien lama, biarkan responses kosong agar tidak error saat insert ke DB
-            responses = {field: "" for field in custom_fields}
-
-        if st.form_submit_button("KIRIM PENDAFTARAN"):
-            if nama and nik:
-                conn = get_connection()
-                cur = conn.cursor()
-                # Simpan data utama
-                cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan) 
-                             VALUES (?,?,?,?,?,?,?)''', (datetime.now().date(), nama, nik, pernah, perusahaan, dept, jabatan))
-                last_id = cur.lastrowid
-                
-                # Simpan data tambahan (jika ada)
-                for f_name, f_val in responses.items():
-                    cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", 
-                                (last_id, f_name, f_val))
-                
-                conn.commit()
-                conn.close()
-                st.success("Berhasil Terdaftar!")
-                st.balloons()
+            st.error("Nama dan NIK harus diisi! / 姓名和身份证号必须填写！")
 # --- 7. MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Data Rekam Medis")
