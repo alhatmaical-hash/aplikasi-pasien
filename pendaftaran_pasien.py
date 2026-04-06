@@ -9,11 +9,12 @@ import psycopg2
 def get_connection():
     # Gunakan HOST DIRECT (Sesuai gambar yang Anda kirim tadi)
     host = "db.disaykowxavyegpkosvf.supabase.co"
+    port = "5432"
+    database = "postgres"
     user = "postgres"
     password = "Alhatma121299"
-    database = "postgres"
-    port = "5432"
-
+    
+    
     try:
         conn = psycopg2.connect(
             host=host,
