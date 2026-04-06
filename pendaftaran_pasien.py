@@ -7,25 +7,13 @@ import psycopg2
 
 # --- 1. KONEKSI DATABASE (HANYA BOLEH ADA SATU) ---
 def get_connection():
-    # Gunakan Host Pooler Singapore agar stabil di Streamlit Cloud
-    host = "aws-0-ap-southeast-1.pooler.supabase.com"
+    # CARA JITU: Menggabungkan semua ke dalam satu baris URI
+    # Format: postgresql://[USER].[PROJECT_ID]:[PASSWORD]@[HOST]:[PORT]/[DB]
     
-    # FORMAT USER WAJIB: postgres.[PROJECT_ID]
-    user = "postgres.disaykowxavyegpkosvf" 
+    uri = "postgresql://postgres.disaykowxavyegpkosvf:Alhatma121299@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
     
-    password = "Alhatma121299"
-    database = "postgres"
-    port = "6543" # Gunakan port pooler
-
     try:
-        conn = psycopg2.connect(
-            host=host,
-            user=user,
-            password=password,
-            dbname=database,
-            port=port,
-            sslmode="require"
-        )
+        conn = psycopg2.connect(uri)
         return conn
     except Exception as e:
         st.error(f"Koneksi Gagal: {e}")
