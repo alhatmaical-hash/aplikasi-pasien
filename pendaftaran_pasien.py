@@ -239,26 +239,53 @@ elif menu == "SKD / 医生证明":
                     else:
                         st.warning("Pilih file PDF terlebih dahulu!")
 
-        # --- BAGIAN TAMPILKAN DAFTAR FILE ---
+       # --- BAGIAN PENCARIAN (Garis Panjang) ---
         st.write("### Daftar File:")
+        search_query = st.text_input("🔍 Cari Nama Pasien atau Nama File...", placeholder="Masukkan nama untuk mencari...")
+
         with get_connection() as conn:
             try:
-                query = f"SELECT id, nama_pasien, nama_file FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}"
+                # Query dasar
+                query = f"SELECT * FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}"
                 files = pd.read_sql(query, conn)
+                
+                # Logika Filter Pencarian
+                if search_query:
+                    files = files[files['nama_pasien'].str.contains(search_query, case=False, na=False) | 
+                                  files['nama_file'].str.contains(search_query, case=False, na=False)]
             except:
-                files = pd.DataFrame(columns=['id', 'nama_pasien', 'nama_file'])
+                files = pd.DataFrame(columns=['id', 'nama_pasien', 'nama_file', 'file_data'])
 
+        # --- TAMPILAN LIST DENGAN TOMBOL AKSI (Kotak Kecil) ---
         if not files.empty:
             for i, r in files.iterrows():
-                c_a, c_b = st.columns([4, 1])
-                c_a.text(f"📄 {r['nama_file']}") # Menampilkan nama file
-                if c_b.button("Hapus", key=f"f_del_{r['id']}"):
+                # Membuat baris dengan kolom (Nama File, Lihat, Download, Hapus)
+                c_file, c_view, c_down, c_del = st.columns([4, 1.2, 1.2, 1])
+                
+                c_file.text(f"📄 {r['nama_file']}") 
+                
+                # 1. Tombol Lihat Data PDF (Kotak Kecil 1)
+                if c_view.button("👁️ Lihat", key=f"v_{r['id']}"):
+                    st.download_button("Buka PDF di Tab Baru", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"v_btn_{r['id']}")
+                    st.info("Klik tombol di atas untuk membuka.")
+
+                # 2. Tombol Download PDF (Kotak Kecil 2)
+                c_down.download_button(
+                    label="📥 Unduh",
+                    data=r['file_data'],
+                    file_name=r['nama_file'],
+                    mime='application/pdf',
+                    key=f"d_{r['id']}"
+                )
+
+                # 3. Tombol Hapus
+                if c_del.button("🗑️ Hapus", key=f"f_del_{r['id']}"):
                     with get_connection() as conn:
                         conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
                         conn.commit()
                     st.rerun()
         else:
-            st.info(f"Belum ada data SKD untuk {target} pada periode ini.")
+            st.info(f"Tidak ada data ditemukan.")
 # --- 9. PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
     st.header("⚙️ Pengaturan")
