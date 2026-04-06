@@ -211,11 +211,16 @@ elif menu == "SKD / 医生证明":
             with st.form("upload_skd_form"):
                 u_f = st.file_uploader("Pilih PDF", type=['pdf'])
                 if st.form_submit_button("Simpan"):
-                    if u_n and u_f:
-                        conn = get_connection()
-                        conn.execute("INSERT INTO skd_files (nama_pasien, departemen, nama_file, file_data, tgl_upload, bulan_skd, tahun_skd) VALUES (?,?,?,?,?,?,?)", 
-                                     (u_n, target, u_f.name, u_f.read(), datetime.now(), f_bulan, f_tahun))
-                        conn.commit(); conn.close(); st.success("File Tersimpan!"); st.rerun()
+                    if u_f:
+                        conn.execute("""
+                            INSERT INTO skd_files
+                            (nama_pasien, departemen, nama_file, file_data, tgl_upload, bulan_skd, tahun_skd) 
+                            VALUES (?,?,?,?,?,?,?)""",
+                            (u_f.name, target, u_f.name, u_f.read(), datetime.now(), f_bulan, f_tahun))
+                        conn.commit()
+                        conn.close()
+                        st.success("File Berhasil Disimpan!")
+                        st.rerun()
 
         conn = get_connection()
         # Gunakan try-except agar jika tabel belum ada, aplikasi tidak crash
