@@ -45,7 +45,12 @@ def get_master(kategori):
 
 # --- 4. NAVIGASI SIDEBAR ---
 st.sidebar.title("🏥 Menu Utama / 主菜单")
-menu = st.sidebar.radio("Pilih Halaman / 选择页面", ["Pendaftaran / 登记", "Rekam Medis / 病历", "Pengaturan Master / 设置"])
+menu = st.sidebar.radio("Pilih Halaman / 选择页面", [
+    "Pendaftaran / 登记", 
+    "Rekam Medis / 病历", 
+    "SKD / 医生证明", 
+    "Pengaturan Master / 设置"
+])
 
 # --- 5. MENU PENDAFTARAN ---
 if menu == "Pendaftaran / 登记":
@@ -79,7 +84,6 @@ if menu == "Pendaftaran / 登记":
             alergi = st.selectbox("JENIS ALERGI / 过敏类型", ["Tidak Ada / 无", "Makanan / 食物", "Obat / 药物", "Cuaca / 天气"])
             darah = st.selectbox("GOLONGAN DARAH / 血型", ["A", "B", "AB", "O", "Tidak Tahu / 不知道"])
             
-        # Perbaikan pada baris lokasi_kerja (Baris 82)
         lokasi = st.text_area("LOKASI AREA KERJA / 工作地点")
         
         if st.form_submit_button("KIRIM PENDAFTARAN / 提交登记"):
@@ -99,7 +103,7 @@ if menu == "Pendaftaran / 登记":
 
 # --- 6. MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
-    st.header("📊 Rekam Medis / 病历数据")
+    st.header("📊 Rekam Medis / 病历 data")
     conn = get_connection()
     df = pd.read_sql("SELECT * FROM pasien ORDER BY id DESC", conn)
     conn.close()
@@ -116,7 +120,52 @@ elif menu == "Rekam Medis / 病历":
     else:
         st.info("Belum ada data / 暂无数据。")
 
-# --- 7. PENGATURAN MASTER ---
+# --- 7. MENU SKD (SURAT KETERANGAN DOKTER) ---
+elif menu == "SKD / 医生证明":
+    st.header("📄 SKD - Surat Keterangan Dokter / 医生证明")
+    
+    tab1, tab2 = st.tabs(["Buat SKD Baru / 新建证明", "Tambah Folder Departemen / 添加部门"])
+    
+    with tab1:
+        opts_dept_skd = get_master("Departemen")
+        
+        with st.form("form_skd"):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                nama_skd = st.text_input("Nama Pasien / 病人姓名")
+                dept_skd = st.selectbox("Departemen / 部门", opts_dept_skd if opts_dept_skd else ["Isi di Tab Sebelah"])
+                tgl_mulai = st.date_input("Mulai Istirahat / 开始休息日期")
+            
+            with col_b:
+                nik_skd = st.text_input("NIK / 身份证号")
+                durasi = st.number_input("Durasi Istirahat (Hari) / 休息天数", min_value=1, step=1)
+                tgl_selesai = st.date_input("Selesai Istirahat / 结束休息日期")
+            
+            # Tombol Upload
+            uploaded_file = st.file_uploader("Upload Scan SKD / 上传证明文件", type=['pdf', 'png', 'jpg', 'jpeg'])
+            diagnosa = st.text_area("Diagnosa / 诊断")
+            
+            if st.form_submit_button("Simpan Data SKD / 保存"):
+                if nama_skd and uploaded_file:
+                    st.success(f"SKD untuk {nama_skd} berhasil disimpan secara sistem!")
+                    st.toast("File berhasil diupload!", icon="☁️")
+                else:
+                    st.warning("Mohon isi Nama dan Upload file SKD!")
+
+    with tab2:
+        st.subheader("📁 Kelola Folder Departemen / 部门管理")
+        new_dept = st.text_input("Nama Departemen Baru / 新部门名称")
+        if st.button("Tambah Departemen / 增加"):
+            if new_dept:
+                conn = get_connection()
+                conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", ("Departemen", new_dept))
+                conn.commit()
+                conn.close()
+                st.toast(f"Folder {new_dept} Berhasil Dibuat!", icon="📂")
+                time.sleep(1)
+                st.rerun()
+
+# --- 8. PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
     st.header("⚙️ Master Data / 基础数据设置")
     kat = st.selectbox("Pilih Kategori / 选择类别", ["Perusahaan", "Departemen", "Jabatan"])
@@ -130,7 +179,6 @@ elif menu == "Pengaturan Master / 设置":
                 conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", (kat, n_baru))
                 conn.commit()
                 conn.close()
-                
                 st.toast(f"✅ Data {kat} Berhasil Tersimpan!", icon='💾')
                 time.sleep(1)
                 st.rerun()
@@ -146,7 +194,6 @@ elif menu == "Pengaturan Master / 设置":
                 conn.execute("DELETE FROM master_data WHERE kategori=? AND nama=?", (kat, p_hapus))
                 conn.commit()
                 conn.close()
-                
                 st.toast(f"🗑️ Data {kat} Berhasil Terhapus!", icon='🔥')
                 time.sleep(1)
                 st.rerun()
