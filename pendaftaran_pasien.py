@@ -485,32 +485,35 @@ elif menu == "SKD / 医生证明":
 
     # 4. Tampilkan Isi Folder Jika Sudah Dipilih
     if 'sel_dept' in st.session_state:
-    # Baris 488: Semua kode di bawah ini HARUS menjorok ke dalam
-    st.divider() 
-    target = st.session_state['sel_dept']
-    st.subheader(f"Folder: {target} ({f_bulan}/{f_tahun})")
+        # Baris 488: Semua kode di bawah ini HARUS menjorok ke dalam
+        st.divider() 
+        target = st.session_state['sel_dept']
+        st.subheader(f"Folder: {target} ({f_bulan}/{f_tahun})")
     
-    # Form Upload (juga harus menjorok)
-    with st.expander("➕ Upload PDF Baru"):
-        with st.form("upload_skd_form", clear_on_submit=True):
-            u_files = st.file_uploader("Pilih PDF", type=['pdf'], accept_multiple_files=True)
+        # Form Upload (juga harus menjorok)
+        with st.expander("➕ Upload PDF Baru"):
+            with st.form("upload_skd_form", clear_on_submit=True):
+                u_files = st.file_uploader("Pilih PDF", type=['pdf'], accept_multiple_files=True)
             
-            if st.form_submit_button("Simpan Ke Folder"):
-                if u_files:
-                    try:
-                        with get_connection() as conn:
-                            for u_f in u_files:
-                                file_content = u_f.read()
-                                conn.execute("""
-                                    INSERT INTO skd_files 
-                                    (nama_pasien, departemen, nama_file, file_data, tgl_upload, bulan_skd, tahun_skd) 
-                                    VALUES (?,?,?,?,?,?,?)""", 
-                                    (u_f.name, target, u_f.name, file_content, datetime.now(), f_bulan, f_tahun))
-                            conn.commit()
-                        st.success(f"Berhasil menyimpan {len(u_files)} file!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                if st.form_submit_button("Simpan Ke Folder"):
+                    if u_files:
+                        try:
+                            with get_connection() as conn:
+                                for u_f in u_files:
+                                    file_content = u_f.read()
+                                    conn.execute("""
+                                        INSERT INTO skd_files 
+                                        (nama_pasien, departemen, nama_file, file_data, tgl_upload, bulan_skd, tahun_skd) 
+                                        VALUES (?,?,?,?,?,?,?)""", 
+                                        (u_f.name, target, u_f.name, file_content, datetime.now(), f_bulan, f_tahun))
+                                conn.commit()
+                            st.success(f"Berhasil menyimpan {len(u_files)} file!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+
+                else:
+                        st.warning("Silakan pilih file terlebih dahulu.")
 
         # --- BAGIAN PENCARIAN & DAFTAR (HANYA SATU KALI) ---
         st.write("### Daftar File:")
