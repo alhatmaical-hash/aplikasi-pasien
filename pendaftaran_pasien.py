@@ -99,8 +99,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Jalankan inisialisasi
-init_db()
+
 
 # --- 3. FUNGSI DATA ---
 def get_master(kategori):
