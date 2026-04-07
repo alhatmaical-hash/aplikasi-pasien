@@ -127,77 +127,70 @@ else:
 # --- MENU PENDAFTARAN (Admin & Publik) ---
 if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     st.header("📝 Pendaftaran Pasien / 病人登记")
+    
     opts_perusahaan = get_master("Perusahaan")['nama'].tolist()
     opts_dept = get_master("Departemen")['nama'].tolist()
     opts_jabatan = get_master("Jabatan")['nama'].tolist()
     custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
 
-    pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是s的", "Belum Pernah / 从未"], horizontal=True)
+    # Pilihan Pasien Lama vs Baru
+    pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是的", "Belum Pernah / 从未"], horizontal=True)
 
-    # PERBAIKAN DI SINI: Spasi di depan 'with' harus sejajar dengan 'pernah' di atasnya
     with st.form("form_reg", clear_on_submit=True):
         if pernah == "Iya Sudah / 是s de":
+            # --- TAMPILAN PASIEN LAMA (HANYA INFO DASAR) ---
             col1, col2 = st.columns(2)
             with col1:
-                jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
+                jenis_kunjungan = st.selectbox("Jenis Kunjungan", ["Berobat", "MCU", "UGD", "Kontrol"])
                 nama_lengkap = st.text_input("Nama Lengkap / 全名")
-                no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码")
-                nik = st.text_input("NIK / ID Card / 身份证号")
-            
+                nik = st.text_input("NIK / ID Card")
             with col2:
-                perusahaan = st.selectbox("Perusahaan / 公司", opts_perusahaan)
-                dept = st.selectbox("Departemen / 部门", opts_dept)
-                jabatan = st.selectbox("Jabatan / 职位", opts_jabatan)
+                perusahaan = st.selectbox("Perusahaan", opts_perusahaan)
+                dept = st.selectbox("Departemen", opts_dept)
+                jabatan = st.selectbox("Jabatan", opts_jabatan)
             
-            agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja = "Lama", "Lama", "", "", [], "-", ""
-            responses = {field: "" for field in custom_fields}
+            # Default value untuk data yang tidak diisi pasien lama agar database tidak error
+            no_hp, agama, gender, tgl_lahir, responses = "-", "Lama", "Lama", "-", {}
 
         else:
+            # --- TAMPILAN PASIEN BARU (FORM LENGKAP) ---
             col1, col2 = st.columns(2)
             with col1:
-                jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
+                jenis_kunjungan = st.selectbox("Jenis Kunjungan", ["Berobat", "MCU", "UGD", "Kontrol"])
                 nama_lengkap = st.text_input("Nama Lengkap / 全名")
-                no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码")
-                agama = st.selectbox("Agama / 宗教", ["Islam / 伊斯兰教", "Kristen / 基督教", "Hindu / 印度教", "Buddha / 佛教", "Katolik / 天主教", "Tidak Diketahui / 未知"])
-                nik = st.text_input("NIK / ID Card / 身份证号")
-                gender = st.radio("Jenis Kelamin / 性别", ["Laki-laki / 男", "Perempuan / 女"], horizontal=True)
-
-            with col2:
-                blok_mes = st.text_input("Blok Mes dan No Kamar / 宿舍楼和房间号")
-                tgl_lahir = st.text_input("Tempat & Tanggal Lahir / 出生地点和日期 (Contoh: Obi, 01-01-1990)")
-                perusahaan = st.selectbox("Perusahaan / 公司", opts_perusahaan)
-                dept = st.selectbox("Departemen / 部门", opts_dept)
-                jabatan = st.selectbox("Jabatan / 职位", opts_jabatan)
-
-            alergi = st.multiselect("Jenis Alergi / 过敏类型", ["Makanan / 食物", "Obat / 药物", "Cuaca / 天气", "Tidak Ada / 无"])
-            gol_darah = st.selectbox("Golongan Darah / 血型", ["A", "B", "AB", "O", "-"])
-            lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik / 具体工作地点")
-            lokasi_mcu = st.selectbox("Lokasi Mcu Pertama Kali / 血型", ["Klinik HJF", "Klinik HPAL", "Klinik Luar Obi"])
+                nik = st.text_input("NIK / ID Card")
+                no_hp = st.text_input("No HP / WhatsApp")
+                agama = st.selectbox("Agama", ["Islam", "Kristen", "Katolik", "Hindu", "Buddha"])
             
+            with col2:
+                gender = st.radio("Gender", ["Laki-laki", "Perempuan"], horizontal=True)
+                tgl_lahir = st.text_input("Tempat & Tgl Lahir")
+                perusahaan = st.selectbox("Perusahaan", opts_perusahaan)
+                dept = st.selectbox("Departemen", opts_dept)
+                jabatan = st.selectbox("Jabatan", opts_jabatan)
+
             st.divider()
-            st.subheader("📋 Informasi Tambahan / 附加信息")
-            responses = {field: st.text_input(f"{field.upper()}") for field in custom_fields}
-        
-        submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
+            st.subheader("📋 Informasi Tambahan")
+            responses = {field: st.text_input(field.upper()) for field in custom_fields}
+
+        submit_btn = st.form_submit_button("KIRIM PENDAFTARAN")
 
         if submit_btn:
             if nama_lengkap and nik:
-                try:
-                    with get_connection() as conn:
-                        cur = conn.cursor()
-                        cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan) 
-                                     VALUES (?,?,?,?,?,?,?)''', 
-                                     (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan))
-                        last_id = cur.lastrowid 
-                        for f_name, f_val in responses.items():
-                            cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
-                        conn.commit()
-                    st.success("Berhasil Terdaftar! / 登记成功！")
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"Terjadi kesalahan: {e}")
+                with get_connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, tgl_lahir, status_antrian) 
+                                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                                   (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, no_hp, agama, gender, tgl_lahir, "Normal"))
+                    
+                    last_id = cur.lastrowid
+                    for f_name, f_val in responses.items():
+                        cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
+                    conn.commit()
+                st.success("Berhasil Terdaftar!")
+                st.balloons()
             else:
-                st.warning("Nama dan NIK wajib diisi! / 姓名和身份证号必填！")
+                st.error("Nama dan NIK wajib diisi!")
   
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
