@@ -180,14 +180,54 @@ if menu == "Pendaftaran / 登记":
 # --- 7. MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Data Rekam Medis")
+    
     conn = get_connection()
-    df = pd.read_sql("SELECT * FROM pasien", conn)
+    # Mengambil semua kolom agar data pasien baru terlihat lengkap
+    query = """
+    SELECT 
+        id, 
+        tgl_daftar AS 'Tgl Daftar', 
+        nama_lengkap AS 'Nama Lengkap', 
+        nik AS 'NIK/ID', 
+        no_hp AS 'WhatsApp',
+        perusahaan AS 'Perusahaan', 
+        departemen AS 'Departemen', 
+        jabatan AS 'Jabatan',
+        pernah_berobat AS 'Status',
+        agama AS 'Agama',
+        gender AS 'Gender',
+        tgl_lahir AS 'TTL',
+        alergi AS 'Alergi',
+        gol_darah AS 'Gol Darah',
+        blok_mes AS 'Blok/Kamar',
+        lokasi_kerja AS 'Area Kerja'
+    FROM pasien
+    """
+    df = pd.read_sql(query, conn)
     conn.close()
-    if not df.empty:
-        st.dataframe(df, use_container_width=True)
-    else:
-        st.info("Belum ada data pasien.")
 
+    if not df.empty:
+        # Menampilkan dataframe dengan pengaturan agar enak dipandang
+        st.dataframe(
+            df, 
+            use_container_width=True, 
+            hide_index=True, # Menghilangkan angka index di kiri agar rapi
+            column_config={
+                "WhatsApp": st.column_config.TextColumn("WhatsApp"),
+                "Tgl Daftar": st.column_config.DateColumn("Tanggal"),
+            }
+        )
+        
+        # Tambahan fitur unduh ke Excel (opsional)
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Data (CSV)",
+            data=csv,
+            file_name='data_rekam_medis.csv',
+            mime='text/csv',
+        )
+    else:
+        st.info("Belum ada data pasien / 还没有病人数据。")
 # --- 8. MENU SKD / 医生证明 ---
 elif menu == "SKD / 医生证明":
     st.header("📄 Arsip SKD")
