@@ -168,14 +168,9 @@ else:
 if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     st.header("📝 Pendaftaran Pasien / 病人登记")
     
-    opts_perusahaan = get_master("Perusahaan")['nama'].tolist()
-    opts_dept = get_master("Departemen")['nama'].tolist()
-    opts_jabatan = get_master("Jabatan")['nama'].tolist()
-    custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
-    
-    st.subheader("👨‍⚕️ Pengaturan Dokter Jaga")
-    opts_dr = get_master("Dokter")['nama'].tolist()
-    dokter_jaga = st.multiselect("Pilih Dokter yang Bertugas Hari Ini", opts_dr, placeholder="Pilih dokter yang jaga...")
+    # --- TEMPEL DI SINI ---
+    # Ambil data dokter dari session_state yang diisi di menu Rekam Medis
+    dokter_jaga = st.session_state.get('dokter_jaga_aktif', [])
 
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
@@ -184,9 +179,19 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             jml_pasien = conn.execute("SELECT COUNT(*) FROM pasien WHERE tgl_daftar=?", (tgl_hari_ini,)).fetchone()[0]
             idx_dokter = (jml_pasien // 5) % len(dokter_jaga)
             dokter_terpilih = dokter_jaga[idx_dokter]
+        
+        # Tampilkan info saja, tanpa pilihan dropdown untuk pasien
         st.info(f"Pasien ini akan diarahkan ke: **{dokter_terpilih}**")
     else:
-        st.warning("⚠️ Pilih minimal satu dokter jaga di atas!")
+        # Jika petugas belum setting di Rekam Medis
+        st.error("⚠️ Sistem pendaftaran belum siap. Silakan hubungi petugas klinik.")
+        st.stop() 
+
+    # --- LANJUTAN KODE ASLI ANDA ---
+    opts_perusahaan = get_master("Perusahaan")['nama'].tolist()
+    opts_dept = get_master("Departemen")['nama'].tolist()
+    opts_jabatan = get_master("Jabatan")['nama'].tolist()
+    custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
 
     # Pastikan teks di sini SAMA PERSIS dengan yang di dalam IF nanti
     pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是s的", "Belum Pernah / 从未"], horizontal=True)
@@ -306,6 +311,19 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Menu Rekam Medis")
+    with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
+        opts_dr = get_master("Dokter")['nama'].tolist()
+        # Simpan ke session_state agar bisa dibaca di halaman pendaftaran
+        st.session_state['dokter_jaga_aktif'] = st.multiselect(
+            "Pilih Dokter yang Bertugas", 
+            opts_dr, 
+            default=st.session_state.get('dokter_jaga_aktif', []),
+            placeholder="Pilih dokter..."
+        )
+        if st.session_state['dokter_jaga_aktif']:
+            st.success(f"Dokter Aktif: {', '.join(st.session_state['dokter_jaga_aktif'])}")
+        else:
+            st.warning("Peringatan: Belum ada dokter yang dipilih untuk bertugas.")
     
     conn = get_connection()
     query = """
