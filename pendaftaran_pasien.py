@@ -351,9 +351,42 @@ elif menu == "Rekam Medis / 病历":
                     else:
                         st.error("Silakan centang kotak konfirmasi sebelum menghapus.")
 
+        # --- 6. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
+        st.divider()
+        with st.expander("🚨 Hapus Seluruh Database (Admin Only)"):
+            st.error("PERINGATAN: Tindakan ini akan menghapus SELURUH data pasien tanpa kecuali!")
+            
+            # Input sandi admin
+            input_sandi = st.text_input("Masukkan Sandi Admin", type="password", key="sandi_delete_all")
+            
+            # Checkbox konfirmasi tambahan agar tidak sengaja terpencet
+            konfirmasi_total = st.checkbox("Saya benar-benar ingin menghapus SEMUA data di database")
+            
+            btn_hapus_semua = st.button("HAPUS SEMUA DATA SEKARANG", type="primary")
+            
+            if btn_hapus_semua:
+                # Ganti 'admin123' dengan sandi yang Anda inginkan
+                if input_sandi == "admin123": 
+                    if konfirmasi_total:
+                        try:
+                            cur = conn.cursor()
+                            cur.execute("DELETE FROM pasien")
+                            conn.commit()
+                            st.success("Seluruh database berhasil dikosongkan!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Gagal mengosongkan data: {e}")
+                    else:
+                        st.warning("Silakan centang kotak konfirmasi terlebih dahulu.")
+                else:
+                    st.error("Sandi Admin salah! Akses ditolak.")
+
     else:
         st.info("Belum ada data pasien / 还没有病人数据。")
+    
     conn.close()
+
+
 # --- MENU SKD ---
 elif menu == "SKD / 医生证明":
     st.header("📄 Arsip SKD")
