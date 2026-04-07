@@ -104,7 +104,8 @@ def init_db():
 # --- 3. FUNGSI DATA ---
 def get_master(kategori):
     with get_connection() as conn:
-        return pd.read_sql(f"SELECT id, nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
+        # TAMBAHKAN KATA 'DISTINCT' DI SINI
+        return pd.read_sql(f"SELECT DISTINCT nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
 
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
 
