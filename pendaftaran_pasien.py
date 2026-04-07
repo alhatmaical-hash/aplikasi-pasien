@@ -43,7 +43,7 @@ def init_db():
         ("tgl_lahir", "TEXT"),
         ("alergi", "TEXT"),
         ("gol_darah", "TEXT"),
-        ("lokasi_kerja", "TEXT")
+        ("lokasi_kerja", "TEXT"),
         ("lokasi_mcu", "TEXT")
     ]
     
