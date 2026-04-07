@@ -104,8 +104,8 @@ def init_db():
 # --- 3. FUNGSI DATA ---
 def get_master(kategori):
     with get_connection() as conn:
-        # TAMBAHKAN KATA 'DISTINCT' DI SINI
-        return pd.read_sql(f"SELECT DISTINCT nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
+        # Tambahkan 'id' ke dalam SELECT
+        return pd.read_sql(f"SELECT id, nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
 
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
 
@@ -653,7 +653,10 @@ elif menu == "Pengaturan Master / 设置":
                 ca, cb = st.columns([3, 1])
                 ca.text(r['nama'])
                 if cb.button("Hapus", key=f"m_del_{r['id']}"):
-                    conn = get_connection(); conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],)); conn.commit(); conn.close(); st.rerun()
+                    with get_connection() as conn:
+                        conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],))
+                        conn.commit()
+                    st.rerun()
 
     with t2:
         st.subheader("🛠 Custom Kolom Form Pendaftaran")
@@ -670,7 +673,10 @@ elif menu == "Pengaturan Master / 设置":
                 ca, cb = st.columns([3, 1])
                 ca.text(r['nama'])
                 if cb.button("Hapus", key=f"fit_del_{r['id']}"):
-                    conn = get_connection(); conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],)); conn.commit(); conn.close(); st.rerun()
+                    with get_connection() as conn:
+                        conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],))
+                        conn.commit()
+                    st.rerun()
 
     with t3:
         st.subheader("👥 Manajemen Akun Tim")
