@@ -388,7 +388,7 @@ elif menu == "Rekam Medis / 病历":
     
     if not df.empty:
         # --- TAMBAHAN: FITUR PENCARIAN (Ubah di sini) ---
-        search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "")
+        search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
 
         # Proses Filtering: Tabel akan menyusut sesuai ketikan Anda
         if search_term:
