@@ -395,6 +395,23 @@ elif menu == "SKD / 医生证明":
 
     # Konversi Nama Bulan ke Angka untuk kebutuhan Database (1-12)
     f_bulan = daftar_bulan.index(f_nama_bulan) + 1
+    # --- FITUR HAPUS SEMUA DATA (TEMPEL DI SINI) ---
+    with st.expander("🗑️ Zona Bahaya: Hapus Semua PDF Bulan Ini"):
+        st.error(f"PERINGATAN: Anda akan menghapus SELURUH file SKD periode {f_nama_bulan} {f_tahun}!")
+        pwd_admin = st.text_input("Masukkan Password Admin", type="password", key="pwd_del_all")
+        
+        if st.button("KONFIRMASI HAPUS SEMUA DATA", type="primary"):
+            if pwd_admin == "admin123": # Ganti password sesuai keinginan
+                try:
+                    with get_connection() as conn:
+                        conn.execute("DELETE FROM skd_files WHERE bulan_skd=? AND tahun_skd=?", (f_bulan, f_tahun))
+                        conn.commit()
+                    st.success(f"Berhasil! Data periode {f_nama_bulan} {f_tahun} telah dibersihkan.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Gagal menghapus: {e}")
+            else:
+                st.error("Password Salah!")
 
     # 3. Ambil Daftar Departemen (Folder)
     try:
