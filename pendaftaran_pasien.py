@@ -179,6 +179,7 @@ if menu == "Pendaftaran / 登记":
             alergi = st.multiselect("Jenis Alergi / 过敏类型", ["Makanan / 食物", "Obat / 药物", "Cuaca / 天气", "Tidak Ada / 无"])
             gol_darah = st.selectbox("Golongan Darah / 血型", ["A", "B", "AB", "O", "-"])
             lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik / 具体工作地点")
+            lokasi_mcu = st.selectbox("Lokasi Mcu Pertama Kali / 血型", ["Klinik HJF", "Klinik HPAL", "Klinik Luar Obi"])
             
             st.divider()
             st.subheader("📋 Informasi Tambahan / 附加信息")
@@ -232,6 +233,7 @@ elif menu == "Rekam Medis / 病历":
         gol_darah AS 'Gol Darah',
         blok_mes AS 'Blok/Kamar',
         lokasi_kerja AS 'Area Kerja'
+        lokasi_mcu AS 'Lokasi Mcu Pertama Kali'
     FROM pasien
     """
     df = pd.read_sql(query, conn)
