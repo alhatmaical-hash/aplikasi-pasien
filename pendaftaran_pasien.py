@@ -186,8 +186,22 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
         
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
 
-        if submit_btn:
-            if nama_lengkap and nik:
+       if submit_btn:
+            # 1. Tentukan field mana saja yang wajib dicek
+            if pernah == "Iya Sudah / 是的":
+                # Untuk Pasien Lama
+                required_fields = [nama_lengkap, nik, perusahaan, dept, jabatan]
+            else:
+                # Untuk Pasien Baru
+                required_fields = [
+                    nama_lengkap, nik, no_hp, blok_mes, tgl_lahir, 
+                    perusahaan, dept, jabatan, lokasi_kerja, str(alergi)
+                ]
+
+            # 2. Logika pengecekan: Tidak boleh kosong, tidak boleh cuma spasi, dan list tidak boleh []
+            is_valid = all(str(f).strip() != "" and str(f) != "[]" for f in required_fields)
+
+            if is_valid:
                 try:
                     with get_connection() as conn:
                         cur = conn.cursor()
@@ -199,13 +213,15 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                         for f_name, f_val in responses.items():
                             cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
                         conn.commit()
+                    
                     st.success("Berhasil Terdaftar! / 登记成功！")
                     st.balloons()
                     st.rerun()
                 except Exception as e:
                     st.error(f"Gagal menyimpan: {e}")
             else:
-                st.warning("Nama dan NIK wajib diisi! / 姓名和身份证号必填！")
+                # Muncul jika ada salah satu field di atas yang kosong
+                st.warning("⚠️ Mohon lengkapi SEMUA kolom yang bertanda bintang! / 请填写所有必填项！")
   
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
