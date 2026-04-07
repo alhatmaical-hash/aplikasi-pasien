@@ -15,28 +15,59 @@ def get_connection():
 def init_db():
     conn = get_connection()
     c = conn.cursor()
-    # Tabel User
+    
+    # 1. Tabel User
     c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-    # Tabel Master (Perusahaan, Dept, Jabatan, Fitur Pendaftaran)
+    
+    # 2. Tabel Master (Perusahaan, Dept, Jabatan, Fitur Pendaftaran)
     c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
-    # Tabel Pasien Utama
+    
+    # 3. Tabel Pasien Utama (Struktur Dasar)
     c.execute('''CREATE TABLE IF NOT EXISTS pasien (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tgl_daftar DATE, nama_lengkap TEXT, nik TEXT, pernah_berobat TEXT, 
-                    perusahaan TEXT, departemen TEXT, jabatan TEXT)''')
-    # Tabel Data Dinamis (Nomor HP, Nama Orang Tua, dll)
+                    tgl_daftar DATE, 
+                    nama_lengkap TEXT, 
+                    nik TEXT, 
+                    pernah_berobat TEXT, 
+                    perusahaan TEXT, 
+                    departemen TEXT, 
+                    jabatan TEXT)''')
+
+    # --- TAMBAHAN: Update Schema untuk Kolom Baru ---
+    # Ini memastikan kolom tambahan ada meskipun tabel sudah pernah dibuat sebelumnya
+    kolom_tambahan = [
+        ("no_hp", "TEXT"),
+        ("agama", "TEXT"),
+        ("gender", "TEXT"),
+        ("blok_mes", "TEXT"),
+        ("tgl_lahir", "TEXT"),
+        ("alergi", "TEXT"),
+        ("gol_darah", "TEXT"),
+        ("lokasi_kerja", "TEXT")
+    ]
+    
+    for kolom, tipe in kolom_tambahan:
+        try:
+            c.execute(f"ALTER TABLE pasien ADD COLUMN {kolom} {tipe}")
+        except:
+            pass # Lewati jika kolom sudah ada
+
+    # 4. Tabel Data Dinamis
     c.execute('''CREATE TABLE IF NOT EXISTS pasien_custom_data (
                     pasien_id INTEGER, field_name TEXT, field_value TEXT)''')
-    # Tabel SKD
+    
+    # 5. Tabel SKD
     c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nama_pasien TEXT, departemen TEXT, nama_file TEXT,
                     file_data BLOB, tgl_upload TIMESTAMP, bulan_skd INTEGER, tahun_skd INTEGER)''')
     
     c.execute("INSERT OR IGNORE INTO users VALUES (?,?,?)", ('admin', 'admin123', 'Admin'))
+    
     conn.commit()
     conn.close()
 
+# Jalankan inisialisasi
 init_db()
 
 # --- 3. FUNGSI DATA ---
