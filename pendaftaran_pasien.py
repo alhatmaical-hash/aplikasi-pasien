@@ -485,28 +485,38 @@ elif menu == "SKD / 医生证明":
 
     # 4. Tampilkan Isi Folder Jika Sudah Dipilih
     if 'sel_dept' in st.session_state:
-        st.divider()
-        target = st.session_state['sel_dept']
-        st.subheader(f"Folder: {target} ({f_bulan}/{f_tahun})")
-        
-        # Form Upload
-        with st.expander("➕ Upload PDF Baru"):
-            with st.form("upload_skd_form", clear_on_submit=True):
-                u_f = st.file_uploader("Pilih PDF", type=['pdf'])
-                if st.form_submit_button("Simpan Ke Folder"):
-                    if u_f:
-                        try:
-                            with get_connection() as conn:
+    st.divider()
+    target = st.session_state['sel_dept']
+    st.subheader(f"Folder: {target} ({f_bulan}/{f_tahun})")
+    
+    # Form Upload
+    with st.expander("➕ Upload PDF Baru"):
+        with st.form("upload_skd_form", clear_on_submit=True):
+            # TAMBAHKAN accept_multiple_files=True
+            u_files = st.file_uploader("Pilih PDF", type=['pdf'], accept_multiple_files=True)
+            
+            if st.form_submit_button("Simpan Ke Folder"):
+                if u_files:
+                    try:
+                        with get_connection() as conn:
+                            # Lakukan perulangan untuk setiap file yang di-upload
+                            for u_f in u_files:
+                                # Membaca data file
+                                file_content = u_f.read()
+                                
                                 conn.execute("""
                                     INSERT INTO skd_files 
                                     (nama_pasien, departemen, nama_file, file_data, tgl_upload, bulan_skd, tahun_skd) 
                                     VALUES (?,?,?,?,?,?,?)""", 
-                                    (u_f.name, target, u_f.name, u_f.read(), datetime.now(), f_bulan, f_tahun))
-                                conn.commit()
-                            st.success("Berhasil disimpan!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+                                    (u_f.name, target, u_f.name, file_content, datetime.now(), f_bulan, f_tahun))
+                            
+                            conn.commit()
+                        st.success(f"Berhasil menyimpan {len(u_files)} file!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                else:
+                    st.warning("Pilih minimal satu file.")
 
         # --- BAGIAN PENCARIAN & DAFTAR (HANYA SATU KALI) ---
         st.write("### Daftar File:")
