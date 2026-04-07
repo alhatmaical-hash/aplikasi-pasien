@@ -185,8 +185,8 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             responses = {field: st.text_input(f"{field.upper()}") for field in custom_fields}
         
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
-
-       if submit_btn:
+        
+        if submit_btn:
             # 1. Tentukan field mana saja yang wajib dicek
             if pernah == "Iya Sudah / 是的":
                 # Untuk Pasien Lama
