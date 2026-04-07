@@ -396,6 +396,7 @@ elif menu == "SKD / 医生证明":
     # Konversi Nama Bulan ke Angka untuk kebutuhan Database (1-12)
     f_bulan = daftar_bulan.index(f_nama_bulan) + 1
     # --- FITUR HAPUS SEMUA DATA (TEMPEL DI SINI) ---
+    st.markdown("---")
     with st.expander("🗑️ Zona Bahaya: Hapus Semua PDF Bulan Ini"):
         st.error(f"PERINGATAN: Anda akan menghapus SELURUH file SKD periode {f_nama_bulan} {f_tahun}!")
         pwd_admin = st.text_input("Masukkan Password Admin", type="password", key="pwd_del_all")
