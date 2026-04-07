@@ -79,12 +79,24 @@ def get_master(kategori):
     with get_connection() as conn:
         return pd.read_sql(f"SELECT id, nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
 
-# --- 4. MANAJEMEN LOGIN ---
+# --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
+
+# Ambil parameter dari URL
+params = st.query_params
+is_pasien_mode = params.get("mode") == "pasien"
+
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
-if not st.session_state['logged_in']:
-    # Tampilan Halaman Login & Pendaftaran Publik
+# JIKA MODE PASIEN (DARI BARCODE)
+if is_pasien_mode:
+    # Langsung tetapkan menu ke Pendaftaran tanpa sidebar navigasi
+    menu = "Pendaftaran / 登记"
+    st.info("Sistem Pendaftaran Mandiri Pasien")
+    # Bagian kode pendaftaran Anda akan berjalan di bawah (setelah blok login ini)
+
+# JIKA BUKAN MODE PASIEN DAN BELUM LOGIN (TAMPILAN NORMAL)
+elif not st.session_state['logged_in']:
     st.sidebar.title("🏥 Klinik Apps")
     page_mode = st.sidebar.radio("Navigasi", ["Login Staff", "Form Pendaftaran"])
     
@@ -107,12 +119,12 @@ if not st.session_state['logged_in']:
                 else:
                     st.error("Username atau Password salah")
         st.stop()
+
+# JIKA SUDAH LOGIN (STAFF/ADMIN)
 else:
-    # Sidebar untuk Admin & Staff
     role_user = st.session_state.get('role')
     st.sidebar.success(f"🔓 {role_user}: {st.session_state['username']}")
     
-    # PERBAIKAN: Pastikan nama menu konsisten
     if role_user == "Admin":
         menu_list = ["Pendaftaran Pasien", "Rekam Medis / 病历", "SKD / 医生证明", "Pengaturan Master / 设置"]
     else:
