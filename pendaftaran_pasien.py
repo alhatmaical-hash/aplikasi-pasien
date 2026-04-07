@@ -93,11 +93,14 @@ def login_page():
         pw = st.text_input("Password", type="password")
         if st.button("Login", use_container_width=True):
             conn = get_connection()
-            res = conn.execute("SELECT * FROM users WHERE username=? AND password=?", (user, pw)).fetchone()
+            # ### PERUBAHAN 1: Mengambil role dari database ###
+            res = conn.execute("SELECT username, password, role FROM users WHERE username=? AND password=?", (user, pw)).fetchone()
             conn.close()
             if res:
                 st.session_state['logged_in'] = True
                 st.session_state['username'] = res[0]
+                # ### PERUBAHAN 2: Simpan role ke session state ###
+                st.session_state['role'] = res[2] 
                 st.rerun()
             else:
                 st.error("Username atau Password salah")
@@ -105,22 +108,58 @@ def login_page():
 if not st.session_state['logged_in']:
     if st.sidebar.button("📝 Buka Form Pendaftaran"):
         st.session_state['page'] = "Pendaftaran"
+    
     if st.session_state.get('page') == "Pendaftaran":
-        menu = "Pendaftaran / 登记"
+        # Ini untuk pendaftaran publik (tanpa login)
+        menu = "Pendaftaran / 登记" 
     else:
         login_page()
         st.stop()
 else:
-    st.sidebar.success(f"Login: {st.session_state.get('username')}")
+    # ### PERUBAHAN 3: Logika Filter Menu berdasarkan Role ###
+    role_user = st.session_state.get('role', 'User')
+    username_now = st.session_state.get('username')
+
+    if role_user == "Admin":
+        st.sidebar.success(f"🔓 Admin: {username_now}")
+        menu_list = [
+            "Pendaftaran Pasien", 
+            "Rekam Medis / 病历", 
+            "Menu SKD", 
+            "Pengaturan Master / 设置"
+        ]
+    else:
+        st.sidebar.info(f"👤 Staff: {username_now}")
+        # User biasa hanya bisa melihat Menu SKD
+        menu_list = ["Menu SKD"]
+
+    # Tampilkan pilihan menu yang sudah difilter
+    menu = st.sidebar.selectbox("Pilih Menu", menu_list)
+
     if st.sidebar.button("🚪 Logout"):
         st.session_state['logged_in'] = False
+        # Bersihkan role saat logout
+        st.session_state['role'] = None 
         st.rerun()
 
-# --- 5. NAVIGASI SIDEBAR ---
-menu_list = ["Pendaftaran / 登记"]
-if st.session_state['logged_in']:
-    menu_list += ["Rekam Medis / 病历", "SKD / 医生证明", "Pengaturan Master / 设置"]
-menu = st.sidebar.radio("Pilih Halaman", menu_list)
+
+# --- 5. LOGIKA HALAMAN (Tampilan Menu) ---
+# Pastikan nama di sini sama dengan yang ada di menu_list
+if menu == "Pendaftaran Pasien":
+    st.header("📝 Form Pendaftaran")
+    # Jalankan fungsi pendaftaran Anda...
+
+elif menu == "Rekam Medis / 病历":
+    st.header("📊 Data Rekam Medis")
+    # Jalankan kode rekam medis Anda...
+
+elif menu == "Menu SKD":
+    st.header("📄 Menu SKD")
+    # Jalankan kode SKD Anda...
+
+elif menu == "Pengaturan Master / 设置":
+    # Jalankan kode pengaturan (hanya Admin yang bisa lihat)
+    pass
 
 # --- 6. MENU PENDAFTARAN (BILINGUAL / 双语) ---
 if menu == "Pendaftaran / 登记":
@@ -477,20 +516,38 @@ elif menu == "Pengaturan Master / 设置":
         with st.form("tambah_user_form"):
             un = st.text_input("Username Baru")
             up = st.text_input("Password Baru", type="password")
+            # --- TAMBAHAN: Pilih Role ---
+            role_pilihan = st.selectbox("Pilih Role / 权限", ["Admin", "User"])
+            
             if st.form_submit_button("Buat Akun"):
                 if un and up:
                     conn = get_connection()
                     try:
-                        conn.execute("INSERT INTO users VALUES (?,?,?)", (un, up, 'Staff'))
-                        conn.commit(); conn.close(); st.success("Akun Berhasil Dibuat"); st.rerun()
-                    except: st.error("Username sudah terdaftar!")
+                        # Masukkan role sesuai pilihan (Admin atau User)
+                        conn.execute("INSERT INTO users (username, password, role) VALUES (?,?,?)", 
+                                     (un, up, role_pilihan))
+                        conn.commit()
+                        conn.close()
+                        st.success(f"Akun {role_pilihan} Berhasil Dibuat")
+                        st.rerun()
+                    except Exception as e: 
+                        st.error(f"Gagal: Username sudah ada!")
         
         st.write("Daftar Akun:")
         conn = get_connection()
-        u_df = pd.read_sql("SELECT username FROM users", conn); conn.close()
+        # Ambil username dan role untuk ditampilkan
+        u_df = pd.read_sql("SELECT username, role FROM users", conn)
+        conn.close()
+        
         for i, row in u_df.iterrows():
+            # Jangan hapus admin utama
             if row['username'] != 'admin':
                 cx, cy = st.columns([3, 1])
-                cx.text(f"👤 {row['username']}")
+                # Menampilkan username dan role-nya
+                cx.text(f"👤 {row['username']} ({row['role']})")
                 if cy.button("Hapus Akun", key=f"u_del_{row['username']}"):
-                    conn = get_connection(); conn.execute("DELETE FROM users WHERE username=?", (row['username'],)); conn.commit(); conn.close(); st.rerun()
+                    conn = get_connection()
+                    conn.execute("DELETE FROM users WHERE username=?", (row['username'],))
+                    conn.commit()
+                    conn.close()
+                    st.rerun()
