@@ -25,7 +25,8 @@ def init_db():
     # 3. Tabel Pasien Utama (Struktur Dasar)
     c.execute('''CREATE TABLE IF NOT EXISTS pasien (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tgl_daftar DATE, 
+                    tgl_daftar DATE,
+                    status_antrian TEXT,
                     nama_lengkap TEXT, 
                     nik TEXT, 
                     pernah_berobat TEXT, 
@@ -45,7 +46,7 @@ def init_db():
         ("alergi", "TEXT"),
         ("gol_darah", "TEXT"),
         ("lokasi_kerja", "TEXT"),
-        ("lokasi_mcu", "TEXT")
+        ("lokasi_mcu", "TEXT"),
     ]
     
     for kolom, tipe in kolom_tambahan:
@@ -216,7 +217,7 @@ elif menu == "Rekam Medis / 病历":
     st.header("📊 Data Rekam Medis")
     
     conn = get_connection()
-    # Mengambil semua kolom agar data pasien baru terlihat lengkap
+    # PENTING: Menambahkan status_antrian ke dalam query agar bisa diwarnai
     query = """
     SELECT 
         id, 
@@ -236,25 +237,50 @@ elif menu == "Rekam Medis / 病历":
         gol_darah AS 'Gol Darah',
         blok_mes AS 'Blok/Kamar',
         lokasi_kerja AS 'Area Kerja',
-        lokasi_mcu AS 'Lokasi Mcu Pertama Kali'
+        lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
+        status_antrian  -- Kolom ini diperlukan untuk logika warna
     FROM pasien
     """
     df = pd.read_sql(query, conn)
-    conn.close()
-
+    
     if not df.empty:
-        # Menampilkan dataframe dengan pengaturan agar enak dipandang
+        # --- 1. LOGIKA WARNA (STYLING) ---
+        def color_row(row):
+            status = row['status_antrian']
+            if status == "Menunggu Konsul Dokter":
+                return ['background-color: #ffff00; color: black'] * len(row) # Kuning
+            elif status == "Menunggu Hasil Lab & Radiologi":
+                return ['background-color: #00b0f0; color: white'] * len(row) # Biru
+            elif status == "Batas Download SKD":
+                return ['background-color: #ff9900; color: white'] * len(row) # Orange
+            return [''] * len(row)
+
+        # Terapkan warna dan sembunyikan kolom 'status_antrian' agar tidak tampil di tabel tapi tetap berfungsi
+        styled_df = df.style.apply(color_row, axis=1)
+
+        # Menampilkan dataframe dengan pengaturan rapi Anda
         st.dataframe(
-            df, 
+            styled_df, 
             use_container_width=True, 
-            hide_index=True, # Menghilangkan angka index di kiri agar rapi
+            hide_index=True,
             column_config={
                 "WhatsApp": st.column_config.TextColumn("WhatsApp"),
                 "Tgl Daftar": st.column_config.DateColumn("Tanggal"),
+                "status_antrian": None # Ini akan menyembunyikan kolom status dari tampilan tabel
             }
         )
         
-        # Tambahan fitur unduh ke Excel (opsional)
+        # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
+        st.markdown("### 📋 Keterangan Status")
+        col_k1, col_k2, col_k3 = st.columns(3)
+        with col_k1:
+            st.info("🟡 **Kuning**: Menunggu Konsul Dokter")
+        with col_k2:
+            st.info("🔵 **Biru**: Menunggu Hasil Lab & Radiologi")
+        with col_k3:
+            st.warning("🟠 **Orange**: Batas Download SKD")
+
+        # --- 3. FITUR UNDUH (CSV) ---
         csv = df.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Download Data (CSV)",
@@ -262,8 +288,31 @@ elif menu == "Rekam Medis / 病历":
             file_name='data_rekam_medis.csv',
             mime='text/csv',
         )
+
+        # --- 4. FORM UPDATE STATUS ---
+        st.divider()
+        with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
+            with st.form("update_status_form"):
+                nama_p = st.selectbox("Pilih Nama Pasien", df['Nama Lengkap'].tolist())
+                status_baru = st.selectbox("Pilih Status Baru", [
+                    "Normal", 
+                    "Menunggu Konsul Dokter", 
+                    "Menunggu Hasil Lab & Radiologi", 
+                    "Batas Download SKD"
+                ])
+                btn_update = st.form_submit_button("Simpan Perubahan")
+                
+                if btn_update:
+                    cur = conn.cursor()
+                    cur.execute("UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ?", (status_baru, nama_p))
+                    conn.commit()
+                    st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
+                    st.rerun()
+
     else:
         st.info("Belum ada data pasien / 还没有病人数据。")
+    
+    conn.close()
 # --- 8. MENU SKD / 医生证明 ---
 elif menu == "SKD / 医生证明":
     st.header("📄 Arsip SKD")
