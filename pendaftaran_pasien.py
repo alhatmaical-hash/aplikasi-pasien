@@ -579,7 +579,7 @@ elif menu == "SKD / 医生证明":
             st.info("Tidak ada file ditemukan.")
 # --- 9. PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
-    st.header("⚙️ Pengaturan")
+    
     t1, t2, t3 = st.tabs(["Master List", "Fitur Pendaftaran", "Manajemen Akun"])
     
     with t1:
