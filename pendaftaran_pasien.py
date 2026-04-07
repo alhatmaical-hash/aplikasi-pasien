@@ -7,6 +7,22 @@ import plotly.express as px
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps", page_icon="🏥", layout="wide")
+st.markdown("""
+    <style>
+    /* Mengatur teks label utama (PERNAH BEROBAT DISINI?) */
+    div[data-testid="stWidgetLabel"] p {
+        font-size: 22px !important;
+        font-weight: bold !important;
+        color: #1E1E1E;
+    }
+    
+    /* Mengatur teks pilihan (Iya Sudah / Belum Pernah) */
+    div[data-testid="stMarkdownContainer"] p {
+        font-size: 20px !important;
+        font-weight: 600 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- 2. DATABASE SETUP ---
 def get_connection():
@@ -146,7 +162,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
 
     # Pastikan teks di sini SAMA PERSIS dengan yang di dalam IF nanti
-    pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是的", "Belum Pernah / 从未"], horizontal=True)
+    pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是s的", "Belum Pernah / 从未"], horizontal=True)
 
     with st.form("form_reg", clear_on_submit=True):
         # PERBAIKAN: Menggunakan pengecekan teks yang tepat
