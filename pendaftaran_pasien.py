@@ -369,9 +369,41 @@ elif menu == "SKD / 医生证明":
                 st.rerun()
 
     # 2. Filter Waktu
+    daftar_bulan = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ]
+    
+    tahun_sekarang = datetime.now().year
+    opsi_tahun = list(range(2024, tahun_sekarang + 2))
+
     col_f1, col_f2 = st.columns(2)
-    f_bulan = col_f1.selectbox("Filter Bulan", range(1, 13), index=datetime.now().month-1)
-    f_tahun = col_f2.selectbox("Filter Tahun", [2024, 2025, 2026], index=2)
+    
+    # Pilih Nama Bulan
+    f_nama_bulan = col_f1.selectbox(
+        "Filter Bulan", 
+        options=daftar_bulan, 
+        index=datetime.now().month - 1
+    )
+    
+    # Pilih Tahun (Otomatis update tiap tahun)
+    f_tahun = col_f2.selectbox(
+        "Filter Tahun", 
+        options=opsi_tahun, 
+        index=opsi_tahun.index(tahun_sekarang)
+    )
+
+    # Konversi Nama Bulan ke Angka untuk kebutuhan Database (1-12)
+    f_bulan = daftar_bulan.index(f_nama_bulan) + 1
+
+    # 3. Ambil Daftar Departemen (Folder)
+    try:
+        # Gunakan f_bulan dan f_tahun di bawah ini jika ingin memfilter daftar folder berdasarkan data yang ada
+        with get_connection() as conn:
+            df_dept = pd.read_sql_query("SELECT DISTINCT nama FROM master_data WHERE kategori='Departemen'", conn)
+            daftar_folder = df_dept['nama'].tolist()
+    except:
+        daftar_folder = ["PRODUCTION", "OFFICE", "LOGISTIC"]
 
     # 3. Ambil Daftar Departemen (Folder)
     try:
