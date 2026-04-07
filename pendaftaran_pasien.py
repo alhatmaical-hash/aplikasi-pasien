@@ -38,6 +38,7 @@ def init_db():
     kolom_tambahan = [
         ("no_hp", "TEXT"),
         ("agama", "TEXT"),
+        ("dokter", "TEXT"),
         ("gender", "TEXT"),
         ("blok_mes", "TEXT"),
         ("tgl_lahir", "TEXT"),
@@ -228,6 +229,7 @@ elif menu == "Rekam Medis / 病历":
         jabatan AS 'Jabatan',
         pernah_berobat AS 'Status',
         agama AS 'Agama',
+        dokter AS 'Dokter',
         gender AS 'Gender',
         tgl_lahir AS 'TTL',
         alergi AS 'Alergi',
