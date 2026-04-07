@@ -310,6 +310,32 @@ elif menu == "Rekam Medis / 病历":
                     st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
                     st.rerun()
 
+        st.divider()
+        with st.expander("🗑️ Hapus Data Pasien"):
+            with st.form("hapus_pasien_form"):
+                st.warning("Hati-hati! Data yang dihapus tidak dapat dikembalikan.")
+                # Memilih nama pasien dari dataframe yang sedang tampil
+                nama_hapus = st.selectbox("Pilih Nama Pasien yang akan dihapus", df['Nama Lengkap'].tolist())
+                
+                # Konfirmasi pengetikan ulang nama untuk keamanan (opsional)
+                konfirmasi = st.checkbox(f"Saya yakin ingin menghapus data {nama_hapus}")
+                
+                btn_hapus = st.form_submit_button("Hapus Data Pasien")
+                
+                if btn_hapus:
+                    if konfirmasi:
+                        try:
+                            cur = conn.cursor()
+                            # Menghapus berdasarkan nama_lengkap
+                            cur.execute("DELETE FROM pasien WHERE nama_lengkap = ?", (nama_hapus,))
+                            conn.commit()
+                            st.success(f"Data pasien '{nama_hapus}' telah berhasil dihapus.")
+                            st.rerun() # Refresh agar nama hilang dari tabel
+                        except Exception as e:
+                            st.error(f"Gagal menghapus data: {e}")
+                    else:
+                        st.error("Silakan centang kotak konfirmasi sebelum menghapus.")
+
     else:
         st.info("Belum ada data pasien / 还没有病人数据。")
     
