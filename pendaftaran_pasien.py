@@ -72,6 +72,18 @@ def init_db():
         except:
             pass # Lewati jika kolom sudah ada
 
+    daftar_dokter = [
+        "DR. JOKO", "DR. DEDEK", "DR. KARTIKA", 
+        "DR. DOMINICUS", "DR. ANDIKA", "DR. RANDY"
+    ]
+    
+    for nama_dr in daftar_dokter:
+        c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES (?,?)", 
+                  ("Dokter", nama_dr))
+    
+    conn.commit()
+    conn.close()
+
     # 4. Tabel Data Dinamis
     c.execute('''CREATE TABLE IF NOT EXISTS pasien_custom_data (
                     pasien_id INTEGER, field_name TEXT, field_value TEXT)''')
@@ -160,6 +172,21 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     opts_dept = get_master("Departemen")['nama'].tolist()
     opts_jabatan = get_master("Jabatan")['nama'].tolist()
     custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
+    
+    st.subheader("👨‍⚕️ Pengaturan Dokter Jaga")
+    opts_dr = get_master("Dokter")['nama'].tolist()
+    dokter_jaga = st.multiselect("Pilih Dokter yang Bertugas Hari Ini", opts_dr, placeholder="Pilih dokter yang jaga...")
+
+    dokter_terpilih = "Belum Ditentukan"
+    if dokter_jaga:
+        with get_connection() as conn:
+            tgl_hari_ini = datetime.now().strftime("%Y-%m-%d")
+            jml_pasien = conn.execute("SELECT COUNT(*) FROM pasien WHERE tgl_daftar=?", (tgl_hari_ini,)).fetchone()[0]
+            idx_dokter = (jml_pasien // 5) % len(dokter_jaga)
+            dokter_terpilih = dokter_jaga[idx_dokter]
+        st.info(f"Pasien ini akan diarahkan ke: **{dokter_terpilih}**")
+    else:
+        st.warning("⚠️ Pilih minimal satu dokter jaga di atas!")
 
     # Pastikan teks di sini SAMA PERSIS dengan yang di dalam IF nanti
     pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是s的", "Belum Pernah / 从未"], horizontal=True)
