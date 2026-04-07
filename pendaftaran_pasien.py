@@ -233,7 +233,7 @@ elif menu == "Rekam Medis / 病历":
         alergi AS 'Alergi',
         gol_darah AS 'Gol Darah',
         blok_mes AS 'Blok/Kamar',
-        lokasi_kerja AS 'Area Kerja'
+        lokasi_kerja AS 'Area Kerja',
         lokasi_mcu AS 'Lokasi Mcu Pertama Kali'
     FROM pasien
     """
