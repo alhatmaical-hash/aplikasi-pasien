@@ -134,7 +134,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 
     pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是的", "Belum Pernah / 从未"], horizontal=True)
 
-   with st.form("form_reg", clear_on_submit=True):
+ with st.form("form_reg", clear_on_submit=True):
         if pernah == "Iya Sudah / 是的":
             # --- HANYA INI YANG MUNCUL JIKA PILIH IYA SUDAH ---
             col1, col2 = st.columns(2)
@@ -211,6 +211,8 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             else:
                 st.warning("Nama dan NIK wajib diisi! / 姓名和身份证号必填！")
 
+    
+  
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Menu Rekam Medis")
