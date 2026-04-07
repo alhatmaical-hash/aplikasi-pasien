@@ -218,7 +218,6 @@ elif menu == "Rekam Medis / 病历":
     st.header("📊 Data Rekam Medis")
     
     conn = get_connection()
-    # PENTING: Menambahkan status_antrian ke dalam query agar bisa diwarnai
     query = """
     SELECT 
         id, 
@@ -239,12 +238,19 @@ elif menu == "Rekam Medis / 病历":
         blok_mes AS 'Blok/Kamar',
         lokasi_kerja AS 'Area Kerja',
         lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
-        status_antrian  -- Kolom ini diperlukan untuk logika warna
+        status_antrian
     FROM pasien
     """
     df = pd.read_sql(query, conn)
     
     if not df.empty:
+        # --- TAMBAHAN: FITUR PENCARIAN (Ubah di sini) ---
+        search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "")
+
+        # Proses Filtering: Tabel akan menyusut sesuai ketikan Anda
+        if search_term:
+            df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+
         # --- 1. LOGIKA WARNA (STYLING) ---
         def color_row(row):
             status = row['status_antrian']
@@ -256,10 +262,9 @@ elif menu == "Rekam Medis / 病历":
                 return ['background-color: #ff9900; color: white'] * len(row) # Orange
             return [''] * len(row)
 
-        # Terapkan warna dan sembunyikan kolom 'status_antrian' agar tidak tampil di tabel tapi tetap berfungsi
         styled_df = df.style.apply(color_row, axis=1)
 
-        # Menampilkan dataframe dengan pengaturan rapi Anda
+        # Menampilkan tabel yang sudah terfilter dan berwarna
         st.dataframe(
             styled_df, 
             use_container_width=True, 
@@ -267,7 +272,7 @@ elif menu == "Rekam Medis / 病历":
             column_config={
                 "WhatsApp": st.column_config.TextColumn("WhatsApp"),
                 "Tgl Daftar": st.column_config.DateColumn("Tanggal"),
-                "status_antrian": None # Ini akan menyembunyikan kolom status dari tampilan tabel
+                "status_antrian": None 
             }
         )
         
@@ -294,6 +299,7 @@ elif menu == "Rekam Medis / 病历":
         st.divider()
         with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
             with st.form("update_status_form"):
+                # Daftar nama di sini akan otomatis ikut terfilter jika Anda mencari nama di atas
                 nama_p = st.selectbox("Pilih Nama Pasien", df['Nama Lengkap'].tolist())
                 status_baru = st.selectbox("Pilih Status Baru", [
                     "Normal", 
@@ -310,15 +316,15 @@ elif menu == "Rekam Medis / 病历":
                     st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
                     st.rerun()
 
+        # --- 5. FORM HAPUS DATA (Sudah termasuk pencarian) ---
         st.divider()
         with st.expander("🗑️ Hapus Data Pasien"):
             with st.form("hapus_pasien_form"):
                 st.warning("Hati-hati! Data yang dihapus tidak dapat dikembalikan.")
-                # Memilih nama pasien dari dataframe yang sedang tampil
-                nama_hapus = st.selectbox("Pilih Nama Pasien yang akan dihapus", df['Nama Lengkap'].tolist())
                 
-                # Konfirmasi pengetikan ulang nama untuk keamanan (opsional)
-                konfirmasi = st.checkbox(f"Saya yakin ingin menghapus data {nama_hapus}")
+                # Nama yang muncul di sini sekarang hanya yang ada di hasil pencarian di atas
+                nama_hapus = st.selectbox("Pilih Nama Pasien yang akan dihapus", df['Nama Lengkap'].tolist())
+                konfirmasi = st.checkbox(f"Saya yakin ingin menghapus data tersebut")
                 
                 btn_hapus = st.form_submit_button("Hapus Data Pasien")
                 
@@ -326,11 +332,10 @@ elif menu == "Rekam Medis / 病历":
                     if konfirmasi:
                         try:
                             cur = conn.cursor()
-                            # Menghapus berdasarkan nama_lengkap
                             cur.execute("DELETE FROM pasien WHERE nama_lengkap = ?", (nama_hapus,))
                             conn.commit()
                             st.success(f"Data pasien '{nama_hapus}' telah berhasil dihapus.")
-                            st.rerun() # Refresh agar nama hilang dari tabel
+                            st.rerun()
                         except Exception as e:
                             st.error(f"Gagal menghapus data: {e}")
                     else:
@@ -338,7 +343,6 @@ elif menu == "Rekam Medis / 病历":
 
     else:
         st.info("Belum ada data pasien / 还没有病人数据。")
-    
     conn.close()
 # --- 8. MENU SKD / 医生证明 ---
 elif menu == "SKD / 医生证明":
