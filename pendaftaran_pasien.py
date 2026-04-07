@@ -93,30 +93,28 @@ def login_page():
         pw = st.text_input("Password", type="password")
         if st.button("Login", use_container_width=True):
             conn = get_connection()
-            # ### PERUBAHAN 1: Mengambil role dari database ###
             res = conn.execute("SELECT username, password, role FROM users WHERE username=? AND password=?", (user, pw)).fetchone()
             conn.close()
             if res:
                 st.session_state['logged_in'] = True
                 st.session_state['username'] = res[0]
-                # ### PERUBAHAN 2: Simpan role ke session state ###
                 st.session_state['role'] = res[2] 
                 st.rerun()
             else:
                 st.error("Username atau Password salah")
 
+# Cek Login
 if not st.session_state['logged_in']:
     if st.sidebar.button("📝 Buka Form Pendaftaran"):
-        st.session_state['page'] = "Pendaftaran"
+        st.session_state['page'] = "Pendaftaran_Publik"
     
-    if st.session_state.get('page') == "Pendaftaran":
-        # Ini untuk pendaftaran publik (tanpa login)
-        menu = "Pendaftaran / 登记" 
+    if st.session_state.get('page') == "Pendaftaran_Publik":
+        menu = "Pendaftaran / 登记" # Menu untuk publik
     else:
         login_page()
         st.stop()
 else:
-    # ### PERUBAHAN 3: Logika Filter Menu berdasarkan Role ###
+    # Logika Sidebar untuk Admin & Staff
     role_user = st.session_state.get('role', 'User')
     username_now = st.session_state.get('username')
 
@@ -130,37 +128,143 @@ else:
         ]
     else:
         st.sidebar.info(f"👤 Staff: {username_now}")
-        # User biasa hanya bisa melihat Menu SKD
         menu_list = ["Menu SKD"]
 
-    # Tampilkan pilihan menu yang sudah difilter
     menu = st.sidebar.selectbox("Pilih Menu", menu_list)
 
     if st.sidebar.button("🚪 Logout"):
         st.session_state['logged_in'] = False
-        # Bersihkan role saat logout
         st.session_state['role'] = None 
         st.rerun()
 
+# --- 5. LOGIKA HALAMAN (Tampilan Menu Utama) ---
+# PERHATIKAN: Nama di sini harus 100% sama dengan menu_list di atas
 
-# --- 5. LOGIKA HALAMAN (Tampilan Menu) ---
-# Pastikan nama di sini sama dengan yang ada di menu_list
-if menu == "Pendaftaran Pasien":
-    st.header("📝 Form Pendaftaran")
-    # Jalankan fungsi pendaftaran Anda...
+if menu == "Pendaftaran Pasien" or menu == "Pendaftaran / 登记":
+    st.header("📝 Pendaftaran Pasien / 病人登记")
+    
+    opts_perusahaan = get_master("Perusahaan")['nama'].tolist()
+    opts_dept = get_master("Departemen")['nama'].tolist()
+    opts_jabatan = get_master("Jabatan")['nama'].tolist()
+    custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
+
+    pernah = st.radio(
+        "PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", 
+        ["Iya Sudah / 是的", "Belum Pernah / 从未"], 
+        horizontal=True
+    )
+
+    with st.form("form_reg", clear_on_submit=True):
+        if pernah == "Iya Sudah / 是y的":
+            col1, col2 = st.columns(2)
+            with col1:
+                jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
+                nama_lengkap = st.text_input("Nama Lengkap / 全名")
+                no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码")
+                nik = st.text_input("NIK / ID Card / 身份证号")
+            with col2:
+                perusahaan = st.selectbox("Perusahaan / 公司", opts_perusahaan)
+                dept = st.selectbox("Departemen / 部门", opts_dept)
+                jabatan = st.selectbox("Jabatan / 职位", opts_jabatan)
+            
+            # Reset default values
+            agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja = "Lama", "Lama", "", "", [], "-", ""
+            responses = {field: "" for field in custom_fields}
+
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
+                nama_lengkap = st.text_input("Nama Lengkap / 全名")
+                no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码")
+                agama = st.selectbox("Agama / 宗教", ["Islam / 伊斯兰教", "Kristen / 基督教", "Hindu / 印度教", "Buddha / 佛教", "Katolik / 天主教", "Tidak Diketahui / 未知"])
+                nik = st.text_input("NIK / ID Card / 身份证号")
+                gender = st.radio("Jenis Kelamin / 性别", ["Laki-laki / 男", "Perempuan / 女"], horizontal=True)
+
+            with col2:
+                blok_mes = st.text_input("Blok Mes dan No Kamar / 宿舍楼和房间号")
+                tgl_lahir = st.text_input("Tempat & Tanggal Lahir / 出生地点和日期")
+                perusahaan = st.selectbox("Perusahaan / 公司", opts_perusahaan)
+                dept = st.selectbox("Departemen / 部门", opts_dept)
+                jabatan = st.selectbox("Jabatan / 职位", opts_jabatan)
+
+            alergi = st.multiselect("Jenis Alergi / 过敏类型", ["Makanan / 食物", "Obat / 药物", "Cuaca / 天气", "Tidak Ada / 无"])
+            gol_darah = st.selectbox("Golongan Darah / 血型", ["A", "B", "AB", "O", "-"])
+            lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik / 具体工作地点")
+            
+            st.divider()
+            st.subheader("📋 Informasi Tambahan / 附加信息")
+            responses = {field: st.text_input(f"{field.upper()}") for field in custom_fields}
+
+        submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
+        if submit_btn and nama_lengkap and nik:
+            conn = get_connection()
+            cur = conn.cursor()
+            try:
+                cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, gol_darah, lokasi_kerja) 
+                               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                               (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, gol_darah, lokasi_kerja))
+                last_id = cur.lastrowid 
+                for f_name, f_val in responses.items():
+                    cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
+                conn.commit()
+                st.success("Berhasil Terdaftar! / 登记成功！")
+                st.balloons()
+            except Exception as e: st.error(f"Terjadi kesalahan: {e}")
+            finally: conn.close()
 
 elif menu == "Rekam Medis / 病历":
+    # Hapus st.header di sini jika di dalam fungsi bawah sudah ada agar tidak double
     st.header("📊 Data Rekam Medis")
-    # Jalankan kode rekam medis Anda...
+    
+    conn = get_connection()
+    df = pd.read_sql("SELECT * FROM pasien", conn)
+    
+    if not df.empty:
+        search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "")
+        if search_term:
+            df = df[df['nama_lengkap'].str.contains(search_term, case=False, na=False)]
+
+        # Styling & Tabel
+        def color_row(row):
+            status = row.get('status_antrian')
+            if status == "Menunggu Konsul Dokter": return ['background-color: #ffff00; color: black'] * len(row)
+            elif status == "Menunggu Hasil Lab & Radiologi": return ['background-color: #00b0f0; color: white'] * len(row)
+            elif status == "Batas Download SKD": return ['background-color: #ff9900; color: white'] * len(row)
+            return [''] * len(row)
+
+        st.dataframe(df.style.apply(color_row, axis=1), use_container_width=True, hide_index=True)
+        
+        # Legend (Keterangan Warna)
+        st.markdown("### 📋 Keterangan Status")
+        c1, c2, c3 = st.columns(3)
+        c1.info("🟡 Kuning: Konsul Dokter")
+        c2.info("🔵 Biru: Lab & Radiologi")
+        c3.warning("🟠 Orange: Batas SKD")
+
+        # Expander untuk Ganti Status & Hapus
+        with st.expander("🔄 Ganti Status / 🗑️ Hapus Data"):
+            nama_p = st.selectbox("Pilih Pasien", df['nama_lengkap'].tolist())
+            stat_baru = st.selectbox("Status", ["Normal", "Menunggu Konsul Dokter", "Menunggu Hasil Lab & Radiologi", "Batas Download SKD"])
+            if st.button("Update Status"):
+                conn.execute("UPDATE pasien SET status_antrian=? WHERE nama_lengkap=?", (stat_baru, nama_p))
+                conn.commit()
+                st.rerun()
+            if st.button("Hapus Pasien", type="primary"):
+                conn.execute("DELETE FROM pasien WHERE nama_lengkap=?", (nama_p,))
+                conn.commit()
+                st.rerun()
+    else:
+        st.info("Belum ada data.")
+    conn.close()
 
 elif menu == "Menu SKD":
-    st.header("📄 Menu SKD")
-    # Jalankan kode SKD Anda...
+    st.header("📄 Menu SKD / 医生证明")
+    # Masukkan kode SKD Anda di sini...
 
 elif menu == "Pengaturan Master / 设置":
-    # Jalankan kode pengaturan (hanya Admin yang bisa lihat)
-    pass
-
+    st.header("⚙️ Pengaturan")
+    # Bagian tab pengaturan Anda (Master List, Akun, dll)
 # --- 6. MENU PENDAFTARAN (BILINGUAL / 双语) ---
 if menu == "Pendaftaran / 登记":
     st.header("📝 Pendaftaran Pasien / 病人登记")
@@ -254,7 +358,7 @@ if menu == "Pendaftaran / 登记":
                 st.warning("Nama dan NIK wajib diisi! / 姓名和身份证号必填！")
 # --- 7. MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
-    st.header("📊 Data Rekam Medis")
+    st.header("📊 Menu Rekam Medis")
     
     conn = get_connection()
     query = """
