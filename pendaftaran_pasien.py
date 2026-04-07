@@ -44,6 +44,7 @@ def init_db():
         ("alergi", "TEXT"),
         ("gol_darah", "TEXT"),
         ("lokasi_kerja", "TEXT")
+        ("lokasi_mcu", "TEXT")
     ]
     
     for kolom, tipe in kolom_tambahan:
