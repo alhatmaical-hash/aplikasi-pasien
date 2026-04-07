@@ -132,11 +132,11 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     opts_jabatan = get_master("Jabatan")['nama'].tolist()
     custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
 
-    pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是的", "Belum Pernah / 从未"], horizontal=True)
+    pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是s的", "Belum Pernah / 从未"], horizontal=True)
 
- with st.form("form_reg", clear_on_submit=True):
-        if pernah == "Iya Sudah / 是的":
-            # --- HANYA INI YANG MUNCUL JIKA PILIH IYA SUDAH ---
+    # PERBAIKAN DI SINI: Spasi di depan 'with' harus sejajar dengan 'pernah' di atasnya
+    with st.form("form_reg", clear_on_submit=True):
+        if pernah == "Iya Sudah / 是s de":
             col1, col2 = st.columns(2)
             with col1:
                 jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
@@ -149,18 +149,10 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 dept = st.selectbox("Departemen / 部门", opts_dept)
                 jabatan = st.selectbox("Jabatan / 职位", opts_jabatan)
             
-            # Variabel di bawah ini harus di-set kosong agar sistem tidak error saat simpan data
-            agama = "Lama"
-            gender = "Lama"
-            blok_mes = ""
-            tgl_lahir = ""
-            alergi = []
-            gol_darah = "-"
-            lokasi_kerja = ""
+            agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja = "Lama", "Lama", "", "", [], "-", ""
             responses = {field: "" for field in custom_fields}
 
         else:
-            # --- TAMPILAN LENGKAP JIKA PILIH BELUM PERNAH ---
             col1, col2 = st.columns(2)
             with col1:
                 jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
@@ -185,33 +177,27 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             st.divider()
             st.subheader("📋 Informasi Tambahan / 附加信息")
             responses = {field: st.text_input(f"{field.upper()}") for field in custom_fields}
+        
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
 
         if submit_btn:
             if nama_lengkap and nik:
-                conn = get_connection()
-                cur = conn.cursor()
                 try:
-                    cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan) 
-                                 VALUES (?,?,?,?,?,?,?)''', 
-                                 (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan))
-                    
-                    last_id = cur.lastrowid 
-                    for f_name, f_val in responses.items():
-                        cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", 
-                                    (last_id, f_name, f_val))
-                    
-                    conn.commit()
+                    with get_connection() as conn:
+                        cur = conn.cursor()
+                        cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan) 
+                                     VALUES (?,?,?,?,?,?,?)''', 
+                                     (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan))
+                        last_id = cur.lastrowid 
+                        for f_name, f_val in responses.items():
+                            cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
+                        conn.commit()
                     st.success("Berhasil Terdaftar! / 登记成功！")
                     st.balloons()
                 except Exception as e:
                     st.error(f"Terjadi kesalahan: {e}")
-                finally:
-                    conn.close()
             else:
                 st.warning("Nama dan NIK wajib diisi! / 姓名和身份证号必填！")
-
-    
   
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
