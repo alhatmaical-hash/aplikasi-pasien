@@ -103,10 +103,10 @@ if menu == "Pendaftaran / 登记":
     )
 
     with st.form("form_reg", clear_on_submit=True):
-        if pernah == "Iya Sudah / 是D":
+        if pernah == "Iya Sudah / 是的":
+            # --- HANYA INI YANG MUNCUL JIKA PILIH IYA SUDAH ---
             col1, col2 = st.columns(2)
             with col1:
-                # Menambahkan Mandarin pada label input
                 jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
                 nama_lengkap = st.text_input("Nama Lengkap / 全名")
                 no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码")
@@ -117,12 +117,18 @@ if menu == "Pendaftaran / 登记":
                 dept = st.selectbox("Departemen / 部门", opts_dept)
                 jabatan = st.selectbox("Jabatan / 职位", opts_jabatan)
             
-            # Default values tetap di latar belakang
-            agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja = "Lama", "Lama", "", "", [], "-", ""
+            # Variabel di bawah ini harus di-set kosong agar sistem tidak error saat simpan data
+            agama = "Lama"
+            gender = "Lama"
+            blok_mes = ""
+            tgl_lahir = ""
+            alergi = []
+            gol_darah = "-"
+            lokasi_kerja = ""
             responses = {field: "" for field in custom_fields}
 
         else:
-            # --- TAMPILAN FULL PASIEN BARU ---
+            # --- TAMPILAN LENGKAP JIKA PILIH BELUM PERNAH ---
             col1, col2 = st.columns(2)
             with col1:
                 jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
@@ -146,7 +152,6 @@ if menu == "Pendaftaran / 登记":
             st.divider()
             st.subheader("📋 Informasi Tambahan / 附加信息")
             responses = {field: st.text_input(f"{field.upper()}") for field in custom_fields}
-
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
 
         if submit_btn:
