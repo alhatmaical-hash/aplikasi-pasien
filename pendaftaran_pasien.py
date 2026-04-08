@@ -35,10 +35,10 @@ def init_db():
     # 1. Tabel User
     c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
     
-    # 2. Tabel Master (Perusahaan, Dept, Jabatan, Fitur Pendaftaran)
+    # 2. Tabel Master
     c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
     
-    # 3. Tabel Pasien Utama (Struktur Dasar)
+    # 3. Tabel Pasien Utama
     c.execute('''CREATE TABLE IF NOT EXISTS pasien (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     tgl_daftar DATE,
@@ -49,42 +49,28 @@ def init_db():
                     perusahaan TEXT, 
                     departemen TEXT, 
                     jabatan TEXT)''')
+    
     c.execute('CREATE TABLE IF NOT EXISTS dokter_jaga_harian (id INTEGER PRIMARY KEY, nama_dokter TEXT)')
 
-    # --- TAMBAHAN: Update Schema untuk Kolom Baru ---
-    # Ini memastikan kolom tambahan ada meskipun tabel sudah pernah dibuat sebelumnya
+    # --- Update Schema (Kolom Baru) ---
     kolom_tambahan = [
-        ("no_hp", "TEXT"),
-        ("agama", "TEXT"),
-        ("dokter", "TEXT"),
-        ("gender", "TEXT"),
-        ("blok_mes", "TEXT"),
-        ("tgl_lahir", "TEXT"),
-        ("alergi", "TEXT"),
-        ("gol_darah", "TEXT"),
-        ("lokasi_kerja", "TEXT"),
-        ("lokasi_mcu", "TEXT"),
-        ("status_antrian", "TEXT")
+        ("no_hp", "TEXT"), ("agama", "TEXT"), ("dokter", "TEXT"),
+        ("gender", "TEXT"), ("blok_mes", "TEXT"), ("tgl_lahir", "TEXT"),
+        ("alergi", "TEXT"), ("gol_darah", "TEXT"), ("lokasi_kerja", "TEXT"),
+        ("lokasi_mcu", "TEXT")
     ]
     
     for kolom, tipe in kolom_tambahan:
         try:
             c.execute(f"ALTER TABLE pasien ADD COLUMN {kolom} {tipe}")
         except:
-            pass # Lewati jika kolom sudah ada
+            pass 
 
-    daftar_dokter = [
-        "DR. JOKO", "DR. DEDEK", "DR. KARTIKA", 
-        "DR. DOMINICUS", "DR. ANDIKA", "DR. RANDY"
-    ]
-    
+    # --- Isi Data Master Dokter ---
+    daftar_dokter = ["DR. JOKO", "DR. DEDEK", "DR. KARTIKA", "DR. DOMINICUS", "DR. ANDIKA", "DR. RANDY"]
     for nama_dr in daftar_dokter:
-        c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES (?,?)", 
-                  ("Dokter", nama_dr))
+        c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES (?,?)", ("Dokter", nama_dr))
     
-    conn.commit()
-    conn.close()
-
     # 4. Tabel Data Dinamis
     c.execute('''CREATE TABLE IF NOT EXISTS pasien_custom_data (
                     pasien_id INTEGER, field_name TEXT, field_value TEXT)''')
@@ -95,11 +81,15 @@ def init_db():
                     nama_pasien TEXT, departemen TEXT, nama_file TEXT,
                     file_data BLOB, tgl_upload TIMESTAMP, bulan_skd INTEGER, tahun_skd INTEGER)''')
     
+    # Tambah Admin
     c.execute("INSERT OR IGNORE INTO users VALUES (?,?,?)", ('admin', 'admin123', 'Admin'))
     
+    # SIMPAN DAN TUTUP (Hanya di akhir fungsi)
     conn.commit()
     conn.close()
 
+# Jalankan fungsinya
+init_db()
 
 
 # --- 3. FUNGSI DATA ---
@@ -189,27 +179,30 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     dokter_jaga = st.session_state.get('dokter_jaga_aktif', [])
 
     dokter_terpilih = "Belum Ditentukan"
-    if dokter_jaga:
-        with get_connection() as conn:
-            try:
-                df_dr = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)
-                dokter_jaga = df_dr['nama_dokter'].tolist()
-            except:
-                dokter_jaga = []
+    with get_connection() as conn:
+        try:
+            df_dr = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)
+            dokter_jaga = df_dr['nama_dokter'].tolist()
+        except:
+            dokter_jaga = []
 
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
         with get_connection() as conn:
             tgl_hari_ini = datetime.now().strftime("%Y-%m-%d")
-            # Menghitung jumlah pasien hari ini untuk pembagian otomatis
-            jml_pasien = conn.execute("SELECT COUNT(*) FROM pasien WHERE tgl_daftar=?", (tgl_hari_ini,)).fetchone()[0]
+            # Menghitung jumlah pasien hari ini
+            res = conn.execute("SELECT COUNT(*) FROM pasien WHERE tgl_daftar=?", (tgl_hari_ini,)).fetchone()
+            jml_pasien = res[0] if res else 0
+            
+            # Setiap 5 pasien, ganti dokter (Round Robin)
             idx_dokter = (jml_pasien // 5) % len(dokter_jaga)
             dokter_terpilih = dokter_jaga[idx_dokter]
         
         st.info(f"Pasien ini akan diarahkan ke: **{dokter_terpilih}**")
     else:
-        st.error("⚠️ Sistem pendaftaran belum siap. Silakan hubungi petugas klinik.")
-        st.stop() 
+        # Jika tabel dokter kosong, tampilkan error dan hentikan proses
+        st.error("⚠️ Sistem pendaftaran belum siap (Dokter jaga belum diatur). Silakan hubungi petugas klinik.")
+        st.stop()
 
     # --- LANJUTAN KODE ASLI ANDA ---
     opts_perusahaan = get_master("Perusahaan")['nama'].tolist()
