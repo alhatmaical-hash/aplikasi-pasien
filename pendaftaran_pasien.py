@@ -5,7 +5,10 @@ from datetime import datetime
 import io
 import plotly.express as px
 
-for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'lokasi_kerja']:
+# --- LANGKAH 0: INISIALISASI (TARUH PALING ATAS SETELAH IMPORT) ---
+# Ini harus ada supaya komputer lain tidak bingung mencari variabelnya
+keys_to_init = ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']
+for key in keys_to_init:
     if key not in st.session_state:
         st.session_state[key] = ""
 
@@ -117,12 +120,6 @@ init_db()
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
 # Ambil parameter dari URL
 params = st.query_params
-# --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
-
-# Ambil parameter dari URL
-params = st.query_params
-is_pasien_mode = params.get("mode") == "pasien"
-
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
@@ -221,7 +218,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
         opts_dept = ["", "PRODUKSI", "MAINTENANCE", "LOGISTIC", "HRD", "GA"]
         opts_jabatan = ["", "STAFF", "OPERATOR", "FOREMAN", "SUPERVISOR", "MANAGER"]
         # PERBAIKAN: Menggunakan pengecekan teks yang tepat
-        if pernah == "Iya Sudah / 是s的": # Sesuaikan dengan teks radio button Anda
+        if pernah == "Iya Sudah / 是的": # Teks ini harus COPAS persis dari radio button di atas
             st.subheader("📌 Form Pasien Lama (Ringkas)")
             col1, col2 = st.columns(2)
             with col1:
@@ -709,22 +706,30 @@ elif menu == "Pengaturan Master / 设置":
         with st.form("tambah_user_form"):
             un = st.text_input("Username Baru")
             up = st.text_input("Password Baru", type="password")
-            # --- TAMBAHAN: Pilih Role ---
-            role_pilihan = st.selectbox("Pilih Role / 权限", ["Admin", "User"])
+            # Menambahkan pilihan Role
+            ur = st.selectbox("Role", ["Admin", "Staff"])
             
-            if st.form_submit_button("Buat Akun"):
+            submit_user = st.form_submit_button("Tambah User")
+            
+            if submit_user:
                 if un and up:
-                    conn = get_connection()
                     try:
-                        # Masukkan role sesuai pilihan (Admin atau User)
-                        conn.execute("INSERT INTO users (username, password, role) VALUES (?,?,?)", 
-                                     (un, up, role_pilihan))
-                        conn.commit()
-                        conn.close()
-                        st.success(f"Akun {role_pilihan} Berhasil Dibuat")
+                        with get_connection() as conn:
+                            conn.execute("INSERT INTO users (username, password, role) VALUES (?,?,?)", (un, up, ur))
+                            conn.commit()
+                        st.success(f"User {un} berhasil ditambahkan!")
                         st.rerun()
-                    except Exception as e: 
-                        st.error(f"Gagal: Username sudah ada!")
+                    except Exception as e:
+                        st.error(f"Gagal menambah user: {e}")
+                else:
+                    st.warning("Mohon isi username dan password.")
+
+        # Menampilkan daftar user yang ada
+        st.write("---")
+        st.write("### Daftar User Aktif")
+        with get_connection() as conn:
+            df_users = pd.read_sql("SELECT username, role FROM users", conn)
+            st.table(df_users)
         
         st.write("Daftar Akun:")
         conn = get_connection()
