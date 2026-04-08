@@ -244,9 +244,9 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             with col4:
                 lokasi_mcu = st.selectbox("Lokasi MCU Pertama Kali", ["Klinik HJF", "Klinik HPAL", "Klinik Luar Obi"])
                 lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik / 具体工作地点 *", value=st.session_state.lokasi_kerja)
-            # Data otomatis untuk pasien lama
-            no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu = "-", "Lama", "Lama", "-", "-", "-", "-", "-", "-"
-            responses = {}
+            st.subheader("📋 Informasi Tambahan / 附加信息")
+            responses = {field: st.text_input(f"{field.upper()}") for field in custom_fields}
+            
 
         else:
             st.subheader("📑 Form Pasien Baru (Lengkap)")
