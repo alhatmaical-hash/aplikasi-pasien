@@ -318,18 +318,21 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                         
                 st.success(f"✅ Pendaftaran Sukses Dikirim! / 登记成功! \n\n Silakan menunggu panggilan untuk pemeriksaan oleh: **{dokter_terpilih}**")
                 st.balloons()
+                
+                # Reset memory agar form kosong kembali
                 for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']:
                     st.session_state[key] = ""
-
+                    
+                # Jeda sebentar lalu refresh halaman
                 import time
                 time.sleep(3)
                 st.rerun()
             except Exception as e:
-                st.error(f"Gagal menyimpan ke database: {e}")
+                st.error(f"Gagal menyimpan: {e}")
         else:
             # BERITAHU FIELD MANA YANG KOSONG
             kolom_kosong = ", ".join(empty_fields)
-            st.warning(f"⚠️ Mohon lengkapi kolom: **{kolom_kosong}** / 请填写必填项！")
+            st.warning(f"⚠️ Mohon lengkapi kolom: **{kolom_kosong}**")
 
     
   
