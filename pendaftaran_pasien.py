@@ -324,7 +324,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 import time
                 time.sleep(3)
                 st.rerun()
-             except Exception as e:
+            except Exception as e:
                 st.error(f"Gagal menyimpan ke database: {e}")
         else:
             # BERITAHU FIELD MANA YANG KOSONG
