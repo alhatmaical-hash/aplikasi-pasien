@@ -183,15 +183,23 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
         with get_connection() as conn:
+        try:
+            df_dr = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)
+            dokter_jaga = df_dr['nama_dokter'].tolist()
+        except:
+            dokter_jaga = []
+
+    dokter_terpilih = "Belum Ditentukan"
+    if dokter_jaga:
+        with get_connection() as conn:
             tgl_hari_ini = datetime.now().strftime("%Y-%m-%d")
+            # Menghitung jumlah pasien hari ini untuk pembagian otomatis
             jml_pasien = conn.execute("SELECT COUNT(*) FROM pasien WHERE tgl_daftar=?", (tgl_hari_ini,)).fetchone()[0]
             idx_dokter = (jml_pasien // 5) % len(dokter_jaga)
             dokter_terpilih = dokter_jaga[idx_dokter]
         
-        # Tampilkan info saja, tanpa pilihan dropdown untuk pasien
         st.info(f"Pasien ini akan diarahkan ke: **{dokter_terpilih}**")
     else:
-        # Jika petugas belum setting di Rekam Medis
         st.error("⚠️ Sistem pendaftaran belum siap. Silakan hubungi petugas klinik.")
         st.stop() 
 
