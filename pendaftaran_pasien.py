@@ -241,7 +241,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             st.subheader("📑 Form Pasien Baru (Lengkap)")
             col1, col2 = st.columns(2)
             with col1:
-               jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
+                jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
                 nama_lengkap = st.text_input("Nama Lengkap / 全名 *", value=st.session_state.nama_lengkap)
                 no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码 *", value=st.session_state.no_hp)
                 nik = st.text_input("NIK / ID Card / 身份证号 *", value=st.session_state.nik)
