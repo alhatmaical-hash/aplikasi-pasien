@@ -304,12 +304,14 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 # 3. Jalankan simpan HANYA jika kolom lengkap
                 if not empty_fields:
                     try:
+                        tgl_str = tgl_lahir_val.strftime("%d-%m-%Y") if tgl_lahir_val else ""
+                        tgl_gabung = f"{tmpt_lahir}, {tgl_str}"
                         with get_connection() as conn:
                             cur = conn.cursor()
                             cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter) 
                                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
                                        (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
-                                        no_hp, agama, gender, blok_mes, tgl_lahir, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih))
+                                        no_hp, agama, gender, blok_mes, tgl_gabung, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih))
                         
                             last_id = cur.lastrowid
                             for f_name, f_val in responses.items():
