@@ -280,12 +280,12 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 
         if pernah == "Iya Sudah / 是的":
             required = {"Nama": nama_lengkap, "NIK": nik, "Perusahaan": perusahaan, "Dept": dept, "Jabatan": jabatan}
-            else:
-                required = {
-                    "Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Blok Mes": blok_mes, 
-                    "Tgl Lahir": tgl_lahir, "Perusahaan": perusahaan, "Dept": dept, 
-                    "Jabatan": jabatan, "Area Kerja": lokasi_kerja, "Alergi": alergi
-                }
+        else:
+            required = {
+                "Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Blok Mes": blok_mes, 
+                "Tgl Lahir": tgl_lahir, "Perusahaan": perusahaan, "Dept": dept, 
+                "Jabatan": jabatan, "Area Kerja": lokasi_kerja, "Alergi": alergi
+            }
             # Cek mana yang kosong
             empty_fields = [k for k, v in required.items() if str(v).strip() == "" or str(v) == "[]" or v == ""]
 
