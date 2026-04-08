@@ -315,7 +315,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                         auth_status = existing_data[0]
                         # Jika sudah ada data dan belum diizinkan admin (0 atau None)
                         if auth_status == 0 or auth_status is None:
-                            st.error(f"⚠️ NIK {nik} sudah terdaftar hari ini. Silakan lapor ke Admin untuk verifikasi pendaftaran ulang.")
+                            st.error(f"⚠️ NIK {nik} sudah terdaftar hari ini. Silakan lapor ke Loket Pendaftaran untuk verifikasi pendaftaran ulang.")
                             st.session_state['proses_simpan'] = False
                             st.stop() 
                         else:
