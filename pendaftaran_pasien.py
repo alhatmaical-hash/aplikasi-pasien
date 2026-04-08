@@ -278,7 +278,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 try:
                     with get_connection() as conn:
                         cur = conn.cursor()
-                        # Bagian ini yang memasukkan data ke database
+                        # Memasukkan data ke tabel pasien
                         cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter) 
                                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
                                        (datetime.now().strftime("%Y-%m-%d"), 
@@ -288,14 +288,16 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                         
                         last_id = cur.lastrowid
                         for f_name, f_val in responses.items():
-                            cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
+                            cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", 
+                                        (last_id, f_name, f_val))
+
                         conn.commit()
                     
                     st.success("Berhasil Terdaftar! / 登记成功！")
                     st.balloons()
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Gagal menyimpan: {e}")
+                    st.error(f"Gagal menyimpan ke database: {e}")
             else:
                 # Muncul jika ada salah satu field yang kosong
                 st.warning("⚠️ Mohon lengkapi SEMUA kolom yang bertanda bintang! / 请填写所有必填项！")
