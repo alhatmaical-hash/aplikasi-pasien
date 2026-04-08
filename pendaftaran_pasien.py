@@ -285,55 +285,55 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
         
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
         
-       if submit_btn:
-            # 1. Kunci agar tidak double click
-            if st.session_state.get('proses_simpan', False):
-                st.stop()
-            st.session_state['proses_simpan'] = True
+           if submit_btn:
+                # 1. Kunci agar tidak double click
+                if st.session_state.get('proses_simpan', False):
+                    st.stop()
+                st.session_state['proses_simpan'] = True
 
-            # 2. Definisikan empty_fields di SINI (pindahkan dari atas ke dalam sini)
-            if pernah == "Iya Sudah / 是的":
-                required = {"Nama": nama_lengkap, "NIK": nik, "Perusahaan": perusahaan, "Dept": dept}
-            else:
-                required = {"Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Perusahaan": perusahaan, "Area": lokasi_kerja}
+                # 2. Definisikan empty_fields di SINI (pindahkan dari atas ke dalam sini)
+                if pernah == "Iya Sudah / 是的":
+                    required = {"Nama": nama_lengkap, "NIK": nik, "Perusahaan": perusahaan, "Dept": dept}
+                else:
+                    required = {"Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Perusahaan": perusahaan, "Area": lokasi_kerja}
             
-            empty_fields = [k for k, v in required.items() if str(v).strip() in ["", "None", "[]"]]
+                empty_fields = [k for k, v in required.items() if str(v).strip() in ["", "None", "[]"]]
 
-            # 3. Jalankan simpan HANYA jika kolom lengkap
-            if not empty_fields:
-                try:
-                    with get_connection() as conn:
-                        cur = conn.cursor()
-                        cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter) 
+                # 3. Jalankan simpan HANYA jika kolom lengkap
+                if not empty_fields:
+                    try:
+                        with get_connection() as conn:
+                            cur = conn.cursor()
+                            cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter) 
                                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
                                        (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
                                         no_hp, agama, gender, blok_mes, tgl_lahir, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih))
                         
-                        last_id = cur.lastrowid
-                        for f_name, f_val in responses.items():
-                            cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
-                        conn.commit()
+                            last_id = cur.lastrowid
+                            for f_name, f_val in responses.items():
+                                cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
+                            conn.commit()
 
-                    st.success(f"✅ Pendaftaran Sukses Dikirim! \n\n Silakan ke: **{dokter_terpilih}**")
-                    st.balloons()
+                        st.success(f"✅ Pendaftaran Sukses Dikirim! \n\n Silakan ke: **{dokter_terpilih}**")
+                        st.balloons()
                     
-                    # Reset Form
-                    for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']:
-                        st.session_state[key] = ""
+                        # Reset Form
+                        for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']:
+                            st.session_state[key] = ""
                     
-                    import time
-                    time.sleep(2)
-                    st.session_state['proses_simpan'] = False # Buka kunci sebelum rerun
-                    st.rerun()
+                        import time
+                        time.sleep(2)
+                        st.session_state['proses_simpan'] = False # Buka kunci sebelum rerun
+                        st.rerun()
 
-                except Exception as e:
-                    st.session_state['proses_simpan'] = False # Buka kunci jika gagal agar bisa coba lagi
-                    st.error(f"Gagal menyimpan: {e}")
-            else:
-                # Jika ada kolom kosong
-                st.session_state['proses_simpan'] = False # Buka kunci agar user bisa perbaiki lalu klik lagi
-                kolom_kosong = ", ".join(empty_fields)
-                st.warning(f"⚠️ Mohon lengkapi kolom: **{kolom_kosong}**")
+                    except Exception as e:
+                        st.session_state['proses_simpan'] = False # Buka kunci jika gagal agar bisa coba lagi
+                        st.error(f"Gagal menyimpan: {e}")
+                else:
+                    # Jika ada kolom kosong
+                    st.session_state['proses_simpan'] = False # Buka kunci agar user bisa perbaiki lalu klik lagi
+                    kolom_kosong = ", ".join(empty_fields)
+                    st.warning(f"⚠️ Mohon lengkapi kolom: **{kolom_kosong}**")
   
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
