@@ -5,6 +5,10 @@ from datetime import datetime
 import io
 import plotly.express as px
 
+for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'lokasi_kerja']:
+    if key not in st.session_state:
+        st.session_state[key] = ""
+
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps", page_icon="🏥", layout="wide")
 st.markdown("""
@@ -211,21 +215,23 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     custom_fields = get_master("Fitur Pendaftaran")['nama'].tolist()
 
     # Pastikan teks di sini SAMA PERSIS dengan yang di dalam IF nanti
-    pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是s的", "Belum Pernah / 从未"], horizontal=True)
-
-    with st.form("form_reg", clear_on_submit=True):
+    pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是的", "Belum Pernah / 从未"], horizontal=True)
+    with st.form("form_reg", clear_on_submit=False):
+        opts_perusahaan = ["", "PT HJF", "PT KPS", "PT OST", "PT CKM"] 
+        opts_dept = ["", "PRODUKSI", "MAINTENANCE", "LOGISTIC", "HRD", "GA"]
+        opts_jabatan = ["", "STAFF", "OPERATOR", "FOREMAN", "SUPERVISOR", "MANAGER"]
         # PERBAIKAN: Menggunakan pengecekan teks yang tepat
-        if pernah == "Iya Sudah / 是的":
+        if pernah == "Iya Sudah / 是s的": # Sesuaikan dengan teks radio button Anda
             st.subheader("📌 Form Pasien Lama (Ringkas)")
             col1, col2 = st.columns(2)
             with col1:
                 jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
-                nama_lengkap = st.text_input("Nama Lengkap / 全名")
-                nik = st.text_input("NIK / ID Card / 身份证号")
+                nama_lengkap = st.text_input("Nama Lengkap / 全名 *", value=st.session_state.nama_lengkap)
+                nik = st.text_input("NIK / ID Card / 身份证号 *", value=st.session_state.nik)
             with col2:
-                perusahaan = st.selectbox("Perusahaan / 公司", opts_perusahaan)
-                dept = st.selectbox("Departemen / 部门", opts_dept)
-                jabatan = st.selectbox("Jabatan / 职位", opts_jabatan)
+                perusahaan = st.selectbox("Perusahaan / 公司 *", opts_perusahaan)
+                dept = st.selectbox("Departemen / 部门 *", opts_dept)
+                jabatan = st.selectbox("Jabatan / 职位 *", opts_jabatan)
             
             # Data otomatis untuk pasien lama
             no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu = "-", "Lama", "Lama", "-", "-", "-", "-", "-", "-"
@@ -235,28 +241,28 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             st.subheader("📑 Form Pasien Baru (Lengkap)")
             col1, col2 = st.columns(2)
             with col1:
-                jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
-                nama_lengkap = st.text_input("Nama Lengkap / 全名")
-                no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码")
-                nik = st.text_input("NIK / ID Card / 身份证号")
+               jenis_kunjungan = st.selectbox("Jenis Kunjungan / 就诊类型", ["Berobat / 治病", "Kontrol MCU / 体检复查", "Masuk UGD / 急诊", "Kontrol Post Rujuk / 转院后复查", "Kontrol Rawat Luka / 伤口护理复查"])
+                nama_lengkap = st.text_input("Nama Lengkap / 全名 *", value=st.session_state.nama_lengkap)
+                no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码 *", value=st.session_state.no_hp)
+                nik = st.text_input("NIK / ID Card / 身份证号 *", value=st.session_state.nik)
                 agama = st.selectbox("Agama / 宗教", ["Islam / 伊斯兰教", "Kristen / 基督教", "Hindu / 印度教", "Buddha / 佛教", "Katolik / 天主教", "Tidak Diketahui / 未知"])
                 gender = st.radio("Jenis Kelamin / 性别", ["Laki-laki / 男", "Perempuan / 女"], horizontal=True)
 
             with col2:
-                blok_mes = st.text_input("Blok Mes dan No Kamar / 宿舍楼和房间号")
-                tgl_lahir = st.text_input("Tempat & Tanggal Lahir / 出生地点和日期 (Contoh: Obi, 01-01-1990)")
-                perusahaan = st.selectbox("Perusahaan / 公司", opts_perusahaan)
-                dept = st.selectbox("Departemen / 部门", opts_dept)
-                jabatan = st.selectbox("Jabatan / 职位", opts_jabatan)
+                blok_mes = st.text_input("Blok Mes dan No Kamar / 宿舍楼和房间号 *", value=st.session_state.blok_mes)
+                tgl_lahir = st.text_input("Tempat & Tanggal Lahir / 出生地点和日期 *", value=st.session_state.tgl_lahir)
+                perusahaan = st.selectbox("Perusahaan / 公司 *", opts_perusahaan)
+                dept = st.selectbox("Departemen / 部门 *", opts_dept)
+                jabatan = st.selectbox("Jabatan / 职位 *", opts_jabatan)
 
             st.divider()
             col3, col4 = st.columns(2)
             with col3:
-                alergi = st.multiselect("Jenis Alergi / 过敏类型", ["Makanan / 食物", "Obat / 药物", "Cuaca / 天气", "Tidak Ada / 无"])
+                alergi = st.multiselect("Jenis Alergi / 过敏类型 *", ["Makanan / 食物", "Obat / 药物", "Cuaca / 天气", "Tidak Ada / 无"])
                 gol_darah = st.selectbox("Golongan Darah / 血型", ["A", "B", "AB", "O", "-"])
             with col4:
                 lokasi_mcu = st.selectbox("Lokasi MCU Pertama Kali", ["Klinik HJF", "Klinik HPAL", "Klinik Luar Obi"])
-                lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik / 具体工作地点")
+                lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik / 具体工作地点 *", value=st.session_state.lokasi_kerja)
             
             st.subheader("📋 Informasi Tambahan / 附加信息")
             responses = {field: st.text_input(f"{field.upper()}") for field in custom_fields}
@@ -264,39 +270,44 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
         
         if submit_btn:
-            # 1. Tentukan field mana saja yang wajib dicek
-            if pernah == "Iya Sudah / 是的":
-                # Untuk Pasien Lama
-                required_fields = [nama_lengkap, nik, perusahaan, dept, jabatan]
-            else:
-                # Untuk Pasien Baru
-                required_fields = [
-                    nama_lengkap, nik, no_hp, blok_mes, tgl_lahir, 
-                    perusahaan, dept, jabatan, lokasi_kerja, str(alergi)
-                ]
+            # SIMPAN INPUT KE MEMORI (Agar tidak hilang jika ada error)
+            st.session_state.nama_lengkap = nama_lengkap
+            st.session_state.nik = nik
+            st.session_state.no_hp = no_hp
+            st.session_state.blok_mes = blok_mes
+            st.session_state.tgl_lahir = tgl_lahir
+            st.session_state.lokasi_kerja = lokasi_kerja
 
-            is_valid = all(str(f).strip() != "" and str(f) != "[]" for f in required_fields)
-            if is_valid:
+        if pernah == "Iya Sudah / 是的":
+            required = {"Nama": nama_lengkap, "NIK": nik, "Perusahaan": perusahaan, "Dept": dept, "Jabatan": jabatan}
+            else:
+                required = {
+                    "Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Blok Mes": blok_mes, 
+                    "Tgl Lahir": tgl_lahir, "Perusahaan": perusahaan, "Dept": dept, 
+                    "Jabatan": jabatan, "Area Kerja": lokasi_kerja, "Alergi": alergi
+                }
+            # Cek mana yang kosong
+            empty_fields = [k for k, v in required.items() if str(v).strip() == "" or str(v) == "[]" or v == ""]
+
+            if not empty_fields:
                 try:
                     with get_connection() as conn:
                         cur = conn.cursor()
                         # Memasukkan data ke tabel pasien
                         cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter) 
-                                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
-                                       (datetime.now().strftime("%Y-%m-%d"), 
-                                        nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
-                                        no_hp, agama, gender, blok_mes, tgl_lahir, str(alergi), 
-                                        gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih))
+                                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                                   (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
+                                    no_hp, agama, gender, blok_mes, tgl_lahir, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih))
                         
                         last_id = cur.lastrowid
                         for f_name, f_val in responses.items():
-                            cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", 
-                                        (last_id, f_name, f_val))
-
+                            cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
                         conn.commit()
-                    
+                        
                     st.success(f"✅ Pendaftaran Sukses Dikirim! / 登记成功! \n\n Silakan menunggu panggilan untuk pemeriksaan oleh: **{dokter_terpilih}**")
                     st.balloons()
+                    for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']:
+                        st.session_state[key] = ""
 
                     import time
                     time.sleep(3)
@@ -304,8 +315,9 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 except Exception as e:
                     st.error(f"Gagal menyimpan ke database: {e}")
             else:
-                # Muncul jika ada salah satu field yang kosong
-                st.warning("⚠️ Mohon lengkapi SEMUA kolom yang bertanda bintang! / 请填写所有必填项！")
+                # BERITAHU FIELD MANA YANG KOSONG
+                kolom_kosong = ", ".join(empty_fields)
+                st.warning(f"⚠️ Mohon lengkapi kolom: **{kolom_kosong}** / 请填写必填项！")
 
     
   
