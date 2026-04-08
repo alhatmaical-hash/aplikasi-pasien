@@ -634,21 +634,26 @@ elif menu == "SKD / 医生证明":
    # 1. Tambah Departemen Baru dengan Proteksi Password
     with st.expander("➕ Tambah Folder Departemen Baru"):
         # Input Nama Departemen
-        new_f = st.text_input("Nama Departemen Baru")
+        new_f = st.text_input("Nama Departemen Baru", key="input_nama_dept_skd")
         
-        # Tambahkan Input Password di sini
-        pwd_tambah_dept = st.text_input("Masukkan Password Admin untuk Menambah", type="password", key="pwd_dept")
+        # Tambahkan Input Password
+        pwd_tambah_dept = st.text_input("Masukkan Password Admin untuk Menambah", 
+                                       type="password", 
+                                       key="pwd_tambah_dept_skd")
         
-        if st.button("Buat Folder"):
+        if st.button("Buat Folder", key="btn_save_dept_skd"):
             # Cek apakah password benar
             if pwd_tambah_dept == "admin123": # Sesuaikan dengan password Anda
                 if new_f:
                     try:
                         with get_connection() as conn:
-                            conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Departemen", new_f))
+                            # Pastikan tabel 'master_data' memiliki kolom 'kategori' dan 'nama'
+                            conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", 
+                                       ("Departemen", new_f))
                             conn.commit()
                         st.success(f"Folder '{new_f}' berhasil dibuat!")
-                        st.rerun()
+                        # Rerun sangat penting agar daftar di bawahnya langsung terupdate
+                        st.rerun() 
                     except Exception as e:
                         st.error(f"Gagal membuat folder: {e}")
                 else:
