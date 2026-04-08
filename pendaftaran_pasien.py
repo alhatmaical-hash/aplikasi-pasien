@@ -637,7 +637,7 @@ elif menu == "SKD / 医生证明":
         new_f = st.text_input("Nama Departemen Baru", key="input_nama_dept_skd")
         
         # Tambahkan Input Password
-        pwd_tambah_dept = st.text_input("Masukkan Password Admin untuk Menambah", 
+        pwd_tambah_dept = st.text_input("Hanya Petugas Rekam Medis Yang Bisa Menambahkan Folder", 
                                        type="password", 
                                        key="pwd_tambah_dept_skd")
         
