@@ -183,11 +183,11 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
         with get_connection() as conn:
-        try:
-            df_dr = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)
-            dokter_jaga = df_dr['nama_dokter'].tolist()
-        except:
-            dokter_jaga = []
+            try:
+                df_dr = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)
+                dokter_jaga = df_dr['nama_dokter'].tolist()
+            except:
+                dokter_jaga = []
 
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
