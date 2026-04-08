@@ -467,8 +467,7 @@ elif menu == "Rekam Medis / 病历":
                 "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal & Waktu",format="DD/MM/YYYY HH:mm:ss", # Format tampilan di layar),
                 "Nama Lengkap": st.column_config.TextColumn("Nama Lengkap", width="large"),
                 "status_antrian": None 
-            }
-        )
+            })
         
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
