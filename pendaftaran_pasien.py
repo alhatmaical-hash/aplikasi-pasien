@@ -285,7 +285,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
         
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
         
-           if submit_btn:
+        if submit_btn:
                 # 1. Kunci agar tidak double click
                 if st.session_state.get('proses_simpan', False):
                     st.stop()
