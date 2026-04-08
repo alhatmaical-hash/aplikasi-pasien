@@ -191,8 +191,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
         with get_connection() as conn:
-            tgl_hari_ini_lengkap = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            tgl_hari_ini_saja = datetime.now().strftime("%Y-%m-%d") # Untuk pengecekan double input
+            tgl_hari_ini_saja = datetime.now().strftime("%Y-%m-%d")
             # Menghitung jumlah pasien hari ini
             res = conn.execute("SELECT COUNT(*) FROM pasien WHERE tgl_daftar=?", (tgl_hari_ini,)).fetchone()
             jml_pasien = res[0] if res else 0
