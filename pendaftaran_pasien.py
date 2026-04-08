@@ -120,6 +120,7 @@ init_db()
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
 # Ambil parameter dari URL
 params = st.query_params
+is_pasien_mode = params.get("mode") == "pasien"
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
