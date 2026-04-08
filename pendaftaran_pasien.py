@@ -432,7 +432,7 @@ elif menu == "Rekam Medis / 病历":
         
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
-        col_k1, col_k2, col_k3 = st.columns(3)
+        col_k1, col_k2, col_k3, col_k4 = st.columns(4)
         with col_k1:
             st.info("🟡 **Kuning**: Menunggu Konsul Dokter")
         with col_k2:
