@@ -445,7 +445,7 @@ elif menu == "Rekam Medis / 病历":
             st.warning("🟠 **Orange**: Batas Download SKD")
         with col_k4:
             st.success("🟢 **Hijau**: Batas Operan & Daftar Pasien")
-         with col_k5:
+        with col_k5:
             st.error("🔴 Merah: Batal Berobat")
 
         # --- 3. FITUR UNDUH (CSV) ---
