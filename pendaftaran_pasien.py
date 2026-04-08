@@ -49,6 +49,7 @@ def init_db():
                     perusahaan TEXT, 
                     departemen TEXT, 
                     jabatan TEXT)''')
+    c.execute('CREATE TABLE IF NOT EXISTS dokter_jaga_harian (id INTEGER PRIMARY KEY, nama_dokter TEXT)')
 
     # --- TAMBAHAN: Update Schema untuk Kolom Baru ---
     # Ini memastikan kolom tambahan ada meskipun tabel sudah pernah dibuat sebelumnya
@@ -319,22 +320,31 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Menu Rekam Medis")
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
-        opts_dr_raw = get_master("Dokter")['nama'].tolist()
-        opts_dr = sorted(list(set(opts_dr_raw))) # Menghilangkan duplikat & mengurutkan A-Z
-        # Simpan ke session_state agar bisa dibaca di halaman pendaftaran
-        st.session_state['dokter_jaga_aktif'] = st.multiselect(
-            "Pilih Dokter yang Bertugas", 
-            opts_dr, 
-            default=st.session_state.get('dokter_jaga_aktif', []),
-            placeholder="Pilih dokter..."
-        )
-        if st.session_state['dokter_jaga_aktif']:
-            st.success(f"Dokter Aktif: {', '.join(st.session_state['dokter_jaga_aktif'])}")
-        else:
-            st.warning("Peringatan: Belum ada dokter yang dipilih untuk bertugas.")
+    opts_dr_raw = get_master("Dokter")['nama'].tolist()
+    opts_dr = sorted(list(set(opts_dr_raw)))
     
-    conn = get_connection()
-    query = """
+    # Baca data dokter yang sedang aktif dari database
+    with get_connection() as conn:
+        dr_aktif_db = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)['nama_dokter'].tolist()
+
+    pilihan = st.multiselect(
+        "Pilih Dokter yang Bertugas", 
+        opts_dr, 
+        default=dr_aktif_db,
+        placeholder="Pilih dokter..."
+    )
+
+    if st.button("Simpan Jadwal Dokter"):
+        with get_connection() as conn:
+            conn.execute("DELETE FROM dokter_jaga_harian")
+            for dr in pilihan:
+                conn.execute("INSERT INTO dokter_jaga_harian (nama_dokter) VALUES (?)", (dr,))
+            conn.commit()
+        st.success("Jadwal Berhasil Disimpan! Sekarang bisa diakses di semua komputer.")
+        st.rerun()
+
+    with get_connection() as conn:
+        query = """
     SELECT 
         id, 
         tgl_daftar AS 'Tgl Daftar', 
