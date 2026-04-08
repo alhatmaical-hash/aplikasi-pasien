@@ -439,6 +439,8 @@ elif menu == "Rekam Medis / 病历":
             st.info("🔵 **Biru**: Menunggu Hasil Lab & Radiologi")
         with col_k3:
             st.warning("🟠 **Orange**: Batas Download SKD")
+        with col_k4:
+            st.success("🟢 **Hijau**: Batas Operan & Daftar Pasien")
 
         # --- 3. FITUR UNDUH (CSV) ---
         csv = df.to_csv(index=False).encode('utf-8')
