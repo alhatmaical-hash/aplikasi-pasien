@@ -191,7 +191,8 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
         with get_connection() as conn:
-            tgl_hari_ini = datetime.now().strftime("%Y-%m-%d")
+            tgl_hari_ini_lengkap = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            tgl_hari_ini_saja = datetime.now().strftime("%Y-%m-%d") # Untuk pengecekan double input
             # Menghitung jumlah pasien hari ini
             res = conn.execute("SELECT COUNT(*) FROM pasien WHERE tgl_daftar=?", (tgl_hari_ini,)).fetchone()
             jml_pasien = res[0] if res else 0
@@ -331,7 +332,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                         # Update INSERT dengan kolom is_authorized (Ada 19 kolom & 19 tanda tanya)
                         cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter, is_authorized) 
                                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
-                                       (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
+                                       (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
                                         no_hp, agama, gender, blok_mes, tgl_gabung, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih, 0))
                         
                         last_id = cur.lastrowid
@@ -463,7 +464,7 @@ elif menu == "Rekam Medis / 病历":
             column_config={
                 "id": None, # Sembunyikan kolom ID agar tidak berantakan
                 "WhatsApp": st.column_config.TextColumn("WhatsApp"),
-                "Tgl Daftar": st.column_config.DateColumn("Tanggal"),
+                "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal & Waktu",format="DD/MM/YYYY HH:mm:ss", # Format tampilan di layar),
                 "Nama Lengkap": st.column_config.TextColumn("Nama Lengkap", width="large"),
                 "status_antrian": None 
             }
