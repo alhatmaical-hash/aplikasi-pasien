@@ -112,6 +112,14 @@ def init_db():
         # ... kode pembuatan tabel lainnya (pasien, master_dokter, dll) ...
         conn.commit()
 
+def get_master(kategori):
+    with get_connection() as conn:
+        # Mengambil data dari tabel master berdasarkan kategori
+        query = "SELECT id, nama FROM master_data WHERE kategori = ?"
+        return pd.read_sql(query, conn, params=(kategori,))
+
+init_db()
+
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
 # Ambil parameter dari URL
 params = st.query_params
