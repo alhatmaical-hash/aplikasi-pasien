@@ -291,44 +291,45 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 
         if pernah == "Iya Sudah / 是的":
             required = {"Nama": nama_lengkap, "NIK": nik, "Perusahaan": perusahaan, "Dept": dept, "Jabatan": jabatan}
+            
         else:
             required = {
-                "Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Blok Mes": blok_mes, 
+               "Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Blok Mes": blok_mes, 
                 "Tgl Lahir": tgl_lahir, "Perusahaan": perusahaan, "Dept": dept, 
                 "Jabatan": jabatan, "Area Kerja": lokasi_kerja, "Alergi": alergi
             }
-            # Cek mana yang kosong
-            empty_fields = [k for k, v in required.items() if str(v).strip() == "" or str(v) == "[]" or v == ""]
+        # Cek mana yang kosong
+        empty_fields = [k for k, v in required.items() if str(v).strip() == "" or str(v) == "[]" or v == ""]
 
-            if not empty_fields:
-                try:
-                    with get_connection() as conn:
-                        cur = conn.cursor()
-                        # Memasukkan data ke tabel pasien
-                        cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter) 
+        if not empty_fields:
+            try:
+                with get_connection() as conn:
+                    cur = conn.cursor()
+                    # Memasukkan data ke tabel pasien
+                    cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter) 
                                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
                                    (datetime.now().strftime("%Y-%m-%d"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
                                     no_hp, agama, gender, blok_mes, tgl_lahir, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih))
                         
-                        last_id = cur.lastrowid
-                        for f_name, f_val in responses.items():
-                            cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
-                        conn.commit()
+                    last_id = cur.lastrowid
+                    for f_name, f_val in responses.items():
+                        cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
+                    conn.commit()
                         
-                    st.success(f"✅ Pendaftaran Sukses Dikirim! / 登记成功! \n\n Silakan menunggu panggilan untuk pemeriksaan oleh: **{dokter_terpilih}**")
-                    st.balloons()
-                    for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']:
-                        st.session_state[key] = ""
+                st.success(f"✅ Pendaftaran Sukses Dikirim! / 登记成功! \n\n Silakan menunggu panggilan untuk pemeriksaan oleh: **{dokter_terpilih}**")
+                st.balloons()
+                for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']:
+                    st.session_state[key] = ""
 
-                    import time
-                    time.sleep(3)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Gagal menyimpan ke database: {e}")
-            else:
-                # BERITAHU FIELD MANA YANG KOSONG
-                kolom_kosong = ", ".join(empty_fields)
-                st.warning(f"⚠️ Mohon lengkapi kolom: **{kolom_kosong}** / 请填写必填项！")
+                import time
+                time.sleep(3)
+                st.rerun()
+             except Exception as e:
+                st.error(f"Gagal menyimpan ke database: {e}")
+        else:
+            # BERITAHU FIELD MANA YANG KOSONG
+            kolom_kosong = ", ".join(empty_fields)
+            st.warning(f"⚠️ Mohon lengkapi kolom: **{kolom_kosong}** / 请填写必填项！")
 
     
   
