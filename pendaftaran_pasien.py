@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import io
 import plotly.express as px
+import pytz
 
 # --- LANGKAH 0: INISIALISASI (TARUH PALING ATAS SETELAH IMPORT) ---
 # Ini harus ada supaya komputer lain tidak bingung mencari variabelnya
@@ -191,7 +192,9 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
         with get_connection() as conn:
-            tgl_hari_ini = datetime.now().strftime("%Y-%m-%d")
+            tz_wit = pytz.timezone('Asia/Jayapura')
+            waktu_sekarang = datetime.now(tz_wit)
+            tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
             # Menghitung jumlah pasien hari ini
             query = "SELECT COUNT(*) FROM pasien WHERE tgl_daftar LIKE ?"
             res = conn.execute(query, (f"{tgl_hari_ini}%",)).fetchone()
@@ -306,7 +309,9 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             if not empty_fields:
                 try:
                     # --- FITUR BARU: CEK DOUBLE INPUT HARI INI ---
-                    tgl_hari_ini = datetime.now().strftime("%Y-%m-%d")
+                    tz_wit = pytz.timezone('Asia/Jayapura')
+                    waktu_sekarang = datetime.now(tz_wit)
+                    tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
                     with get_connection() as conn:
                         # Cek pendaftaran terakhir NIK ini di hari ini
                         check_query = "SELECT is_authorized FROM pasien WHERE nik = ? AND tgl_daftar = ? ORDER BY id DESC LIMIT 1"
@@ -332,7 +337,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                         # Update INSERT dengan kolom is_authorized (Ada 19 kolom & 19 tanda tanya)
                         cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter, is_authorized) 
                                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
-                                       (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
+                                       (waktu_sekarang.strftime("%Y-%m-%d %H:%M:%S"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
                                         no_hp, agama, gender, blok_mes, tgl_gabung, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih, 0))
                         
                         last_id = cur.lastrowid
@@ -397,9 +402,10 @@ elif menu == "Rekam Medis / 病历":
         if st.button("Berikan Izin Akses"):
             if nik_izin:
                 with get_connection() as conn:
-                    tgl_skrg = datetime.now().strftime("%Y-%m-%d")
+                    tz_wit = pytz.timezone('Asia/Jayapura')
+                    tgl_skrg = datetime.now(tz_wit).strftime("%Y-%m-%d")
                     # Update is_authorized menjadi 1 untuk NIK tersebut pada hari ini
-                    conn.execute("UPDATE pasien SET is_authorized = 1 WHERE nik = ? AND tgl_daftar = ?", (nik_izin, tgl_skrg))
+                    conn.execute("UPDATE pasien SET is_authorized = 1 WHERE nik = ? AND tgl_daftar LIKE ?", (nik_izin, f"{tgl_skrg}%"))
                     conn.commit()
                 st.success(f"Berhasil! NIK {nik_izin} sekarang diizinkan mendaftar ulang.")
             else:
