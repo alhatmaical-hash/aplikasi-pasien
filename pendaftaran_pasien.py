@@ -295,8 +295,11 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 
                         conn.commit()
                     
-                    st.success("Berhasil Terdaftar! / 登记成功！")
+                    st.success(f"✅ Pendaftaran Sukses Dikirim! / 登记成功! \n\n Silakan menunggu panggilan untuk pemeriksaan oleh: **{dokter_terpilih}**")
                     st.balloons()
+
+                    import time
+                    time.sleep(3)
                     st.rerun()
                 except Exception as e:
                     st.error(f"Gagal menyimpan ke database: {e}")
