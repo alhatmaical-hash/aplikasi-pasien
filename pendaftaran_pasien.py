@@ -103,18 +103,47 @@ def init_db():
 
 
 # --- 3. FUNGSI DATA ---
-def get_master(kategori):
+# --- 3. FUNGSI DATA ---
+def init_db():
     with get_connection() as conn:
-        # Kita ambil ID dan Nama, lalu gunakan GROUP BY nama agar nama tidak double 
-        # tapi ID tetap terbawa salah satu.
-        query = f"""
-            SELECT id, nama 
-            FROM master_data 
-            WHERE kategori='{kategori}' 
-            GROUP BY nama 
-            ORDER BY nama ASC
-        """
-        return pd.read_sql(query, conn)
+        c = conn.cursor()
+        
+        # 1. Tabel baru untuk sinkronisasi dokter (Ini yang baru kita tambahkan)
+        c.execute('CREATE TABLE IF NOT EXISTS dokter_jaga_harian (id INTEGER PRIMARY KEY, nama_dokter TEXT)')
+        
+        # 2. Tabel pasien (Pastikan kode lama Anda yang ini TIDAK terhapus)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS pasien (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tgl_daftar TEXT,
+                nama_lengkap TEXT,
+                nik TEXT,
+                no_hp TEXT,
+                perusahaan TEXT,
+                departemen TEXT,
+                jabatan TEXT,
+                pernah_berobat TEXT,
+                agama TEXT,
+                dokter TEXT,
+                gender TEXT,
+                tgl_lahir TEXT,
+                alergi TEXT,
+                gol_darah TEXT,
+                blok_mes TEXT,
+                lokasi_kerja TEXT,
+                lokasi_mcu TEXT,
+                status_antrian TEXT DEFAULT 'Menunggu'
+            )
+        ''')
+        
+        # 3. Tabel master (Jika Anda punya tabel master untuk dropdown)
+        c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
+        
+        conn.commit()
+
+# --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
+# Ambil parameter dari URL
+params = st.query_params
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
 
 # Ambil parameter dari URL
