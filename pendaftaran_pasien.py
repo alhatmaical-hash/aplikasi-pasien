@@ -215,9 +215,10 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     # Pastikan teks di sini SAMA PERSIS dengan yang di dalam IF nanti
     pernah = st.radio("PERNAH BEROBAT DISINI? / 您以前在这里看过病吗？", ["Iya Sudah / 是的", "Belum Pernah / 从未"], horizontal=True)
     with st.form("form_reg", clear_on_submit=False):
-        opts_perusahaan = ["", "PT HJF", "PT KPS", "PT OST", "PT CKM"] 
-        opts_dept = ["", "PRODUKSI", "MAINTENANCE", "LOGISTIC", "HRD", "GA"]
-        opts_jabatan = ["", "STAFF", "OPERATOR", "FOREMAN", "SUPERVISOR", "MANAGER"]
+        # Ambil data langsung dari database master
+        opts_perusahaan = [""] + get_master("Perusahaan")['nama'].tolist()
+        opts_dept = [""] + get_master("Departemen")['nama'].tolist()
+        opts_jabatan = [""] + get_master("Jabatan")['nama'].tolist()
         # PERBAIKAN: Menggunakan pengecekan teks yang tepat
         if pernah == "Iya Sudah / 是的": # Teks ini harus COPAS persis dari radio button di atas
             st.subheader("📌 Form Pasien Lama (Ringkas)")
