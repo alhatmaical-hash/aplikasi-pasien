@@ -314,8 +314,8 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                     tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
                     with get_connection() as conn:
                         # Cek pendaftaran terakhir NIK ini di hari ini
-                        check_query = "SELECT is_authorized FROM pasien WHERE nik = ? AND tgl_daftar = ? ORDER BY id DESC LIMIT 1"
-                        existing_data = conn.execute(check_query, (nik, tgl_hari_ini)).fetchone()
+                        check_query = "SELECT is_authorized FROM pasien WHERE nik = ? AND tgl_daftar LIKE ? ORDER BY id DESC LIMIT 1"
+                        existing_data = conn.execute(check_query, (nik, f"{tgl_hari_ini}%")).fetchone()
 
                     if existing_data:
                         auth_status = existing_data[0]
