@@ -104,8 +104,16 @@ def init_db():
 # --- 3. FUNGSI DATA ---
 def get_master(kategori):
     with get_connection() as conn:
-        # Tambahkan kata kunci DISTINCT untuk mengambil nama yang unik saja dari database
-        return pd.read_sql(f"SELECT DISTINCT nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
+        # Kita ambil ID dan Nama, lalu gunakan GROUP BY nama agar nama tidak double 
+        # tapi ID tetap terbawa salah satu.
+        query = f"""
+            SELECT id, nama 
+            FROM master_data 
+            WHERE kategori='{kategori}' 
+            GROUP BY nama 
+            ORDER BY nama ASC
+        """
+        return pd.read_sql(query, conn)
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
 
 # Ambil parameter dari URL
