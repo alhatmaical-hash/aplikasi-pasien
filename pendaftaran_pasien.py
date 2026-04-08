@@ -104,9 +104,8 @@ def init_db():
 # --- 3. FUNGSI DATA ---
 def get_master(kategori):
     with get_connection() as conn:
-        # Tambahkan 'id' ke dalam SELECT
-        return pd.read_sql(f"SELECT id, nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
-
+        # Tambahkan kata kunci DISTINCT untuk mengambil nama yang unik saja dari database
+        return pd.read_sql(f"SELECT DISTINCT nama FROM master_data WHERE kategori='{kategori}' ORDER BY nama ASC", conn)
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
 
 # Ambil parameter dari URL
@@ -312,7 +311,8 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Menu Rekam Medis")
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
-        opts_dr = get_master("Dokter")['nama'].tolist()
+        opts_dr_raw = get_master("Dokter")['nama'].tolist()
+        opts_dr = sorted(list(set(opts_dr_raw))) # Menghilangkan duplikat & mengurutkan A-Z
         # Simpan ke session_state agar bisa dibaca di halaman pendaftaran
         st.session_state['dokter_jaga_aktif'] = st.multiselect(
             "Pilih Dokter yang Bertugas", 
