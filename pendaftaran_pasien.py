@@ -503,7 +503,8 @@ elif menu == "Rekam Medis / 病历":
                     "Menunggu Konsul Dokter", 
                     "Menunggu Hasil Lab & Radiologi", 
                     "Batas Download SKD",
-                    "Batas Operan & Daftar Pasien"
+                    "Batas Operan & Daftar Pasien",
+                    "Batal Berobat"
                 ])
                 btn_update = st.form_submit_button("Simpan Perubahan")
                 
