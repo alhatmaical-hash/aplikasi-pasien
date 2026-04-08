@@ -412,6 +412,8 @@ elif menu == "Rekam Medis / 病历":
                 return ['background-color: #00b0f0; color: white'] * len(row) # Biru
             elif status == "Batas Download SKD":
                 return ['background-color: #ff9900; color: white'] * len(row) # Orange
+            elif status == "Batas Operan & Daftar Pasien":
+                return ['background-color: #c8e6c9'] * len(row)  # Hijau Muda
             return [''] * len(row)
 
         styled_df = df.style.apply(color_row, axis=1)
