@@ -444,6 +444,41 @@ elif menu == "Rekam Medis / 病历":
             file_name='data_rekam_medis.csv',
             mime='text/csv',
         )
+        # --- FITUR EDIT / RENAME NAMA PASIEN ---
+        st.divider()
+        with st.expander("✏️ Edit / Rename Nama Pasien"):
+            with st.form("edit_nama_form"):
+                st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
+                
+                # Pilihan pasien berdasarkan data yang sedang tampil di tabel
+                # Format: ID | Nama (agar unik)
+                opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
+                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
+                
+                # Ambil nama lama sebagai default value
+                nama_lama = data_terpilih.split(" | ")[1]
+                id_target_edit = int(data_terpilih.split(" | ")[0])
+                
+                nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
+                
+                btn_rename = st.form_submit_button("Simpan Perubahan Nama")
+                
+                if btn_rename:
+                    if nama_baru.strip() == "":
+                        st.error("Nama tidak boleh kosong!")
+                    else:
+                        try:
+                            with get_connection() as conn:
+                                cur = conn.cursor()
+                                # Update nama di tabel pasien
+                                cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
+                                conn.commit()
+                                
+                            st.success(f"Berhasil! Nama telah diubah dari '{nama_lama}' menjadi '{nama_baru}'")
+                            st.balloons()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Gagal memperbarui nama: {e}")
 
         # --- 4. FORM UPDATE STATUS ---
         st.divider()
