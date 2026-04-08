@@ -230,17 +230,21 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 nik = st.text_input("NIK / ID Card / 身份证号 *", value=st.session_state.nik)
                 agama = st.selectbox("Agama / 宗教", ["Islam / 伊斯兰教", "Kristen / 基督教", "Hindu / 印度教", "Buddha / 佛教", "Katolik / 天主教", "Tidak Diketahui / 未知"])
                 gender = st.radio("Jenis Kelamin / 性别", ["Laki-laki / 男", "Perempuan / 女"], horizontal=True)
+            
             with col2:
                 blok_mes = st.text_input("Blok Mes dan No Kamar / 宿舍楼和房间号 *", value=st.session_state.blok_mes)
                 tgl_lahir = st.text_input("Tempat & Tanggal Lahir / 出生地点和日期 *", value=st.session_state.tgl_lahir)
                 perusahaan = st.selectbox("Perusahaan / 公司 *", opts_perusahaan)
                 dept = st.selectbox("Departemen / 部门 *", opts_dept)
                 jabatan = st.selectbox("Jabatan / 职位 *", opts_jabatan)
+            
             st.divider()
             col3, col4 = st.columns(2)
+            
             with col3:
                 alergi = st.multiselect("Jenis Alergi / 过敏类型 *", ["Makanan / 食物", "Obat / 药物", "Cuaca / 天气", "Tidak Ada / 无"])
                 gol_darah = st.selectbox("Golongan Darah / 血型", ["A", "B", "AB", "O", "-"])
+            
             with col4:
                 lokasi_mcu = st.selectbox("Lokasi MCU Pertama Kali", ["Klinik HJF", "Klinik HPAL", "Klinik Luar Obi"])
                 lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik / 具体工作地点 *", value=st.session_state.lokasi_kerja)
@@ -271,6 +275,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             with col3:
                 alergi = st.multiselect("Jenis Alergi / 过敏类型 *", ["Makanan / 食物", "Obat / 药物", "Cuaca / 天气", "Tidak Ada / 无"])
                 gol_darah = st.selectbox("Golongan Darah / 血型", ["A", "B", "AB", "O", "-"])
+            
             with col4:
                 lokasi_mcu = st.selectbox("Lokasi MCU Pertama Kali", ["Klinik HJF", "Klinik HPAL", "Klinik Luar Obi"])
                 lokasi_kerja = st.text_area("Lokasi Area Bekerja Spesifik / 具体工作地点 *", value=st.session_state.lokasi_kerja)
@@ -281,6 +286,12 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
         
         if submit_btn:
+            # 1. CEK APAKAH SUDAH PERNAH DIKLIK DALAM SESI INI (MENCEGAH DOUBLE)
+            if st.session_state.get('proses_simpan', False):
+                st.stop() # Hentikan proses jika sedang/sudah memproses pendaftaran
+            # Tandai bahwa proses sedang berjalan
+            st.session_state['proses_simpan'] = True
+            
             # SIMPAN INPUT KE MEMORI (Agar tidak hilang jika ada error)
             st.session_state.nama_lengkap = nama_lengkap
             st.session_state.nik = nik
