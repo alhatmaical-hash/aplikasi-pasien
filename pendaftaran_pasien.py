@@ -234,7 +234,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             with col2:
                 blok_mes = st.text_input("Blok Mes dan No Kamar / 宿舍楼和房间号 *", value=st.session_state.blok_mes)
                 tmpt_lahir = st.text_input("Tempat Lahir / 出生地点 *")
-                tgl_lahir = st.date_input("Tanggal Lahir / 出生日期 *", value=None, min_value=datetime(1950, 1, 1), max_value=datetime.now(), format="DD/MM/YYYY")
+                tgl_lahir_val = st.date_input("Tanggal Lahir / 出生日期 *", value=None, min_value=datetime(1950, 1, 1), max_value=datetime.now(), format="DD/MM/YYYY")
                 perusahaan = st.selectbox("Perusahaan / 公司 *", opts_perusahaan)
                 dept = st.selectbox("Departemen / 部门 *", opts_dept)
                 jabatan = st.selectbox("Jabatan / 职位 *", opts_jabatan)
@@ -267,7 +267,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             with col2:
                 blok_mes = st.text_input("Blok Mes dan No Kamar / 宿舍楼和房间号 *", value=st.session_state.blok_mes)
                 tmpt_lahir = st.text_input("Tempat Lahir / 出生地点 *")
-                tgl_lahir = st.date_input("Tanggal Lahir / 出生日期 *", value=None, min_value=datetime(1950, 1, 1), max_value=datetime.now(), format="DD/MM/YYYY")
+                tgl_lahir_val = st.date_input("Tanggal Lahir / 出生日期 *", value=None, min_value=datetime(1950, 1, 1), max_value=datetime.now(), format="DD/MM/YYYY")
                 perusahaan = st.selectbox("Perusahaan / 公司 *", opts_perusahaan)
                 dept = st.selectbox("Departemen / 部门 *", opts_dept)
                 jabatan = st.selectbox("Jabatan / 职位 *", opts_jabatan)
