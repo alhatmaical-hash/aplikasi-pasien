@@ -414,6 +414,8 @@ elif menu == "Rekam Medis / 病历":
                 return ['background-color: #ff9900; color: white'] * len(row) # Orange
             elif status == "Batas Operan & Daftar Pasien":
                 return ['background-color: #c8e6c9'] * len(row)  # Hijau Muda
+            elif status == "Batal Berobat":
+                return ['background-color: #ff4b4b; color: white'] * len(row) # Merah (Streamlit Red)
             return [''] * len(row)
 
         styled_df = df.style.apply(color_row, axis=1)
@@ -434,7 +436,7 @@ elif menu == "Rekam Medis / 病历":
         
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
-        col_k1, col_k2, col_k3, col_k4 = st.columns(4)
+        col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
         with col_k1:
             st.info("🟡 **Kuning**: Menunggu Konsul Dokter")
         with col_k2:
@@ -443,6 +445,8 @@ elif menu == "Rekam Medis / 病历":
             st.warning("🟠 **Orange**: Batas Download SKD")
         with col_k4:
             st.success("🟢 **Hijau**: Batas Operan & Daftar Pasien")
+         with col_k5:
+            st.error("🔴 Merah: Batal Berobat")
 
         # --- 3. FITUR UNDUH (CSV) ---
         csv = df.to_csv(index=False).encode('utf-8')
