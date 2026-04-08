@@ -464,10 +464,11 @@ elif menu == "Rekam Medis / 病历":
             column_config={
                 "id": None, # Sembunyikan kolom ID agar tidak berantakan
                 "WhatsApp": st.column_config.TextColumn("WhatsApp"),
-                "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal & Waktu",format="DD/MM/YYYY HH:mm:ss", # Format tampilan di layar),
+                "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal & Waktu",format="DD/MM/YYYY HH:mm:ss"),
                 "Nama Lengkap": st.column_config.TextColumn("Nama Lengkap", width="large"),
                 "status_antrian": None 
-            })
+            }
+        )
         
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
