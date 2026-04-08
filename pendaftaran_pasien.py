@@ -191,9 +191,10 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
         with get_connection() as conn:
-            tgl_hari_ini_saja = datetime.now().strftime("%Y-%m-%d")
+            tgl_hari_ini = datetime.now().strftime("%Y-%m-%d")
             # Menghitung jumlah pasien hari ini
-            res = conn.execute("SELECT COUNT(*) FROM pasien WHERE tgl_daftar=?", (tgl_hari_ini,)).fetchone()
+            query = "SELECT COUNT(*) FROM pasien WHERE tgl_daftar LIKE ?"
+            res = conn.execute(query, (f"{tgl_hari_ini}%",)).fetchone()
             jml_pasien = res[0] if res else 0
             
             # Setiap 5 pasien, ganti dokter (Round Robin)
