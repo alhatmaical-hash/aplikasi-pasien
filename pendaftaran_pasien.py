@@ -328,28 +328,31 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Menu Rekam Medis")
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
-    opts_dr_raw = get_master("Dokter")['nama'].tolist()
-    opts_dr = sorted(list(set(opts_dr_raw)))
-    
-    # Baca data dokter yang sedang aktif dari database
-    with get_connection() as conn:
-        dr_aktif_db = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)['nama_dokter'].tolist()
-
-    pilihan = st.multiselect(
-        "Pilih Dokter yang Bertugas", 
-        opts_dr, 
-        default=dr_aktif_db,
-        placeholder="Pilih dokter..."
-    )
-
-    if st.button("Simpan Jadwal Dokter"):
+        # SEMUA baris di bawah ini harus menjorok ke kanan (tambah 1 TAB / 4 SPASI)
+        opts_dr_raw = get_master("Dokter")['nama'].tolist()
+        opts_dr = sorted(list(set(opts_dr_raw)))
+        
         with get_connection() as conn:
-            conn.execute("DELETE FROM dokter_jaga_harian")
-            for dr in pilihan:
-                conn.execute("INSERT INTO dokter_jaga_harian (nama_dokter) VALUES (?)", (dr,))
-            conn.commit()
-        st.success("Jadwal Berhasil Disimpan! Sekarang bisa diakses di semua komputer.")
-        st.rerun()
+            try:
+                dr_aktif_db = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)['nama_dokter'].tolist()
+            except:
+                dr_aktif_db = []
+
+        pilihan = st.multiselect(
+            "Pilih Dokter yang Bertugas", 
+            opts_dr, 
+            default=dr_aktif_db,
+            placeholder="Pilih dokter..."
+        )
+
+        if st.button("Simpan Jadwal Dokter"):
+            with get_connection() as conn:
+                conn.execute("DELETE FROM dokter_jaga_harian")
+                for dr in pilihan:
+                    conn.execute("INSERT INTO dokter_jaga_harian (nama_dokter) VALUES (?)", (dr,))
+                conn.commit()
+            st.success("Jadwal Berhasil Disimpan!")
+            st.rerun()
 
     with get_connection() as conn:
         query = """
