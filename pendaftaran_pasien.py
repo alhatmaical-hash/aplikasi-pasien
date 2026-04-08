@@ -631,15 +631,30 @@ elif menu == "Rekam Medis / 病历":
 elif menu == "SKD / 医生证明":
     st.header("📄 Arsip SKD")
     
-    # 1. Tambah Departemen Baru
+   # 1. Tambah Departemen Baru dengan Proteksi Password
     with st.expander("➕ Tambah Folder Departemen Baru"):
+        # Input Nama Departemen
         new_f = st.text_input("Nama Departemen Baru")
+        
+        # Tambahkan Input Password di sini
+        pwd_tambah_dept = st.text_input("Masukkan Password Admin untuk Menambah", type="password", key="pwd_dept")
+        
         if st.button("Buat Folder"):
-            if new_f:
-                with get_connection() as conn:
-                    conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Departemen", new_f))
-                    conn.commit()
-                st.rerun()
+            # Cek apakah password benar
+            if pwd_tambah_dept == "admin123": # Sesuaikan dengan password Anda
+                if new_f:
+                    try:
+                        with get_connection() as conn:
+                            conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Departemen", new_f))
+                            conn.commit()
+                        st.success(f"Folder '{new_f}' berhasil dibuat!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Gagal membuat folder: {e}")
+                else:
+                    st.warning("Nama departemen tidak boleh kosong.")
+            else:
+                st.error("Sandi Admin Salah! Akses ditolak.")
 
     # 2. Filter Waktu
     daftar_bulan = [
