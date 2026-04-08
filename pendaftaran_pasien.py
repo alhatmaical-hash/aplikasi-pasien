@@ -466,14 +466,17 @@ elif menu == "Rekam Medis / 病历":
                     st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
                     st.rerun()
 
-        # --- 5. FORM HAPUS DATA (Sudah termasuk pencarian) ---
+        # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
         st.divider()
         with st.expander("🗑️ Hapus Data Pasien"):
             with st.form("hapus_pasien_form"):
                 st.warning("Hati-hati! Data yang dihapus tidak dapat dikembalikan.")
                 
-                # Nama yang muncul di sini sekarang hanya yang ada di hasil pencarian di atas
-                nama_hapus = st.selectbox("Pilih Nama Pasien yang akan dihapus", df['Nama Lengkap'].tolist())
+                # Buat list pilihan yang unik (ID - Tanggal - Nama)
+                # Ini agar kita tahu persis mana yang dihapus (misal ada 2 Alhatma di tgl berbeda)
+                pilihan_hapus = df.apply(lambda x: f"{x['id']} | {x['Tgl Daftar']} | {x['Nama Lengkap']}", axis=1).tolist()
+                
+                selected_data = st.selectbox("Pilih Data Spesifik yang akan dihapus", pilihan_hapus)
                 konfirmasi = st.checkbox(f"Saya yakin ingin menghapus data tersebut")
                 
                 btn_hapus = st.form_submit_button("Hapus Data Pasien")
@@ -481,10 +484,16 @@ elif menu == "Rekam Medis / 病历":
                 if btn_hapus:
                     if konfirmasi:
                         try:
-                            cur = conn.cursor()
-                            cur.execute("DELETE FROM pasien WHERE nama_lengkap = ?", (nama_hapus,))
-                            conn.commit()
-                            st.success(f"Data pasien '{nama_hapus}' telah berhasil dihapus.")
+                            # Ambil ID saja dari teks pilihan (angka paling depan)
+                            id_target = int(selected_data.split(" | ")[0])
+                            
+                            with get_connection() as conn:
+                                cur = conn.cursor()
+                                # HAPUS BERDASARKAN ID (Bukan Nama)
+                                cur.execute("DELETE FROM pasien WHERE id = ?", (id_target,))
+                                conn.commit()
+                                
+                            st.success(f"Data dengan ID {id_target} telah berhasil dihapus.")
                             st.rerun()
                         except Exception as e:
                             st.error(f"Gagal menghapus data: {e}")
