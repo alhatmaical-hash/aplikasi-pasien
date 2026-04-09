@@ -6,6 +6,8 @@ import io
 import plotly.express as px
 import pytz
 
+from form_generator import buat_formulir_otomatis
+
 # --- LANGKAH 0: INISIALISASI (TARUH PALING ATAS SETELAH IMPORT) ---
 # Ini harus ada supaya komputer lain tidak bingung mencari variabelnya
 keys_to_init = ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']
@@ -556,6 +558,54 @@ elif menu == "Rekam Medis / 病历":
                     conn.commit()
                     st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
                     st.rerun()
+        # --- 5. FITUR CETAK FORMULIR OTOMATIS (TEMPEL DI SINI) ---
+        st.divider()
+        with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
+            st.info("Pilih pasien untuk membuat formulir pendaftaran otomatis (PDF/Gambar) lengkap dengan tanda tangan.")
+            
+            # Form untuk memilih pasien dan petugas yang bertanda tangan
+            with st.form("cetak_form_pendaftaran"):
+                # Pilih pasien dari data yang ada
+                nama_p_cetak = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist(), key="pilih_pasien_cetak")
+                
+                # Pilih petugas (sesuai gambar tanda tangan yang Anda punya)
+                petugas = st.selectbox("Pilih Petugas yang Bertanda Tangan", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
+                
+                btn_cetak = st.form_submit_button("Buat Formulir Sekarang")
+                
+                if btn_cetak:
+                    # 1. Ambil data lengkap pasien tersebut dari DataFrame
+                    row_pasien = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
+                    
+                    # 2. Susun data sesuai kebutuhan form_generator.py
+                    data_pasien = {
+                        "nama": row_pasien['Nama Lengkap'],
+                        "tempat_lahir": row_pasien['TTL'],
+                        "perusahaan": row_pasien['Perusahaan'],
+                        "nik": row_pasien['NIK/ID'],
+                        "departemen": row_pasien['Departemen'],
+                        "jabatan": row_pasien['Jabatan'],
+                        "blok_mes": row_pasien['Blok/Kamar'],
+                        "lokasi_kerja": row_pasien['Area Kerja']
+                    }
+                    
+                    # 3. Panggil fungsi dari form_generator.py
+                    try:
+                        # Ini memanggil file form_generator.py yang Anda buat sebelumnya
+                        nama_hasil = buat_formulir_otomatis(data_pasien, petugas)
+                        
+                        st.success(f"✅ Formulir untuk {nama_p_cetak} berhasil dibuat!")
+                        
+                        # Tampilkan tombol download jika file berhasil dibuat
+                        with open(nama_hasil, "rb") as file:
+                            st.download_button(
+                                label="⬇️ Download Hasil Formulir",
+                                data=file,
+                                file_name=nama_hasil,
+                                mime="image/png"
+                            )
+                    except Exception as e:
+                        st.error(f"Gagal mencetak: Pastikan file 'template_form.png' dan 'sig_{petugas.lower()}.png' sudah ada di folder.")
 
         # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
         st.divider()
