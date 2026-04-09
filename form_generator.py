@@ -3,8 +3,7 @@ import os
 from datetime import datetime
 
 def buat_formulir_otomatis(data, petugas):
-    # Fungsi clean untuk memastikan karakter Mandarin tidak merusak proses PDF
-    # Karakter Mandarin akan otomatis diabaikan oleh font Helvetica agar tidak error
+    # Fungsi clean untuk menghindari error karakter non-latin pada font helvetica
     def clean(text):
         if not text: return "-"
         return str(text).encode('ascii', 'ignore').decode('ascii')
@@ -15,10 +14,8 @@ def buat_formulir_otomatis(data, petugas):
     # --- KOP FORMULIR ---
     pdf.set_line_width(0.3)
     margin_x, kop_y = 10, 10
-    # Kotak Kop Kiri
     pdf.rect(margin_x, kop_y, 90, 32) 
     
-    # --- LOGO & TEKS KOP ---
     def cari_logo(nama_dasar):
         for ext in ['.jpg', '.png', '.jpeg', '.JPG', '.PNG']:
             path = nama_dasar + ext
@@ -27,7 +24,7 @@ def buat_formulir_otomatis(data, petugas):
 
     path_harita, path_hjf, path_smk3 = cari_logo("harita"), cari_logo("hjf"), cari_logo("smk3")
     if path_harita: pdf.image(path_harita, x=12, y=13, h=10)
-    if path_hjf:    pdf.image(path_hjf, x=21, y=13, h=10) # HJF merapat ke Harita
+    if path_hjf:    pdf.image(path_hjf, x=21, y=13, h=10) 
     
     pdf.set_font("helvetica", "B", 10)
     pdf.set_xy(33, 13)
@@ -49,23 +46,22 @@ def buat_formulir_otomatis(data, petugas):
         pdf.cell(25, 8, h[0], border=1)
         pdf.cell(75, 8, h[1], border=1, ln=True, align="C")
 
-    # --- JUDUL & NO REKAM MEDIS (STRUKTUR TERPISAH) ---
+    # --- JUDUL & NO REKAM MEDIS ---
     pdf.ln(2)
     pdf.set_line_width(0.5)
     
-    # Baris Judul Bilingual
+    # Baris Judul
     pdf.set_font("helvetica", "B", 11)
     pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN / ", border=1, ln=True, align="C")
     
-    # Baris No Rekam Medis (Top Align & Kosong)
+    # Baris No Rekam Medis - SEKARANG ALIGN LEFT
     pdf.set_font("helvetica", "B", 10)
-    pdf.cell(190, 8, "No. Rekam Medis / :               ", border=1, ln=True, align="R")
+    pdf.cell(190, 8, " No. Rekam Medis / :", border=1, ln=True, align="L")
 
-    # --- IDENTITAS PASIEN BILINGUAL ---
+    # --- IDENTITAS PASIEN ---
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(190, 8, " IDENTITAS PASIEN / ( bagian ini harus lengkap / )", border=1, ln=True)
 
-    # Label Indonesia (Mandarin dihapus otomatis oleh clean() agar tidak error)
     labels = [
         "NAMA LENGKAP / ", "TEMPAT LAHIR / ", "TANGGAL LAHIR / ", 
         "JENIS KELAMIN / ", "AGAMA / ", "NO HP (WA) / ", 
@@ -103,17 +99,13 @@ def buat_formulir_otomatis(data, petugas):
     pdf.cell(93, 5, "Petugas Penerimaan / ", align="C")
     pdf.cell(93, 5, "Pasien / Keluarga / ", align="C", ln=True)
 
-    path_ttd = cari_logo(f"sig_{petugas.lower()}")
-    if path_ttd:
-        pdf.image(path_ttd, x=37, y=pdf.get_y() + 5, h=16)
-
     pdf.ln(35)
     pdf.set_x(12)
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(93, 5, f"( {clean(petugas).upper()} )", align="C")
     pdf.cell(93, 5, "( ............................ )", align="C", ln=True)
     
-    # Garis akhir
+    # Garis penutup bawah
     pdf.line(10, pdf.get_y() + 1, 200, pdf.get_y() + 1)
 
     return bytes(pdf.output())
