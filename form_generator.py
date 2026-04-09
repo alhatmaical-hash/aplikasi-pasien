@@ -3,32 +3,38 @@ import os
 from datetime import datetime
 
 def buat_formulir_otomatis(data, petugas):
-    # 1. Inisialisasi PDF (Ukuran A4)
+    # 1. Gunakan FPDF (Mendukung Unicode secara default di fpdf2)
     pdf = FPDF(orientation='P', unit='mm', format='A4')
+    
+    # 2. Tambahkan Font Unicode (Sangat Penting!)
+    # Kita coba pakai font DejaVu atau Arial jika ada file .ttf di folder Anda.
+    # Jika tidak ada, kita gunakan 'helvetica' tapi karakter Mandarin akan di-skip agar tidak error.
+    try:
+        # Jika Anda punya file font .ttf di github, masukkan di sini:
+        # pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+        # pdf.set_font('DejaVu', '', 12)
+        pdf.set_fallback_fonts(["helvetica"]) # Pencegah error jika karakter tidak dikenal
+    except:
+        pass
+
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    # 2. Membuat Kop Formulir (Garis Luar)
+    
+    # 3. Kop Formulir
     pdf.set_line_width(1)
-    pdf.rect(10, 10, 190, 40) # Kotak Kop
+    pdf.rect(10, 10, 190, 40) 
 
-    # 3. Memasukkan Logo (Pastikan file .jpg ada di folder utama)
-    if os.path.exists("harita.jpg"):
-        pdf.image("harita.jpg", x=12, y=12, h=25)
-    if os.path.exists("hjf.jpg"):
-        pdf.image("hjf.jpg", x=45, y=12, h=25)
-    if os.path.exists("smk3.jpg"):
-        pdf.image("smk3.jpg", x=165, y=12, h=25)
+    if os.path.exists("harita.jpg"): pdf.image("harita.jpg", x=12, y=12, h=25)
+    if os.path.exists("hjf.jpg"): pdf.image("hjf.jpg", x=45, y=12, h=25)
+    if os.path.exists("smk3.jpg"): pdf.image("smk3.jpg", x=165, y=12, h=25)
 
-    # 4. Judul Kop (Besar & Bold)
-    pdf.set_font("Times", "B", 18)
+    pdf.set_font("helvetica", "B", 18) # Gunakan helvetica sebagai pengganti times agar lebih aman
     pdf.set_xy(10, 18)
     pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN", ln=True, align="C")
-    pdf.set_font("Times", "B", 16)
+    pdf.set_font("helvetica", "B", 16)
     pdf.cell(190, 10, "KLINIK HARITA FERONICKEL OBI", ln=True, align="C")
 
-    # 5. Tabel Data Pasien (Tulisan Ukuran 12 - Sangat Jelas)
-    pdf.ln(15) # Jarak ke tabel
+    # 4. Tabel Data (Bersihkan karakter non-latin agar tidak error)
+    pdf.ln(15)
     
     labels = [
         "NAMA LENGKAP", "TEMPAT LAHIR", "TANGGAL LAHIR", "JENIS KELAMIN", 
@@ -37,49 +43,51 @@ def buat_formulir_otomatis(data, petugas):
         "LOKASI KERJA", "GOLONGAN DARAH"
     ]
     
+    # Fungsi pembersih karakter Mandarin agar PDF tidak crash
+    def clean_text(text):
+        if not text: return "-"
+        return str(text).encode('ascii', 'ignore').decode('ascii')
+
     val = [
-        data.get('nama','-'), data.get('tempat_lahir','-'), data.get('tgl_lahir','-'),
-        data.get('gender','-'), data.get('agama','-'), data.get('no_hp','-'),
-        data.get('nik','-'), data.get('perusahaan','-'), data.get('departemen','-'),
-        data.get('jabatan','-'), data.get('blok_mes','-'), data.get('alergi','-'),
-        data.get('lokasi_kerja','-'), data.get('gol_darah','-')
+        clean_text(data.get('nama')), clean_text(data.get('tempat_lahir')), 
+        clean_text(data.get('tgl_lahir')), clean_text(data.get('gender')),
+        clean_text(data.get('agama')), clean_text(data.get('no_hp')),
+        clean_text(data.get('nik')), clean_text(data.get('perusahaan')),
+        clean_text(data.get('departemen')), clean_text(data.get('jabatan')),
+        clean_text(data.get('blok_mes')), clean_text(data.get('alergi')),
+        clean_text(data.get('lokasi_kerja')), clean_text(data.get('gol_darah'))
     ]
 
-    pdf.set_font("Times", "", 12)
     for i in range(len(labels)):
-        pdf.set_font("Times", "B", 12)
-        pdf.cell(60, 10, labels[i], border=1) # Kolom Label
-        pdf.set_font("Times", "", 12)
-        pdf.cell(130, 10, f": {val[i]}", border=1, ln=True) # Kolom Isi
+        pdf.set_font("helvetica", "B", 11)
+        pdf.cell(60, 10, labels[i], border=1)
+        pdf.set_font("helvetica", "", 11)
+        pdf.cell(130, 10, f": {val[i]}", border=1, ln=True)
 
-    # 6. Surat Pernyataan
+    # 5. Surat Pernyataan
     pdf.ln(10)
-    pdf.set_font("Times", "B", 12)
-    pdf.cell(190, 10, "SURAT PERNYATAAN", ln=True, align="L")
-    pdf.set_font("Times", "", 11)
+    pdf.set_font("helvetica", "B", 11)
+    pdf.cell(190, 10, "SURAT PERNYATAAN", ln=True)
+    pdf.set_font("helvetica", "", 10)
     pernyataan = ("Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan "
                   "dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
     pdf.multi_cell(190, 7, pernyataan)
 
-    # 7. Tanda Tangan
-    pdf.ln(15)
+    # 6. Tanda Tangan
+    pdf.ln(10)
     tgl_skrg = f"Kawasi, {datetime.now().strftime('%d %B %Y')}"
-    pdf.cell(100, 10, "", ln=False)
-    pdf.cell(90, 10, tgl_skrg, ln=True, align="C")
-    
     pdf.cell(95, 10, "Petugas Penerimaan,", align="C")
-    pdf.cell(95, 10, "Pasien / Keluarga,", align="C", ln=True)
-
-    # Tempel Tanda Tangan Digital (Jika ada)
+    pdf.cell(95, 10, tgl_skrg, ln=True, align="C")
+    
+    pdf.ln(2)
     y_ttd = pdf.get_y()
     path_ttd = f"sig_{petugas.lower()}.png"
     if os.path.exists(path_ttd):
         pdf.image(path_ttd, x=35, y=y_ttd, h=20)
 
-    pdf.ln(25)
-    pdf.set_font("Times", "B", 12)
-    pdf.cell(95, 10, f"( {petugas} )", align="C")
+    pdf.ln(20)
+    pdf.set_font("helvetica", "B", 11)
+    pdf.cell(95, 10, f"( {clean_text(petugas)} )", align="C")
     pdf.cell(95, 10, "( ............................ )", align="C", ln=True)
 
-    # 8. Output sebagai Byte (Bisa langsung diprint di browser)
     return pdf.output()
