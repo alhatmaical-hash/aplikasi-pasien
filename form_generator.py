@@ -90,21 +90,38 @@ def buat_formulir_otomatis(data, petugas):
     pdf.set_x(12)
     pdf.multi_cell(186, 5, "Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
 
-    # --- TANDA TANGAN ---
+   # --- TANDA TANGAN ---
     pdf.ln(15)
     pdf.cell(186, 5, f"Kawasi, {datetime.now().strftime('%d %B %Y')}", ln=True, align="R")
+    
+    # Simpan posisi Y sebelum menggambar TTD agar bisa kembali ke baris yang sama
+    y_ttd_start = pdf.get_y()
     
     pdf.set_x(12)
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(93, 5, "Petugas Penerimaan / ", align="C")
     pdf.cell(93, 5, "Pasien / Keluarga / ", align="C", ln=True)
 
-    pdf.ln(35)
+    # --- INPUT GAMBAR TTD DI SINI ---
+    # Ganti 'path_ttd_petugas' dan 'path_ttd_pasien' dengan variabel path file Anda
+    path_ttd_petugas = "ttd_petugas.png" 
+    path_ttd_pasien = "ttd_pasien.png"
+
+    if os.path.exists(path_ttd_petugas):
+        # x=35 disesuaikan agar pas di tengah kolom kiri
+        pdf.image(path_ttd_petugas, x=35, y=y_ttd_start + 10, h=20) 
+    
+    if os.path.exists(path_ttd_pasien):
+        # x=130 disesuaikan agar pas di tengah kolom kanan
+        pdf.image(path_ttd_pasien, x=130, y=y_ttd_start + 10, h=20)
+
+    # Loncati ruang TTD agar nama di bawah tidak tertimpa
+    pdf.ln(25) 
+    
     pdf.set_x(12)
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(93, 5, f"( {clean(petugas).upper()} )", align="C")
-    pdf.cell(93, 5, "( ............................ )", align="C", ln=True)
-    
+    pdf.cell(93, 5, f"( {clean(data.get('nama')).upper()} )", align="C", ln=True)
     # Garis penutup bawah
     pdf.line(10, pdf.get_y() + 1, 200, pdf.get_y() + 1)
 
