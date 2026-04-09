@@ -610,40 +610,44 @@ elif menu == "Rekam Medis / 病历":
                         file_name=hasil_cetak,
                         mime="image/png"
                     )
-        # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
+       # --- 5. FITUR CETAK FORMULIR OTOMATIS (VERSI BARU) ---
         st.divider()
-        with st.expander("🗑️ Hapus Data Pasien"):
-            with st.form("hapus_pasien_form"):
-                st.warning("Hati-hati! Data yang dihapus tidak dapat dikembalikan.")
-                
-                # Buat list pilihan yang unik (ID - Tanggal - Nama)
-                # Ini agar kita tahu persis mana yang dihapus (misal ada 2 Alhatma di tgl berbeda)
-                pilihan_hapus = df.apply(lambda x: f"{x['id']} | {x['Tgl Daftar']} | {x['Nama Lengkap']}", axis=1).tolist()
-                
-                selected_data = st.selectbox("Pilih Data Spesifik yang akan dihapus", pilihan_hapus)
-                konfirmasi = st.checkbox(f"Saya yakin ingin menghapus data tersebut")
-                
-                btn_hapus = st.form_submit_button("Hapus Data Pasien")
-                
-                if btn_hapus:
-                    if konfirmasi:
-                        try:
-                            # Ambil ID saja dari teks pilihan (angka paling depan)
-                            id_target = int(selected_data.split(" | ")[0])
-                            
-                            with get_connection() as conn:
-                                cur = conn.cursor()
-                                # HAPUS BERDASARKAN ID (Bukan Nama)
-                                cur.execute("DELETE FROM pasien WHERE id = ?", (id_target,))
-                                conn.commit()
-                                
-                            st.success(f"Data dengan ID {id_target} telah berhasil dihapus.")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Gagal menghapus data: {e}")
-                    else:
-                        st.error("Silakan centang kotak konfirmasi sebelum menghapus.")
+        with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
+            st.info("Pilih pasien untuk membuat formulir otomatis dari data rekam medis.")
+            hasil_cetak = None
+    
+            with st.form("cetak_form_pendaftaran"):
+                nama_p_cetak = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist())
+                petugas = st.selectbox("Pilih Petugas", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
+                btn_cetak = st.form_submit_button("Buat Formulir Sekarang")
+        
+                if btn_cetak:
+                    try:
+                        row = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
+                        data_pasien = {
+                            "nama": row['Nama Lengkap'],
+                            "tempat_lahir": row['TTL'],
+                            "perusahaan": row['Perusahaan'],
+                            "nik": row['NIK/ID'],
+                            "departemen": row['Departemen'],
+                            "jabatan": row['Jabatan'],
+                            "lokasi_kerja": row['Area Kerja'],
+                            "blok_mes": row['Blok/Kamar']
+                        }
+                        hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
+                    except Exception as e:
+                        st.error(f"Terjadi kesalahan saat mengambil data: {e}")
 
+            if hasil_cetak:
+                st.success(f"✅ Formulir untuk {nama_p_cetak} berhasil dibuat!")
+                st.image(hasil_cetak, caption="Preview Formulir Baru", use_container_width=True)
+                with open(hasil_cetak, "rb") as file:
+                    st.download_button(
+                        label="⬇️ Download & Cetak Formulir",
+                        data=file,
+                        file_name=hasil_cetak,
+                        mime="image/png"
+                    )
         # --- 6. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
         st.divider()
         with st.expander("🚨 Hapus Seluruh Database (Admin Only)"):
