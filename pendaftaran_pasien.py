@@ -587,10 +587,10 @@ elif menu == "Rekam Medis / 病历":
                             "jabatan": row['Jabatan'],
                             "lokasi_kerja": row['Area Kerja'],
                             "blok_mes": row['Blok/Kamar']
-                         }
+                        }
                 
-                         # 3. Panggil fungsi generator (Sekarang membuat kertas putih baru)
-                          hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
+                        # 3. Baris ini sekarang sudah sejajar sempurna dengan data_pasien
+                        hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
                 
                     except Exception as e:
                         st.error(f"Terjadi kesalahan saat mengambil data: {e}")
