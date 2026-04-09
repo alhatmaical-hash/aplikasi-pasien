@@ -2,168 +2,96 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 from datetime import datetime
 
-# Definisi Warna
 WARNA_HITAM = (0, 0, 0)
 WARNA_PUTIH = (255, 255, 255)
 
 def buat_formulir_otomatis(data, petugas):
-    # --- LANGKAH 1: Buat Kertas Putih Ukuran A4 ---
-    # Ukuran A4 standar 300 DPI adalah 2480x3508 pixel
+    # --- 1. Kertas A4 (300 DPI) ---
     width, height = 2480, 3508
     template = Image.new('RGB', (width, height), color=WARNA_PUTIH)
     draw = ImageDraw.Draw(template)
     
-    # --- LANGKAH 2: Atur Font Times New Roman ---
+    # --- 2. Pengaturan Font (Skala Besar) ---
     try:
-        # Mencoba memanggil font sistem. Jika error, gunakan font default
-        # Pastikan file arial.ttf/times.ttf ada di sistem server (biasanya ada)
-        path_font_bold = "timesbd.ttf"  # Times New Roman Bold
-        path_font_reg = "times.ttf"   # Times New Roman Regular
+        path_font_bold = "timesbd.ttf" if os.path.exists("timesbd.ttf") else "arialbd.ttf"
+        path_font_reg = "times.ttf" if os.path.exists("times.ttf") else "arial.ttf"
         
-        # Peringatan: Streamlit Cloud terkadang tidak memiliki Times New Roman default.
-        # Jika error, kode akan menggunakan Arial Bold yang ukurannya mirip.
-        if not os.path.exists(path_font_bold): path_font_bold = "arialbd.ttf"
-        if not os.path.exists(path_font_reg): path_font_reg = "arial.ttf"
-
-        # Ukuran 18pt Bold untuk Kop, Ukuran 12pt Regular untuk Isi
-        font_kop = ImageFont.truetype(path_font_bold, 18 * 4) # Perlu dikali 4 agar ukuran px pas
-        font_isi = ImageFont.truetype(path_font_reg, 12 * 4) 
+        font_kop = ImageFont.truetype(path_font_bold, 80)   # Sangat Besar untuk Kop
+        font_isi_bold = ImageFont.truetype(path_font_bold, 50) # Untuk Label
+        font_isi = ImageFont.truetype(path_font_reg, 50)      # Untuk Data
+        font_pernyataan = ImageFont.truetype(path_font_reg, 45)
     except:
         font_kop = font_isi = ImageFont.load_default()
 
-    # --- LANGKAH 3: Membuat Kop Formulir ---
-    margin_kop = 80
-    tinggi_kop = 400
-    kotak_kop = [margin_kop, 80, width - margin_kop, tinggi_kop]
-    draw.rectangle(kotak_kop, outline=WARNA_HITAM, width=4)
+    # --- 3. Kop Formulir ---
+    margin = 150
+    draw.rectangle([margin, 100, width - margin, 500], outline=WARNA_HITAM, width=8)
     
-    # Teks Kop (Center Aligned)
-    text_kop1 = "FORMULIR PENDAFTARAN PASIEN"
-    text_kop2 = "KLINIK HARITA FERONICKEL OBI"
-    
-    # Hitung posisi X agar center
-    w1 = draw.textlength(text_kop1, font=font_kop)
-    w2 = draw.textlength(text_kop2, font=font_kop)
-    
-    draw.text(((width - w1)/2, tinggi_kop/2 - 50), text_kop1, fill=WARNA_HITAM, font=font_kop)
-    draw.text(((width - w2)/2, tinggi_kop/2 + 30), text_kop2, fill=WARNA_HITAM, font=font_kop)
+    t1, t2 = "FORMULIR PENDAFTARAN PASIEN", "KLINIK HARITA FERONICKEL OBI"
+    draw.text(((width - draw.textlength(t1, font=font_kop))/2, 180), t1, fill=WARNA_HITAM, font=font_kop)
+    draw.text(((width - draw.textlength(t2, font=font_kop))/2, 300), t2, fill=WARNA_HITAM, font=font_kop)
 
-    # --- LANGKAH 4: Menempel Ketiga Logo ---
-    y_logo = tinggi_kop/2 - 60
+    # --- 4. Penempelan Logo (Ukuran Besar) ---
+    def paste_logo(path, pos, size=(350, 250)):
+        if os.path.exists(path):
+            img = Image.open(path).convert("RGBA")
+            img = img.resize(size, Image.Resampling.LANCZOS)
+            template.paste(img, pos, img)
+
+    paste_logo("harita.jpg", (margin + 40, 150))    # Kiri 1
+    paste_logo("hjf.jpg", (margin + 420, 150))      # Kiri 2
+    paste_logo("smk3.jpg", (width - margin - 380, 150)) # Kanan
+
+    # --- 5. Tabel Data Pasien ---
+    y_table = 600
+    baris_h = 140
+    col_split = 900 # Jarak label ke titik dua
     
-    # Logo 1: Harita Group (Kiri)
-    if os.path.exists("image_8.png"):
-        logo8 = Image.open("image_8.png").convert("RGBA")
-        logo8 = logo8.resize((220, 160))
-        template.paste(logo8, (margin_kop + 50, int(y_logo)), logo8)
-
-    # Logo 2: HJF (Center Kiri)
-    if os.path.exists("image_6.png"):
-        logo6 = Image.open("image_6.png").convert("RGBA")
-        logo6 = logo6.resize((200, 160))
-        template.paste(logo6, (margin_kop + 320, int(y_logo)), logo6)
-
-    # Logo 3: SMK3 (Kanan - Sesuai Instruksi Baru)
-    if os.path.exists("image_7.png"):
-        logo7 = Image.open("image_7.png").convert("RGBA")
-        logo7 = logo7.resize((220, 160))
-        template.paste(logo7, (width - margin_kop - 270, int(y_logo)), logo7)
-
-    # --- LANGKAH 5: Membuat Tabel Data Pasien (14 Kolom) ---
-    y_start_table = tinggi_kop + 100
-    tinggi_baris = 120
-    x_split_label = 20 # Jarak label dari garis kiri
-    x_split_data = 800  # Posisi Titik Dua dan Isi Data
-    
-    headers = [
-        "NAMA LENGKAP",
-        "TEMPAT LAHIR",
-        "TANGGAL LAHIR (DD/MM/YYYY)",
-        "JENIS KELAMIN",
-        "AGAMA",
-        "NO HP (WHATSAPP)",
-        "NIK / ID CARD",
-        "PERUSAHAAN / COMPANY",
-        "DEPARTEMEN",
-        "JABATAN",
-        "MES DAN NO KAMAR",
-        "RIWAYAT ALERGI",
-        "AREA LOKASI BEKERJA SPESIFIK",
-        "GOLONGAN DARAH"
+    labels = [
+        "NAMA LENGKAP", "TEMPAT LAHIR", "TANGGAL LAHIR", "JENIS KELAMIN", 
+        "AGAMA", "NO HP (WHATSAPP)", "NIK / ID CARD", "PERUSAHAAN", 
+        "DEPARTEMEN", "JABATAN", "MES / NO KAMAR", "RIWAYAT ALERGI", 
+        "LOKASI KERJA", "GOLONGAN DARAH"
     ]
     
-    # Mapping Data Pasien dari database ke Formulir
-    isi_data = [
-        data.get('nama', '-'),
-        data.get('tempat_lahir', '-'),
-        data.get('tgl_lahir', '-'),
-        data.get('gender', '-'),
-        data.get('agama', '-'),
-        data.get('no_hp', '-'),
-        data.get('nik', '-'),
-        data.get('perusahaan', '-'),
-        data.get('departemen', '-'),
-        data.get('jabatan', '-'),
-        data.get('blok_mes', '-'),
-        data.get('alergi', '-'),
-        data.get('lokasi_kerja', '-'),
-        data.get('gol_darah', '-')
+    val = [
+        data.get('nama','-'), data.get('tempat_lahir','-'), data.get('tgl_lahir','-'),
+        data.get('gender','-'), data.get('agama','-'), data.get('no_hp','-'),
+        data.get('nik','-'), data.get('perusahaan','-'), data.get('departemen','-'),
+        data.get('jabatan','-'), data.get('blok_mes','-'), data.get('alergi','-'),
+        data.get('lokasi_kerja','-'), data.get('gol_darah','-')
     ]
 
-    for i, label in enumerate(headers):
-        y_pos = y_start_table + (i * tinggi_baris)
-        
-        # Gambar Kotak Baris
-        draw.rectangle([margin_kop, y_pos, width - margin_kop, y_pos + tinggi_baris], outline=WARNA_HITAM, width=2)
-        
-        # Tulis Label (X+20)
-        draw.text((margin_kop + x_split_label, y_pos + tinggi_baris/2 - 30), label, fill=WARNA_HITAM, font=font_isi)
-        
-        # Tulis Titik Dua dan Isi Data (X+800)
-        draw.text((margin_kop + x_split_data, y_pos + tinggi_baris/2 - 30), f":  {isi_data[i]}", fill=WARNA_HITAM, font=font_isi)
+    for i in range(len(labels)):
+        curr_y = y_table + (i * baris_h)
+        draw.rectangle([margin, curr_y, width - margin, curr_y + baris_h], outline=WARNA_HITAM, width=4)
+        draw.text((margin + 40, curr_y + 40), labels[i], fill=WARNA_HITAM, font=font_isi_bold)
+        draw.text((margin + col_split, curr_y + 40), f":  {val[i]}", fill=WARNA_HITAM, font=font_isi)
 
-    # --- LANGKAH 6: Membuat Surat Pernyataan ---
-    y_pernyataan = y_pos + tinggi_baris + 150
-    header_pernyataan = "SURAT PERNYATAAN"
-    w_per = draw.textlength(header_pernyataan, font=font_isi)
-    # Gunakan text_header = font_isi agar ukuran sama, tapi tambahkan manual bold di header
-    draw.text(((width - w_per)/2, y_pernyataan), header_pernyataan, fill=WARNA_HITAM, font=font_kop)
-    
-    pernyataan_isi = ("Dengan ini saya menyatakan setuju untuk di lakukan pemeriksaan dan tindakan yang diperlukan "
-                    "dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
-    
-    # Gunakan fungsi text_wrap jika kalimat terlalu panjang (optional)
-    draw.text((margin_kop + 50, y_pernyataan + 120), pernyataan_isi, fill=WARNA_HITAM, font=font_isi)
+    # --- 6. Pernyataan & Tanda Tangan ---
+    y_sign = curr_y + baris_h + 150
+    p_txt = ("Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan\n"
+             "dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
+    draw.text((margin + 40, y_sign), "SURAT PERNYATAAN:", fill=WARNA_HITAM, font=font_isi_bold)
+    draw.text((margin + 40, y_sign + 80), p_txt, fill=WARNA_HITAM, font=font_pernyataan)
 
-    # --- LANGKAH 7: Bagian Tanda Tangan ---
-    y_ttd = y_pernyataan + 350
-    tgl_skrg = datetime.now().strftime("%d %B %Y")
+    # Tanda Tangan
+    y_bottom = y_sign + 450
+    tgl_str = f"Kawasi, {datetime.now().strftime('%d %B %Y')}"
+    draw.text((width - margin - 600, y_bottom), tgl_str, fill=WARNA_HITAM, font=font_isi)
     
-    # Tanggal Otomatis di Kanan
-    text_tgl = f"Kawasi, {tgl_skrg}"
-    w_tgl = draw.textlength(text_tgl, font=font_isi)
-    draw.text((width - margin_kop - w_tgl - 100, y_ttd), text_tgl, fill=WARNA_HITAM, font=font_isi)
-    
-    # Header Petugas/Pasien
-    draw.text((margin_kop + 150, y_ttd + 80), "Petugas Penerimaan Pasien", fill=WARNA_HITAM, font=font_isi)
-    draw.text((width - margin_kop - w_tgl - 200, y_ttd + 80), "Pasien/Penanggung Jawab", fill=WARNA_HITAM, font=font_isi)
+    draw.text((margin + 100, y_bottom + 100), "Petugas Penerimaan,", fill=WARNA_HITAM, font=font_isi)
+    draw.text((width - margin - 600, y_bottom + 100), "Pasien / Keluarga,", fill=WARNA_HITAM, font=font_isi)
 
-    # --- LANGKAH 8: Tempel Tanda Tangan Petugas secara Otomatis ---
-    petugas_low = petugas.lower()
-    if petugas_low == "deli": petugas_low = "ladeli"
-    path_ttd = f"sig_{petugas_low}.png" # Menggunakan file yang sudah Anda upload
-
+    # TTD Petugas Otomatis
+    path_ttd = f"sig_{petugas.lower()}.png"
     if os.path.exists(path_ttd):
-        sig_img = Image.open(path_ttd).convert("RGBA")
-        sig_img = sig_img.resize((250, 160)) # Ukuran disesuaikan A4
-        template.paste(sig_img, (margin_kop + 180, y_ttd + 160), sig_img)
-    
-    # Nama Petugas/Pasien
-    draw.text((margin_kop + 150, y_ttd + 350), f"( {petugas} )", fill=WARNA_HITAM, font=font_isi)
-    draw.text((width - margin_kop - w_tgl - 200, y_ttd + 350), "( .................................... )", fill=WARNA_HITAM, font=font_isi)
+        ttd = Image.open(path_ttd).convert("RGBA").resize((400, 250))
+        template.paste(ttd, (margin + 100, y_bottom + 200), ttd)
 
-    # --- LANGKAH 9: Simpan File ---
-    nama_bersih = data.get('nama', 'Pasien').replace(' ', '_')
-    nama_file_hasil = f"Form_Pendaftaran_{nama_bersih}.png"
-    template.save(nama_file_hasil)
-    return nama_file_hasil
+    draw.text((margin + 100, y_bottom + 450), f"( {petugas} )", fill=WARNA_HITAM, font=font_isi_bold)
+    draw.text((width - margin - 600, y_bottom + 450), "( ............................ )", fill=WARNA_HITAM, font=font_isi)
+
+    fname = f"Form_{data.get('nama','pasien').replace(' ','_')}.png"
+    template.save(fname)
+    return fname
