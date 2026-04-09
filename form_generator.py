@@ -1,37 +1,46 @@
 from PIL import Image, ImageDraw, ImageFont
+import os
 
-def buat_formulir_otomatis(data_pasien, nama_petugas):
+def buat_formulir_otomatis(data, petugas):
+    # 1. Buka Template
+    template = Image.open('template_form.png')
+    draw = ImageDraw.Draw(template)
+    
+    # 2. Atur Font (Pastikan file arial.ttf tersedia atau gunakan default)
     try:
-        # 1. Buka template (pastikan file ini ada di GitHub kamu)
-        img = Image.open("template_form.png")
-        draw = ImageDraw.Draw(img)
-        
-        # Sumbu X (jarak dari kiri) biasanya sama untuk semua titik dua (:)
-        x_titik = 530 
-        
-        # 2. Tulis data ke formulir (Sumbu Y/Tinggi diatur agar pas di kotak)
-        draw.text((x_titik, 255), f": {data_pasien['nama']}", fill="black")
-        draw.text((x_titik, 285), f": {data_pasien['tempat_lahir']}", fill="black")
-        draw.text((x_titik, 445), f": {data_pasien['nik']}", fill="black")
-        draw.text((x_titik, 475), f": {data_pasien['perusahaan']}", fill="black")
-        draw.text((x_titik, 505), f": {data_pasien['departemen']}", fill="black")
-        draw.text((x_titik, 535), f": {data_pasien['jabatan']}", fill="black")
-        draw.text((x_titik, 565), f": {data_pasien['blok_mes']}", fill="black")
-        draw.text((x_titik, 655), f": {data_pasien['lokasi_kerja']}", fill="black")
+        font_data = ImageFont.truetype("arial.ttf", 22)  # Ukuran untuk isi data
+        font_header = ImageFont.truetype("arial.ttf", 18) # Ukuran sedikit kecil jika perlu
+    except:
+        font_data = ImageFont.load_default()
 
-        # 3. Tempelkan Tanda Tangan Petugas
-        # Kode akan mencari file seperti sig_taufik.png atau sig_wawan.png
-        path_ttd = f"sig_{nama_petugas.lower()}.png" 
-        ttd = Image.open(path_ttd).convert("RGBA")
-        ttd = ttd.resize((180, 110)) # Ukuran disesuaikan agar pas di kotak TTD
-        
-        # Tempel di area Petugas Penerimaan Pasien (Koordinat X=200, Y=880)
-        img.paste(ttd, (200, 880), ttd)
-        
-        # 4. Simpan hasil sementara
-        nama_file_hasil = f"Form_Pendaftaran_{data_pasien['nama'].replace(' ', '_')}.png"
-        img.save(nama_file_hasil)
-        return nama_file_hasil
-        
-    except Exception as e:
-        return f"Gagal membuat form: {e}"
+    # 3. Masukkan Data Pasien ke Koordinat (X, Y)
+    # Anda perlu mencoba (trial and error) angka ini agar pas di kotak
+    draw.text((450, 265), data['nama'], fill="black", font=font_data)
+    draw.text((450, 305), data['tempat_lahir'], fill="black", font=font_data)
+    draw.text((450, 425), data['perusahaan'], fill="black", font=font_data)
+    draw.text((450, 465), data['departemen'], fill="black", font=font_data)
+    draw.text((450, 505), data['jabatan'], fill="black", font=font_data)
+    draw.text((450, 545), data['blok_mes'], fill="black", font=font_data)
+    draw.text((450, 625), data['lokasi_kerja'], fill="black", font=font_data)
+    
+    # 4. Tambahkan Tanggal Otomatis di bawah Surat Pernyataan
+    from datetime import datetime
+    tgl_sekarang = datetime.now().strftime("%d %B %Y")
+    draw.text((800, 780), f"Kawasi, {tgl_sekarang}", fill="black", font=font_data)
+
+    # 5. Tempel Tanda Tangan Petugas
+    petugas_low = petugas.lower()
+    if petugas_low == "deli": petugas_low = "ladeli"
+    
+    path_ttd = f"sig_{petugas_low}.png"
+    if os.path.exists(path_ttd):
+        signature = Image.open(path_ttd).convert("RGBA")
+        # Perkecil ukuran tanda tangan agar muat di kotak (misal: 150x100)
+        signature = signature.resize((150, 100)) 
+        # Tempel di area Petugas Penerimaan Pasien (Koordinat X, Y)
+        template.paste(signature, (180, 850), signature)
+
+    # 6. Simpan Hasil
+    nama_file_hasil = f"Form_Pendaftaran_{data['nama'].replace(' ', '_')}.png"
+    template.save(nama_file_hasil)
+    return nama_file_hasil
