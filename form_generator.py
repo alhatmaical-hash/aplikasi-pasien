@@ -2,46 +2,29 @@ from fpdf import FPDF
 import os
 from datetime import datetime
 
-class UnicodePDF(FPDF):
-    def header(self):
-        pass # Bisa diisi jika ingin header otomatis di tiap halaman
-
 def buat_formulir_otomatis(data, petugas):
-    # Inisialisasi PDF dengan dukungan Unicode
-    pdf = UnicodePDF(orientation='P', unit='mm', format='A4')
-    
-    # --- PENTING: MENAMBAHKAN FONT UNICODE ---
-    # Pastikan file font DejaVuSans.ttf ada di folder yang sama dengan kode ini.
-    # Jika Anda tidak punya filenya, font Helvetica akan digunakan tapi karakter Mandarin di-skip.
-    try:
-        # Gunakan font DejaVuSans (Font gratis yang mendukung Unicode)
-        # Anda bisa mendownloadnya atau menggunakan font .ttf lain yang ada di sistem
-        pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-        pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf', uni=True)
-        font_utama = 'DejaVu'
-    except:
-        # Fallback jika font tidak ditemukan (karakter Mandarin akan hilang)
-        font_utama = 'Helvetica'
-
-    pdf.add_page()
-    
+    # Fungsi untuk membersihkan teks dari karakter non-latin agar tidak error
     def clean(text):
         if not text: return "-"
-        return str(text)
+        return str(text).encode('ascii', 'ignore').decode('ascii')
 
-    # --- BAGIAN KOP SURAT ---
-    pdf.set_font(font_utama, 'B', 14)
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.add_page()
+    
+    # --- KOP SURAT ---
+    pdf.set_font("helvetica", "B", 14)
     pdf.cell(190, 7, "FORMULIR PENDAFTARAN PASIEN", ln=True, align="C")
-    pdf.set_font(font_utama, '', 10)
+    pdf.set_font("helvetica", "", 10)
     pdf.cell(190, 5, "Klinik Pratama - PT. Jaya Feronikel", ln=True, align="C")
     pdf.ln(5)
     pdf.line(10, 25, 200, 25)
 
-    # --- TABEL IDENTITAS PASIEN ---
-    pdf.set_font(font_utama, 'B', 10)
-    pdf.cell(190, 7, "DATA PRIBADI / 个人资料", ln=True) # Karakter Mandarin aman di sini
+    # --- TABEL DATA PASIEN ---
+    pdf.ln(5)
+    pdf.set_font("helvetica", "B", 10)
+    pdf.cell(190, 7, "DATA PRIBADI PASIEN", ln=True)
     
-    pdf.set_font(font_utama, '', 10)
+    pdf.set_font("helvetica", "", 10)
     items = [
         ("NAMA LENGKAP", data.get('nama')),
         ("NIK / ID CARD", data.get('nik')),
@@ -59,36 +42,25 @@ def buat_formulir_otomatis(data, petugas):
     ]
 
     for label, value in items:
-        pdf.cell(50, 7, label, border=1)
-        pdf.cell(140, 7, f": {clean(value)}", border=1, ln=True)
+        pdf.cell(55, 7, f" {label}", border=1)
+        pdf.cell(135, 7, f": {clean(value)}", border=1, ln=True)
 
-    # --- SURAT PERNYATAAN ---
+    # --- PERNYATAAN ---
     pdf.ln(5)
-    pdf.set_font(font_utama, 'B', 10)
-    pdf.cell(190, 7, "SURAT PERNYATAAN / 声明书", ln=True)
-    pdf.set_font(font_utama, '', 9)
+    pdf.set_font("helvetica", "B", 10)
+    pdf.cell(190, 7, "SURAT PERNYATAAN", ln=True)
+    pdf.set_font("helvetica", "", 9)
     pernyataan = ("Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan "
                   "yang diperlukan dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
     pdf.multi_cell(190, 5, pernyataan, border=1)
 
-    # --- AREA TANDA TANGAN ---
+    # --- AREA TANDA TANGAN (TTD) ---
     pdf.ln(10)
-    pdf.set_font(font_utama, '', 10)
+    pdf.set_font("helvetica", "", 10)
     pdf.cell(186, 5, f"Kawasi, {datetime.now().strftime('%d %B %Y')}", ln=True, align="R")
     
-    y_ttd_label = pdf.get_y() 
-    pdf.set_font(font_utama, 'B', 10)
-    pdf.cell(95, 5, "Petugas Penerimaan", align="C")
-    pdf.cell(95, 5, "Pasien / Keluarga", align="C", ln=True)
-
-    # Logika TTD Petugas
-    file_petugas = f"{str(petugas).lower()}.png" 
-    if os.path.exists(file_petugas):
-        pdf.image(file_petugas, x=40, y=y_ttd_label + 7, h=15)
+    # Simpan posisi Y agar gambar TTD presisi di bawah teks label
+    y_posisi_ttd = pdf.get_y() 
     
-    pdf.ln(20) 
-    pdf.set_font(font_utama, 'B', 10)
-    pdf.cell(95, 5, f"( {clean(petugas).upper()} )", align="C")
-    pdf.cell(95, 5, f"( {clean(data.get('nama')).upper()} )", align="C", ln=True)
-
-    return bytes(pdf.output())
+    pdf.set_font("helvetica", "B", 10)
+    pdf.cell(95
