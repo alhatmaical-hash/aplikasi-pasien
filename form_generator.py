@@ -12,7 +12,7 @@ def buat_formulir_otomatis(data, petugas):
     margin_x = 10
     kop_y = 10
     lebar_kop = 190
-    tinggi_kop = 30 # Ukuran kop yang lebih ramping
+    tinggi_kop = 30 
     pdf.rect(margin_x, kop_y, lebar_kop, tinggi_kop) 
 
     # Fungsi pencari gambar (jpg/png)
@@ -26,23 +26,25 @@ def buat_formulir_otomatis(data, petugas):
     path_hjf = cari_logo("hjf")
     path_smk3 = cari_logo("smk3")
 
-    # LOGO DIPERKECIL (Tinggi h=18) agar teks di tengah aman
+    # LOGO DIPERKECIL (Tinggi h=18)
     if path_harita: pdf.image(path_harita, x=12, y=13, h=18)
     if path_hjf:    pdf.image(path_hjf, x=35, y=13, h=18)
-    if path_smk3:   pdf.image(path_smk3, x(172), y=13, h=18)
+    # PERBAIKAN: x=172 (sebelumnya ada typo x(172))
+    if path_smk3:   pdf.image(path_smk3, x=170, y=13, h=18)
 
-    # TEKS KOP (Dipastikan tidak tertutup logo)
+    # TEKS KOP
     pdf.set_font("helvetica", "B", 16)
     pdf.set_xy(margin_x, kop_y + 6)
     pdf.cell(lebar_kop, 8, "FORMULIR PENDAFTARAN PASIEN", ln=True, align="C")
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(lebar_kop, 8, "KLINIK HARITA FERONICKEL OBI", ln=True, align="C")
 
-    # --- KOLOM NO REKAM MEDIS (Area Merah Anda) ---
+    # --- KOLOM NO REKAM MEDIS (Area Merah) ---
     pdf.ln(4)
     pdf.set_font("helvetica", "B", 12)
-    # Membuat kotak khusus No Rekam Medis tepat di bawah kop
-    pdf.cell(190, 10, f" No Rekam Medis : {data.get('no_rm', '')}", border=1, ln=True)
+    # Mengambil nomor RM dari data
+    no_rm = data.get('no_rm', '-') 
+    pdf.cell(190, 10, f" No Rekam Medis : {no_rm}", border=1, ln=True)
 
     # Fungsi pembersih karakter
     def clean(text):
@@ -80,14 +82,14 @@ def buat_formulir_otomatis(data, petugas):
     
     tgl_skrg = f"Kawasi, {datetime.now().strftime('%d %B %Y')}"
     pdf.set_xy(10, y_ttd_box + 2)
-    pdf.cell(190, 6, tgl_skrg, ln=True, align="R") # Tanggal di kanan atas kotak
+    pdf.cell(190, 6, tgl_skrg, ln=True, align="R")
     
     pdf.set_x(10)
     pdf.set_font("helvetica", "B", 11)
     pdf.cell(95, 6, "Petugas Penerimaan,", align="C")
     pdf.cell(95, 6, "Pasien / Keluarga,", align="C", ln=True)
 
-    # Tanda Tangan Digital Petugas
+    # Tanda Tangan Digital
     path_ttd = cari_logo(f"sig_{petugas.lower()}")
     if path_ttd:
         pdf.image(path_ttd, x=35, y=pdf.get_y() + 2, h=16)
