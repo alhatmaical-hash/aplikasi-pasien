@@ -3,101 +3,99 @@ import os
 from datetime import datetime
 
 def buat_formulir_otomatis(data, petugas):
-    # Menggunakan fpdf2 untuk dukungan Unicode
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    
-    # --- LOAD FONT MANDARIN ---
-    # Gunakan font 'msyh.ttf' (Microsoft YaHei) atau font unicode lain yang Anda miliki
-    font_file = "msyh.ttf" 
-    
-    if os.path.exists(font_file):
-        # Mendaftarkan font ke fpdf2
-        pdf.add_font("MandarinFont", "", font_file)
-        pdf.add_font("MandarinFontB", "", font_file) # Bisa gunakan file sama jika tidak ada versi bold khusus
-        f_reg = "MandarinFont"
-        f_bold = "MandarinFontB"
-    else:
-        # Jika font tidak ditemukan, aplikasi akan tetap berjalan tapi Mandarin mungkin tidak muncul
-        f_reg = "helvetica"
-        f_bold = "helvetica"
+    # Gunakan font yang mendukung karakter luas jika tersedia, 
+    # namun secara default fpdf menggunakan latin-1. 
+    # Untuk Mandarin murni dibutuhkan font Unicode (.ttf).
+    def clean(text):
+        if not text: return "-"
+        return str(text).encode('ascii', 'ignore').decode('ascii')
 
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     
-    def clean(text):
-        return str(text) if text else "-"
-
-    # --- KOP FORMULIR (Sesuai Logo Harita & HJF) ---
+    # --- KOP FORMULIR (Sesuai Referensi Sebelumnya) ---
     pdf.set_line_width(0.3)
-    pdf.rect(10, 10, 90, 32) 
+    margin_x, kop_y = 10, 10
+    pdf.rect(margin_x, kop_y, 90, 32) 
     
-    # --- JUDUL BILINGUAL (DIBUAT TERPISAH) ---
-    pdf.ln(34)
+    # --- BAGIAN JUDUL & NO REKAM MEDIS BILINGUAL ---
+    pdf.ln(34) # Jarak setelah Kop
     pdf.set_line_width(0.5)
     
-    # 1. Baris Judul
-    pdf.set_font(f_bold, size=11)
+    # 1. Baris Judul: Indonesia & Mandarin
+    pdf.set_font("helvetica", "B", 11)
+    # Menambahkan teks Mandarin secara manual agar layout mirip referensi
     pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN / 患者登记表", border=1, ln=True, align="C")
     
-    # 2. Baris No Rekam Medis (Top Align & Right)
-    pdf.set_font(f_bold, size=10)
+    # 2. Baris No Rekam Medis: Indonesia & Mandarin
+    pdf.set_font("helvetica", "B", 10)
     pdf.cell(190, 8, "No. Rekam Medis / 病历号 :             ", border=1, ln=True, align="R")
 
     # --- IDENTITAS PASIEN BILINGUAL ---
-    pdf.set_font(f_bold, size=10)
+    pdf.set_font("helvetica", "B", 10)
+    # Teks Sub-judul Bilingual
     pdf.cell(190, 8, " IDENTITAS PASIEN / 患者身份 ( bagian ini harus lengkap / 这部分必须完整 )", border=1, ln=True)
 
+    # Definisi Label dengan Bahasa Mandarin
     labels = [
-        ["NAMA LENGKAP / 姓名", 'nama'], 
-        ["TEMPAT LAHIR / 出生地点", 'tempat_lahir'], 
-        ["TANGGAL LAHIR / 出生日期", 'tgl_lahir'], 
-        ["JENIS KELAMIN / 性别", 'gender'], 
-        ["AGAMA / 宗教", 'agama'], 
-        ["NO HP (WA) / 手机号码", 'no_hp'], 
-        ["NIK / ID CARD / 身份证号", 'nik'], 
-        ["PERUSAHAAN / 公司", 'perusahaan'], 
-        ["DEPARTEMEN / 部门", 'departemen'], 
-        ["JABATAN / 职位", 'jabatan'], 
-        ["MES / NO KAMAR / 宿舍/房间号", 'blok_mes'], 
-        ["RIWAYAT ALERGI / 过敏史", 'alergi'], 
-        ["GOL. DARAH / 血型", 'gol_darah']
+        "NAMA LENGKAP / 姓名", 
+        "TEMPAT LAHIR / 出生地点", 
+        "TANGGAL LAHIR / 出生日期", 
+        "JENIS KELAMIN / 性别", 
+        "AGAMA / 宗教", 
+        "NO HP (WA) / 手机号码", 
+        "NIK / ID CARD / 身份证号", 
+        "PERUSAHAAN / 公司", 
+        "DEPARTEMEN / 部门", 
+        "JABATAN / 职位", 
+        "MES / NO KAMAR / 宿舍/房间号", 
+        "RIWAYAT ALERGI / 过敏史", 
+        "GOL. DARAH / 血型"
+    ]
+    
+    val = [
+        clean(data.get('nama')), clean(data.get('tempat_lahir')), clean(data.get('tgl_lahir')), 
+        clean(data.get('gender')), clean(data.get('agama')), clean(data.get('no_hp')), 
+        clean(data.get('nik')), clean(data.get('perusahaan')), clean(data.get('departemen')), 
+        clean(data.get('jabatan')), clean(data.get('blok_mes')), clean(data.get('alergi')), 
+        clean(data.get('gol_darah'))
     ]
 
-    for label_text, key in labels:
-        pdf.set_font(f_bold, size=9)
-        pdf.cell(70, 7.5, label_text, border=1) 
-        pdf.set_font(f_reg, size=10)
-        # Menghilangkan teks KHFO-000000 di dalam data jika ada
-        pdf.cell(120, 7.5, f": {clean(data.get(key))}", border=1, ln=True)
+    pdf.set_font("helvetica", "", 9) # Ukuran font sedikit dikecilkan agar teks bilingual muat
+    for i in range(len(labels)):
+        pdf.set_font("helvetica", "B", 9)
+        pdf.cell(70, 7.5, labels[i], border=1) # Lebar label ditambah jadi 70mm
+        pdf.set_font("helvetica", "", 10)
+        pdf.cell(120, 7.5, f": {val[i]}", border=1, ln=True)
 
-    # --- SURAT PERNYATAAN & TTD (Garis Bawah) ---
+    # --- AREA SURAT PERNYATAAN ---
     pdf.ln(4)
     y_pernyataan = pdf.get_y()
-    pdf.rect(10, y_pernyataan, 190, 80) # Kotak diperpanjang ke bawah
+    pdf.rect(10, y_pernyataan, 190, 75) 
 
     pdf.set_xy(12, y_pernyataan + 3)
-    pdf.set_font(f_bold, size=10)
+    pdf.set_font("helvetica", "B", 10)
     pdf.cell(186, 6, "SURAT PERNYATAAN / 声明书", ln=True)
-    
-    pdf.set_font(f_reg, size=9)
+    pdf.set_font("helvetica", "", 9)
     pdf.set_x(12)
     pdf.multi_cell(186, 5, "Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
 
+    # --- TANDA TANGAN ---
     pdf.ln(10)
     pdf.cell(186, 5, f"Kawasi, {datetime.now().strftime('%d %B %Y')}", ln=True, align="R")
     
+    pdf.set_font("helvetica", "B", 9)
     pdf.set_x(12)
-    pdf.set_font(f_bold, size=9)
     pdf.cell(93, 5, "Petugas Penerimaan / 接待人员", align="C")
     pdf.cell(93, 5, "Pasien / Keluarga / 患者/家属", align="C", ln=True)
 
-    pdf.ln(35) # Spasi tanda tangan
-    
-    # Nama Petugas & Pasien di atas garis
+    # TTD logic ... (seperti sebelumnya)
+    pdf.ln(30)
     pdf.set_x(12)
     pdf.cell(93, 5, f"( {clean(petugas).upper()} )", align="C")
     pdf.cell(93, 5, "( ............................ )", align="C", ln=True)
     
-    # Garis penutup paling bawah
-    pdf.line(10, pdf.get_y() + 1, 200, pdf.get_y() + 1)
+    y_akhir = pdf.get_y() + 1
+    pdf.line(10, y_akhir, 200, y_akhir)
 
     return bytes(pdf.output())
