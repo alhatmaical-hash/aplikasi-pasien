@@ -63,4 +63,21 @@ def buat_formulir_otomatis(data, petugas):
     y_posisi_ttd = pdf.get_y() 
     
     pdf.set_font("helvetica", "B", 10)
-    pdf.cell(95
+    pdf.cell(95, 5, "Petugas Penerimaan", align="C")
+    pdf.cell(95, 5, "Pasien / Keluarga", align="C", ln=True)
+
+    # Menambahkan TTD Petugas secara otomatis berdasarkan nama yang dipilih
+    # Contoh: Jika petugas "TAUFIK", maka mencari file "taufik.png"
+    nama_file_ttd = f"{str(petugas).lower()}.png"
+    
+    if os.path.exists(nama_file_ttd):
+        # x=40 (posisi horizontal tengah kolom petugas), y=posisi teks + margin
+        pdf.image(nama_file_ttd, x=38, y=y_posisi_ttd + 7, h=15)
+
+    # Jarak untuk ruang tanda tangan (ln 20 agar nama terang ada di bawah gambar)
+    pdf.ln(20) 
+    pdf.set_font("helvetica", "B", 10)
+    pdf.cell(95, 5, f"( {clean(petugas).upper()} )", align="C")
+    pdf.cell(95, 5, f"( {clean(data.get('nama')).upper()} )", align="C", ln=True)
+
+    return bytes(pdf.output())
