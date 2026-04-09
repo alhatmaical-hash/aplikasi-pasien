@@ -590,7 +590,7 @@ elif menu == "Rekam Medis / 病历":
                          }
                 
                          # 3. Panggil fungsi generator (Sekarang membuat kertas putih baru)
-                         hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
+                          hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
                 
                     except Exception as e:
                         st.error(f"Terjadi kesalahan saat mengambil data: {e}")
