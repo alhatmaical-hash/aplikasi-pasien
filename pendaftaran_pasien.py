@@ -558,58 +558,58 @@ elif menu == "Rekam Medis / 病历":
                     conn.commit()
                     st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
                     st.rerun()
-       # --- 5. FITUR CETAK FORMULIR OTOMATIS ---
-        st.divider()
-        with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
-            st.info("Pilih pasien untuk membuat formulir otomatis.")
-            
-            # Variabel untuk menampung hasil agar bisa ditampilkan di luar form
-            hasil_cetak = None
-            
-            with st.form("cetak_form_pendaftaran"):
-                nama_p_cetak = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist())
-                petugas = st.selectbox("Pilih Petugas", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
-                btn_cetak = st.form_submit_button("Buat Formulir Sekarang")
+      # --- 5. FITUR CETAK FORMULIR OTOMATIS (VERSI BARU) ---
+st.divider()
+with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
+    st.info("Pilih pasien untuk membuat formulir otomatis dari data rekam medis.")
+    
+    # Variabel untuk menampung hasil agar bisa ditampilkan di luar form
+    hasil_cetak = None
+    
+    with st.form("cetak_form_pendaftaran"):
+        # Mengambil daftar nama dari dataframe yang sudah di-load di atas
+        nama_p_cetak = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist())
+        petugas = st.selectbox("Pilih Petugas", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
+        btn_cetak = st.form_submit_button("Buat Formulir Sekarang")
+        
+        if btn_cetak:
+            try:
+                # 1. Ambil data pasien dari baris yang dipilih
+                row = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
                 
-                if btn_cetak:
-                    try:
-                        import os
-                        # Penyesuaian nama file ttd
-                        petugas_low = petugas.lower()
-                        if petugas_low == "deli": petugas_low = "ladeli"
-                        
-                        file_ttd = f"sig_{petugas_low}.png"
-                        
-                        if not os.path.exists('template_form.png') or not os.path.exists(file_ttd):
-                            st.error("⚠️ File template atau tanda tangan tidak ditemukan.")
-                        else:
-                            # Ambil data pasien
-                            row = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
-                            data_pasien = {
-                                "nama": row['Nama Lengkap'],
-                                "tempat_lahir": row['TTL'],
-                                "perusahaan": row['Perusahaan'],
-                                "nik": row['NIK/ID'],
-                                "departemen": row['Departemen'],
-                                "jabatan": row['Jabatan'],
-                                "blok_mes": row['Blok/Kamar'],
-                                "lokasi_kerja": row['Area Kerja']
-                            }
-                            # Panggil fungsi generator
-                            hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
-                    except Exception as e:
-                        st.error(f"Terjadi kesalahan teknis: {e}")
+                # 2. Susun data untuk dikirim ke generator
+                data_pasien = {
+                    "nama": row['Nama Lengkap'],
+                    "tempat_lahir": row['TTL'],
+                    "perusahaan": row['Perusahaan'],
+                    "nik": row['NIK/ID'],
+                    "departemen": row['Departemen'],
+                    "jabatan": row['Jabatan'],
+                    "lokasi_kerja": row['Area Kerja'],
+                    "blok_mes": row['Blok/Kamar']
+                }
+                
+                # 3. Panggil fungsi generator (Sekarang membuat kertas putih baru)
+                hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
+                
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat mengambil data: {e}")
 
-            # PINDAHKAN TOMBOL DOWNLOAD KE SINI (DI LUAR st.form)
-            if hasil_cetak:
-                st.success(f"✅ Formulir untuk {nama_p_cetak} berhasil dibuat!")
-                with open(hasil_cetak, "rb") as file:
-                    st.download_button(
-                        label="⬇️ Download Hasil Formulir",
-                        data=file,
-                        file_name=hasil_cetak,
-                        mime="image/png"
-                    )
+    # --- TAMPILKAN HASIL DI LUAR FORM AGAR DOWNLOAD BERFUNGSI ---
+    if hasil_cetak:
+        st.success(f"✅ Formulir untuk {nama_p_cetak} berhasil dibuat!")
+        
+        # Tampilkan Preview Gambar hasil buatan kode
+        st.image(hasil_cetak, caption="Preview Formulir Baru", use_container_width=True)
+        
+        # Tombol Download
+        with open(hasil_cetak, "rb") as file:
+            st.download_button(
+                label="⬇️ Download & Cetak Formulir",
+                data=file,
+                file_name=hasil_cetak,
+                mime="image/png"
+            )
         # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
         st.divider()
         with st.expander("🗑️ Hapus Data Pasien"):
