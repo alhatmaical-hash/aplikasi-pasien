@@ -90,7 +90,7 @@ def buat_formulir_otomatis(data, petugas):
     pdf.set_x(12)
     pdf.multi_cell(186, 5, "Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
 
-  # --- AREA TANDA TANGAN ---
+ # --- AREA TANDA TANGAN ---
     pdf.ln(10)
     pdf.cell(186, 5, f"Kawasi, {datetime.now().strftime('%d %B %Y')}", ln=True, align="R")
     
@@ -102,17 +102,15 @@ def buat_formulir_otomatis(data, petugas):
     pdf.cell(93, 5, "Petugas Penerimaan / ", align="C")
     pdf.cell(93, 5, "Pasien / Keluarga / ", align="C", ln=True)
 
-    # --- LOGIKA PEMANGGILAN TANDA TANGAN ---
-    # Petugas: Dipaksa huruf kecil sesuai file di github (misal: alhatma.png)
-    file_ttd_petugas = f"{petugas.lower()}.png" 
-    # Pasien: Diambil dari data path atau canvas
-    file_ttd_pasien = data.get('ttd_pasien') 
-
-    # Render TTD Petugas jika filenya ada
+    # --- LOGIKA TANDA TANGAN PETUGAS ---
+    # Mencari file tanda tangan petugas berdasarkan nama (huruf kecil)
+    file_ttd_petugas = f"{str(petugas).lower()}.png"
     if os.path.exists(file_ttd_petugas):
+        # x=40 adalah posisi di bawah teks 'Petugas Penerimaan'
         pdf.image(file_ttd_petugas, x=40, y=posisi_y_ttd + 8, h=18)
     
     # Render TTD Pasien jika filenya ada
+    file_ttd_pasien = data.get('ttd_pasien') 
     if file_ttd_pasien and os.path.exists(file_ttd_pasien):
         pdf.image(file_ttd_pasien, x=135, y=posisi_y_ttd + 8, h=18)
 
