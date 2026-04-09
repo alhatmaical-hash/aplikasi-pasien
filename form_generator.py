@@ -3,7 +3,6 @@ import os
 from datetime import datetime
 
 def buat_formulir_otomatis(data, petugas):
-    # 1. Definisi Clean di Awal untuk Keamanan Karakter
     def clean(text):
         if not text: return "-"
         return str(text).encode('ascii', 'ignore').decode('ascii')
@@ -25,7 +24,7 @@ def buat_formulir_otomatis(data, petugas):
 
     path_harita, path_hjf, path_smk3 = cari_logo("harita"), cari_logo("hjf"), cari_logo("smk3")
     if path_harita: pdf.image(path_harita, x=12, y=13, h=10)
-    if path_hjf:    pdf.image(path_hjf, x=21, y=13, h=10) # Logo HJF merapat ke Harita
+    if path_hjf:    pdf.image(path_hjf, x=21, y=13, h=10) 
     
     pdf.set_font("helvetica", "B", 10)
     pdf.set_xy(33, 13)
@@ -38,7 +37,6 @@ def buat_formulir_otomatis(data, petugas):
     pdf.cell(lebar_kop_kiri - 30, 4, clean("Email: admin.klinik@hjferronickel.com"), ln=True)
     if path_smk3: pdf.image(path_smk3, x=85, y=13, h=12)
 
-    # Tabel Informasi Dokumen (Sisi Kanan)
     pdf.set_xy(100, kop_y)
     pdf.set_font("helvetica", "", 8)
     dok_info = [["No. Dok", "HJF-FR-OHS-113"], ["Tgl Terbit", "12-10-2023"], ["No. Rev", "03"], ["Hal", "3"]]
@@ -47,27 +45,21 @@ def buat_formulir_otomatis(data, petugas):
         pdf.cell(25, 8, h[0], border=1)
         pdf.cell(75, 8, h[1], border=1, ln=True, align="C")
 
-    # --- JUDUL & NO REKAM MEDIS ---
+    # --- PERBAIKAN: KOLOM TERPISAH UNTUK JUDUL & NO RM ---
     pdf.ln(2)
-    pdf.set_line_width(0.8)
-    y_judul = pdf.get_y()
-    pdf.rect(10, y_judul, 190, 22) 
+    pdf.set_line_width(0.5)
     
-    # 1. No Rekam Medis - TOP ALIGN
-    pdf.set_xy(10, y_judul + 1) 
-    pdf.set_font("helvetica", "B", 10)
-    pdf.cell(188, 6, "No. Rekam Medis", ln=True, align="R")
-    
-    # 2. Judul Tengah
-    pdf.set_xy(10, y_judul + 7)
+    # 1. Kolom Judul (Berada di Atas)
     pdf.set_font("helvetica", "B", 12)
-    pdf.cell(190, 8, "FORMULIR PENDAFTARAN PASIEN", ln=True, align="C")
+    pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN", border=1, ln=True, align="C")
     
-    # Note: Teks KHFO-000000 telah dihapus sesuai instruksi
+    # 2. Kolom No Rekam Medis (Berada di Bawah Judul)
+    pdf.set_font("helvetica", "B", 10)
+    # Menggunakan align="R" dan border=1 untuk membuat kotak tersendiri
+    pdf.cell(190, 8, "No. Rekam Medis :        ", border=1, ln=True, align="R")
 
     # --- IDENTITAS PASIEN ---
-    pdf.set_xy(10, y_judul + 22)
-    pdf.set_line_width(0.3)
+    pdf.ln(0)
     pdf.set_font("helvetica", "B", 11)
     pdf.cell(190, 8, " IDENTITAS PASIEN ( bagian ini harus lengkap dan mohon diisi pasien )", border=1, ln=True)
 
@@ -81,11 +73,10 @@ def buat_formulir_otomatis(data, petugas):
         pdf.set_font("helvetica", "", 10)
         pdf.cell(130, 7.2, f": {val[i]}", border=1, ln=True)
 
-    # --- AREA SURAT PERNYATAAN & TANDA TANGAN (PERBAIKAN POSISI) ---
+    # --- AREA SURAT PERNYATAAN & TTD ---
     pdf.ln(4)
     y_pernyataan = pdf.get_y()
-    # Tinggi kotak diperlebar ke bawah (85mm) untuk mengisi A4
-    pdf.rect(10, y_pernyataan, 190, 85) 
+    pdf.rect(10, y_pernyataan, 190, 80) 
 
     pdf.set_xy(12, y_pernyataan + 3)
     pdf.set_font("helvetica", "B", 11)
@@ -94,7 +85,7 @@ def buat_formulir_otomatis(data, petugas):
     pdf.set_x(12)
     pdf.multi_cell(186, 5, "Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
 
-    pdf.ln(15) 
+    pdf.ln(10) 
     tgl_skrg = f"Kawasi, {datetime.now().strftime('%d %B %Y')}"
     pdf.set_font("helvetica", "", 10)
     pdf.cell(186, 5, tgl_skrg, ln=True, align="R")
@@ -104,23 +95,17 @@ def buat_formulir_otomatis(data, petugas):
     pdf.cell(93, 5, "Petugas Penerimaan,", align="C")
     pdf.cell(93, 5, "Pasien / Keluarga,", align="C", ln=True)
 
-    # Tanda Tangan Petugas
     path_ttd = cari_logo(f"sig_{petugas.lower()}")
     if path_ttd:
         pdf.image(path_ttd, x=37, y=pdf.get_y() + 5, h=16)
 
-    # Spasi untuk area Tanda Tangan
     pdf.ln(35) 
-    
-    # --- POSISI NAMA DI ATAS GARIS ---
     pdf.set_x(12)
     pdf.set_font("helvetica", "B", 10)
-    # Nama Petugas & Pasien diletakkan sebelum garis dibuat
     pdf.cell(93, 5, f"( {clean(petugas).upper()} )", align="C")
     pdf.cell(93, 5, "( ............................ )", align="C", ln=True)
     
-    # Garis penutup tepat di bawah nama
-    y_garis_akhir = pdf.get_y() + 1
-    pdf.line(10, y_garis_akhir, 200, y_garis_akhir)
+    y_akhir = pdf.get_y() + 1
+    pdf.line(10, y_akhir, 200, y_akhir)
 
     return bytes(pdf.output())
