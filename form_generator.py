@@ -19,11 +19,11 @@ def buat_formulir_otomatis(data, petugas):
             if os.path.exists(path): return path
         return None
 
-    # Logo Harita & HJF
     path_harita = cari_logo("harita")
     path_hjf = cari_logo("hjf")
     path_smk3 = cari_logo("smk3")
 
+    # Penempatan Logo Harita & HJF
     if path_harita: pdf.image(path_harita, x=12, y=12, h=10)
     if path_hjf:    pdf.image(path_hjf, x=28, y=12, h=10)
     
@@ -38,7 +38,7 @@ def buat_formulir_otomatis(data, petugas):
     pdf.set_x(40)
     pdf.cell(60, 4, "Email: admin.klinik@hjferronickel.com", ln=True)
 
-    # Logo SMK3
+    # Logo SMK3 (Koordinat Diperbaiki agar tidak Error)
     if path_smk3: pdf.image(path_smk3, x=85, y=12, h=12)
 
     # Tabel Informasi Dokumen (Sisi Kanan)
@@ -63,7 +63,7 @@ def buat_formulir_otomatis(data, petugas):
     # --- NO REKAM MEDIS (Besar di Sisi Kanan) ---
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(190, 6, "No. Rekam Medis", ln=True, align="R")
-    pdf.set_font("helvetica", "B", 36) # Font diperbesar sesuai gambar
+    pdf.set_font("helvetica", "B", 36) 
     no_rm = data.get('no_rm', 'KHFO-000000')
     pdf.cell(190, 15, no_rm, ln=True, align="R")
 
@@ -80,6 +80,4 @@ def buat_formulir_otomatis(data, petugas):
     labels = ["NAMA", "TEMPAT LAHIR", "TANGGAL LAHIR", "JENIS KELAMIN", "AGAMA", "NO HP (WHATSAPP)", "NIK / ID CARD", "PERUSAHAAN", "DEPARTEMEN", "JABATAN", "MES / NO KAMAR", "RIWAYAT ALERGI", "GOLONGAN DARAH"]
     val = [clean(data.get('nama')), clean(data.get('tempat_lahir')), clean(data.get('tgl_lahir')), clean(data.get('gender')), clean(data.get('agama')), clean(data.get('no_hp')), clean(data.get('nik')), clean(data.get('perusahaan')), clean(data.get('departemen')), clean(data.get('jabatan')), clean(data.get('blok_mes')), clean(data.get('alergi')), clean(data.get('gol_darah'))]
 
-    pdf.set_font("helvetica", "", 10)
-    for i in range(len(labels)):
-        pdf.set
+    pdf.set_font("helvetica",
