@@ -630,15 +630,19 @@ elif menu == "Rekam Medis / 病历":
                         st.error(f"Terjadi kesalahan saat mengambil data: {e}")
 
             if hasil_cetak:
-                st.success(f"✅ Formulir untuk {nama_p_cetak} berhasil dibuat!")
-                st.image(hasil_cetak, caption="Preview Formulir Baru", use_container_width=True)
-                with open(hasil_cetak, "rb") as file:
-                    st.download_button(
-                        label="⬇️ Download & Cetak Formulir",
-                        data=file,
-                        file_name=hasil_cetak,
-                        mime="image/png"
-                    )
+                st.success(f"✅ Formulir untuk {nama_p_cetak} siap dicetak!")
+                
+                # Karena hasil_cetak sekarang berisi data PDF (bytes), 
+                # kita gunakan st.download_button dengan mime pdf
+                st.download_button(
+                    label="🖨️ Klik di sini untuk Buka & Cetak PDF",
+                    data=hasil_cetak,
+                    file_name=f"Formulir_{nama_p_cetak.replace(' ', '_')}.pdf",
+                    mime="application/pdf"
+                )
+                
+                # Info tambahan untuk user
+                st.info("💡 Setelah klik tombol di atas, PDF akan terbuka. Gunakan tombol 'Print' di browser atau tekan Ctrl+P.")
         # --- 7. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
         st.divider()
         with st.expander("🚨 Hapus Seluruh Database (Admin Only)"):
