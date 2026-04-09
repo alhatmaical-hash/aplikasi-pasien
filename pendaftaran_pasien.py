@@ -558,75 +558,58 @@ elif menu == "Rekam Medis / 病历":
                     conn.commit()
                     st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
                     st.rerun()
-        # --- 5. FITUR CETAK FORMULIR OTOMATIS (TEMPEL DI SINI) ---
+       # --- 5. FITUR CETAK FORMULIR OTOMATIS ---
         st.divider()
         with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
-            st.info("Pilih pasien untuk membuat formulir pendaftaran otomatis (PDF/Gambar) lengkap dengan tanda tangan.")
+            st.info("Pilih pasien untuk membuat formulir otomatis.")
             
-            # Form untuk memilih pasien dan petugas yang bertanda tangan
+            # Variabel untuk menampung hasil agar bisa ditampilkan di luar form
+            hasil_cetak = None
+            
             with st.form("cetak_form_pendaftaran"):
-                # Pilih pasien dari data yang ada
-                nama_p_cetak = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist(), key="pilih_pasien_cetak")
-                
-                # Pilih petugas (sesuai gambar tanda tangan yang Anda punya)
-                petugas = st.selectbox("Pilih Petugas yang Bertanda Tangan", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
-                
+                nama_p_cetak = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist())
+                petugas = st.selectbox("Pilih Petugas", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
                 btn_cetak = st.form_submit_button("Buat Formulir Sekarang")
                 
                 if btn_cetak:
-                    # 1. Ambil data lengkap pasien tersebut dari DataFrame
-                    row_pasien = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
-                    
-                    # 2. Susun data sesuai kebutuhan form_generator.py
-                    data_pasien = {
-                        "nama": row_pasien['Nama Lengkap'],
-                        "tempat_lahir": row_pasien['TTL'],
-                        "perusahaan": row_pasien['Perusahaan'],
-                        "nik": row_pasien['NIK/ID'],
-                        "departemen": row_pasien['Departemen'],
-                        "jabatan": row_pasien['Jabatan'],
-                        "blok_mes": row_pasien['Blok/Kamar'],
-                        "lokasi_kerja": row_pasien['Area Kerja']
-                    }
-                    
-                    # 3. Panggil fungsi dari form_generator.py
                     try:
                         import os
-                        
-                        # PERBAIKAN 1: Pastikan nama petugas diubah ke huruf kecil agar cocok dengan file .png di GitHub
+                        # Penyesuaian nama file ttd
                         petugas_low = petugas.lower()
-                        # Jika di GitHub namanya 'sig_ladeli.png', tapi di menu cuma 'DELI', maka kita sesuaikan
-                        if petugas_low == "deli":
-                            petugas_low = "ladeli"
+                        if petugas_low == "deli": petugas_low = "ladeli"
                         
-                        # Cek keberadaan file sebelum memproses (Debugging)
                         file_ttd = f"sig_{petugas_low}.png"
+                        
                         if not os.path.exists('template_form.png') or not os.path.exists(file_ttd):
-                            st.error(f"⚠️ File tidak ditemukan di server!")
-                            st.warning(f"Cari: template_form.png -> {'✅ ADA' if os.path.exists('template_form.png') else '❌ TIDAK ADA'}")
-                            st.warning(f"Cari: {file_ttd} -> {'✅ ADA' if os.path.exists(file_ttd) else '❌ TIDAK ADA'}")
-                            
-                            # Menampilkan isi folder untuk memastikan sinkronisasi GitHub
-                            with st.expander("Lihat daftar file yang terbaca di server"):
-                                st.write(os.listdir("."))
+                            st.error("⚠️ File template atau tanda tangan tidak ditemukan.")
                         else:
-                            # Jika file ada, jalankan fungsi pembuat formulir
-                            nama_hasil = buat_formulir_otomatis(data_pasien, petugas)
-                            
-                            st.success(f"✅ Formulir untuk {nama_p_cetak} berhasil dibuat!")
-                            
-                            with open(nama_hasil, "rb") as file:
-                                st.download_button(
-                                    label="⬇️ Download Hasil Formulir",
-                                    data=file,
-                                    file_name=nama_hasil,
-                                    mime="image/png"
-                                )
-                                
+                            # Ambil data pasien
+                            row = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
+                            data_pasien = {
+                                "nama": row['Nama Lengkap'],
+                                "tempat_lahir": row['TTL'],
+                                "perusahaan": row['Perusahaan'],
+                                "nik": row['NIK/ID'],
+                                "departemen": row['Departemen'],
+                                "jabatan": row['Jabatan'],
+                                "blok_mes": row['Blok/Kamar'],
+                                "lokasi_kerja": row['Area Kerja']
+                            }
+                            # Panggil fungsi generator
+                            hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
                     except Exception as e:
-                        # Menampilkan error teknis yang sebenarnya jika terjadi kegagalan sistem
                         st.error(f"Terjadi kesalahan teknis: {e}")
 
+            # PINDAHKAN TOMBOL DOWNLOAD KE SINI (DI LUAR st.form)
+            if hasil_cetak:
+                st.success(f"✅ Formulir untuk {nama_p_cetak} berhasil dibuat!")
+                with open(hasil_cetak, "rb") as file:
+                    st.download_button(
+                        label="⬇️ Download Hasil Formulir",
+                        data=file,
+                        file_name=hasil_cetak,
+                        mime="image/png"
+                    )
         # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
         st.divider()
         with st.expander("🗑️ Hapus Data Pasien"):
