@@ -91,10 +91,10 @@ def buat_formulir_otomatis(data, petugas):
     pdf.multi_cell(186, 5, "Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
 
   # --- AREA TANDA TANGAN ---
-    pdf.ln(15)
+    pdf.ln(10)
     pdf.cell(186, 5, f"Kawasi, {datetime.now().strftime('%d %B %Y')}", ln=True, align="R")
     
-    # Ambil posisi Y saat ini untuk menentukan titik awal TTD
+    # Simpan posisi Y saat ini
     posisi_y_ttd = pdf.get_y()
     
     pdf.set_x(12)
@@ -102,27 +102,29 @@ def buat_formulir_otomatis(data, petugas):
     pdf.cell(93, 5, "Petugas Penerimaan / ", align="C")
     pdf.cell(93, 5, "Pasien / Keluarga / ", align="C", ln=True)
 
-    # --- BAGIAN KRUSIAL: MEMANGGIL GAMBAR TTD ---
-    # Asumsikan 'data' berisi path ke file gambar TTD
-    path_ttd_petugas = data.get('ttd_petugas') # Sesuaikan key-nya
-    path_ttd_pasien = data.get('ttd_pasien')   # Sesuaikan key-nya
+    # --- LOGIKA PEMANGGILAN TANDA TANGAN ---
+    # Petugas: Dipaksa huruf kecil sesuai file di github (misal: alhatma.png)
+    file_ttd_petugas = f"{petugas.lower()}.png" 
+    # Pasien: Diambil dari data path atau canvas
+    file_ttd_pasien = data.get('ttd_pasien') 
 
-    # TTD Petugas (Kiri)
-    if path_ttd_petugas and os.path.exists(path_ttd_petugas):
-        pdf.image(path_ttd_petugas, x=35, y=posisi_y_ttd + 10, h=20)
+    # Render TTD Petugas jika filenya ada
+    if os.path.exists(file_ttd_petugas):
+        pdf.image(file_ttd_petugas, x=40, y=posisi_y_ttd + 8, h=18)
     
-    # TTD Pasien (Kanan)
-    if path_ttd_pasien and os.path.exists(path_ttd_pasien):
-        pdf.image(path_ttd_pasien, x=130, y=posisi_y_ttd + 10, h=20)
+    # Render TTD Pasien jika filenya ada
+    if file_ttd_pasien and os.path.exists(file_ttd_pasien):
+        pdf.image(file_ttd_pasien, x=135, y=posisi_y_ttd + 8, h=18)
 
-    # Beri jarak ke bawah agar nama tidak menimpa gambar
+    # Beri jarak agar nama tidak menimpa gambar TTD
     pdf.ln(25) 
     
     pdf.set_x(12)
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(93, 5, f"( {clean(petugas).upper()} )", align="C")
     pdf.cell(93, 5, f"( {clean(data.get('nama')).upper()} )", align="C", ln=True)
+
     # Garis penutup bawah
-    pdf.line(10, pdf.get_y() + 1, 200, pdf.get_y() + 1)
+    pdf.line(10, pdf.get_y() + 2, 200, pdf.get_y() + 2)
 
     return bytes(pdf.output())
