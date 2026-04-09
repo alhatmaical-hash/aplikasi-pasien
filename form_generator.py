@@ -52,21 +52,21 @@ def buat_formulir_otomatis(data, petugas):
     
     # Baris Judul
     pdf.set_font("helvetica", "B", 11)
-    pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN / ", border=1, ln=True, align="C")
+    pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN  ", border=1, ln=True, align="C")
     
     # Baris No Rekam Medis - SEKARANG ALIGN LEFT
     pdf.set_font("helvetica", "B", 10)
-    pdf.cell(190, 8, " No. Rekam Medis / :", border=1, ln=True, align="L")
+    pdf.cell(190, 8, " No. Rekam Medis  :", border=1, ln=True, align="L")
 
     # --- IDENTITAS PASIEN ---
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(190, 8, " IDENTITAS PASIEN / ( bagian ini harus lengkap / )", border=1, ln=True)
 
     labels = [
-        "NAMA LENGKAP / ", "TEMPAT LAHIR / ", "TANGGAL LAHIR / ", 
-        "JENIS KELAMIN / ", "AGAMA / ", "NO HP (WA) / ", 
-        "NIK / ID CARD / ", "PERUSAHAAN / ", "DEPARTEMEN / ", 
-        "JABATAN / ", "MES / NO KAMAR / ", "RIWAYAT ALERGI / ", "GOL. DARAH / "
+        "NAMA LENGKAP ", "TEMPAT LAHIR  ", "TANGGAL LAHIR  ", 
+        "JENIS KELAMIN  ", "AGAMA  ", "NO HP (WA)  ", 
+        "NIK  ID CARD  ", "PERUSAHAAN  ", "DEPARTEMEN  ", 
+        "JABATAN  ", "MES  NO KAMAR  ", "RIWAYAT ALERGI  ", "GOL. DARAH  "
     ]
     
     val_keys = ['nama', 'tempat_lahir', 'tgl_lahir', 'gender', 'agama', 'no_hp', 'nik', 'perusahaan', 'departemen', 'jabatan', 'blok_mes', 'alergi', 'gol_darah']
