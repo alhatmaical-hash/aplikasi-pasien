@@ -610,14 +610,20 @@ elif menu == "Rekam Medis / 病历":
                     try:
                         row = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
                         data_pasien = {
-                            "nama": row['Nama Lengkap'],
-                            "tempat_lahir": row['TTL'],
-                            "perusahaan": row['Perusahaan'],
+                           "nama": row['Nama Lengkap'],
+                            "tempat_lahir": row['TTL'].split(',')[0] if ',' in row['TTL'] else row['TTL'],
+                            "tgl_lahir": row['TTL'].split(',')[1] if ',' in row['TTL'] else row['TTL'],
+                            "gender": row.get('Gender', '-'),
+                            "agama": row.get('Agama', '-'),
+                            "no_hp": row.get('WhatsApp', '-'),
                             "nik": row['NIK/ID'],
+                            "perusahaan": row['Perusahaan'],
                             "departemen": row['Departemen'],
                             "jabatan": row['Jabatan'],
+                            "blok_mes": row.get('Blok/Kamar', '-'),
+                            "alergi": row.get('Alergi', '-'),
                             "lokasi_kerja": row['Area Kerja'],
-                            "blok_mes": row['Blok/Kamar']
+                            "gol_darah": row.get('Gol Darah', '-')
                         }
                         hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
                     except Exception as e:
