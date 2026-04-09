@@ -1,28 +1,35 @@
 from PIL import Image, ImageDraw, ImageFont
 
 def buat_formulir_otomatis(data_pasien, nama_petugas):
-    # 1. Buka template formulir (image_81e01c.png)
-    # Kita asumsikan template sudah ada di folder aplikasi
     try:
+        # 1. Buka template (pastikan file ini ada di GitHub kamu)
         img = Image.open("template_form.png")
         draw = ImageDraw.Draw(img)
         
-        # 2. Tulis data pasien ke formulir
-        # Angka di bawah adalah koordinat (bisa kamu sesuaikan nanti)
-        draw.text((250, 200), f": {data_pasien['nama']}", fill="black")
-        draw.text((250, 230), f": {data_pasien['tempat_lahir']}", fill="black")
-        draw.text((250, 420), f": {data_pasien['perusahaan']}", fill="black")
+        # Sumbu X (jarak dari kiri) biasanya sama untuk semua titik dua (:)
+        x_titik = 530 
+        
+        # 2. Tulis data ke formulir (Sumbu Y/Tinggi diatur agar pas di kotak)
+        draw.text((x_titik, 255), f": {data_pasien['nama']}", fill="black")
+        draw.text((x_titik, 285), f": {data_pasien['tempat_lahir']}", fill="black")
+        draw.text((x_titik, 445), f": {data_pasien['nik']}", fill="black")
+        draw.text((x_titik, 475), f": {data_pasien['perusahaan']}", fill="black")
+        draw.text((x_titik, 505), f": {data_pasien['departemen']}", fill="black")
+        draw.text((x_titik, 535), f": {data_pasien['jabatan']}", fill="black")
+        draw.text((x_titik, 565), f": {data_pasien['blok_mes']}", fill="black")
+        draw.text((x_titik, 655), f": {data_pasien['lokasi_kerja']}", fill="black")
 
         # 3. Tempelkan Tanda Tangan Petugas
-        path_ttd = f"sig_{nama_petugas.lower()}.png" # Contoh: sig_taufik.png
+        # Kode akan mencari file seperti sig_taufik.png atau sig_wawan.png
+        path_ttd = f"sig_{nama_petugas.lower()}.png" 
         ttd = Image.open(path_ttd).convert("RGBA")
-        ttd = ttd.resize((150, 100)) # Kecilkan ukuran tanda tangan
+        ttd = ttd.resize((180, 110)) # Ukuran disesuaikan agar pas di kotak TTD
         
-        # Tempel di area tanda tangan petugas
-        img.paste(ttd, (150, 850), ttd)
+        # Tempel di area Petugas Penerimaan Pasien (Koordinat X=200, Y=880)
+        img.paste(ttd, (200, 880), ttd)
         
-        # 4. Simpan hasilnya
-        nama_file_hasil = f"Form_{data_pasien['nama']}.png"
+        # 4. Simpan hasil sementara
+        nama_file_hasil = f"Form_Pendaftaran_{data_pasien['nama'].replace(' ', '_')}.png"
         img.save(nama_file_hasil)
         return nama_file_hasil
         
