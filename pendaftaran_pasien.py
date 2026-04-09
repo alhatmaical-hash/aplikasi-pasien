@@ -591,21 +591,41 @@ elif menu == "Rekam Medis / 病历":
                     
                     # 3. Panggil fungsi dari form_generator.py
                     try:
-                        # Ini memanggil file form_generator.py yang Anda buat sebelumnya
-                        nama_hasil = buat_formulir_otomatis(data_pasien, petugas)
+                        import os
                         
-                        st.success(f"✅ Formulir untuk {nama_p_cetak} berhasil dibuat!")
+                        # PERBAIKAN 1: Pastikan nama petugas diubah ke huruf kecil agar cocok dengan file .png di GitHub
+                        petugas_low = petugas.lower()
+                        # Jika di GitHub namanya 'sig_ladeli.png', tapi di menu cuma 'DELI', maka kita sesuaikan
+                        if petugas_low == "deli":
+                            petugas_low = "ladeli"
                         
-                        # Tampilkan tombol download jika file berhasil dibuat
-                        with open(nama_hasil, "rb") as file:
-                            st.download_button(
-                                label="⬇️ Download Hasil Formulir",
-                                data=file,
-                                file_name=nama_hasil,
-                                mime="image/png"
-                            )
+                        # Cek keberadaan file sebelum memproses (Debugging)
+                        file_ttd = f"sig_{petugas_low}.png"
+                        if not os.path.exists('template_form.png') or not os.path.exists(file_ttd):
+                            st.error(f"⚠️ File tidak ditemukan di server!")
+                            st.warning(f"Cari: template_form.png -> {'✅ ADA' if os.path.exists('template_form.png') else '❌ TIDAK ADA'}")
+                            st.warning(f"Cari: {file_ttd} -> {'✅ ADA' if os.path.exists(file_ttd) else '❌ TIDAK ADA'}")
+                            
+                            # Menampilkan isi folder untuk memastikan sinkronisasi GitHub
+                            with st.expander("Lihat daftar file yang terbaca di server"):
+                                st.write(os.listdir("."))
+                        else:
+                            # Jika file ada, jalankan fungsi pembuat formulir
+                            nama_hasil = buat_formulir_otomatis(data_pasien, petugas)
+                            
+                            st.success(f"✅ Formulir untuk {nama_p_cetak} berhasil dibuat!")
+                            
+                            with open(nama_hasil, "rb") as file:
+                                st.download_button(
+                                    label="⬇️ Download Hasil Formulir",
+                                    data=file,
+                                    file_name=nama_hasil,
+                                    mime="image/png"
+                                )
+                                
                     except Exception as e:
-                        st.error(f"Gagal mencetak: Pastikan file 'template_form.png' dan 'sig_{petugas.lower()}.png' sudah ada di folder.")
+                        # Menampilkan error teknis yang sebenarnya jika terjadi kegagalan sistem
+                        st.error(f"Terjadi kesalahan teknis: {e}")
 
         # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
         st.divider()
