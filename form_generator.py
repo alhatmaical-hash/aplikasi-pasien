@@ -90,41 +90,33 @@ def buat_formulir_otomatis(data, petugas):
     pdf.set_x(12)
     pdf.multi_cell(186, 5, "Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
 
-  # --- AREA TANDA TANGAN ---
-    pdf.ln(10)
-    pdf.cell(186, 5, f"Kawasi, {datetime.now().strftime('%d %B %Y')}", ln=True, align="R")
+ # --- LOGIKA TANDA TANGAN (PERBAIKAN UTAMA) ---
     
-    # Simpan posisi Y saat ini
-    posisi_y_ttd = pdf.get_y()
+    # 1. Tanda Tangan Petugas (alhatma.png)
+    # Kita paksa mencari file dengan huruf kecil
+    file_petugas = f"{petugas.lower()}.png" 
     
-    pdf.set_x(12)
+    if os.path.exists(file_petugas):
+        # x=35 agar posisi gambar di tengah kolom kiri
+        pdf.image(file_petugas, x=38, y=y_ttd_label + 7, h=15)
+    else:
+        # Jika file tidak ketemu, muncul tulisan kecil untuk cek (bisa dihapus nanti)
+        pdf.set_xy(10, y_ttd_label + 10)
+        pdf.set_font("helvetica", "I", 6)
+        pdf.cell(95, 5, f"File {file_petugas} tidak ditemukan di server", align="C", ln=False)
+
+    # 2. Tanda Tangan Pasien
+    file_pasien = data.get('ttd_pasien')
+    if file_pasien and os.path.exists(file_pasien):
+        pdf.image(file_pasien, x=135, y=y_ttd_label + 7, h=15)
+
+    # Spasi untuk tanda tangan
+    pdf.ln(20) 
+    
+    # Nama Terang
     pdf.set_font("helvetica", "B", 10)
-    pdf.cell(93, 5, "Petugas Penerimaan / ", align="C")
-    pdf.cell(93, 5, "Pasien / Keluarga / ", align="C", ln=True)
+    pdf.cell(95, 5, f"( {clean(petugas).upper()} )", align="C")
+    pdf.cell(95, 5, f"( {clean(data.get('nama', '............................')).upper()} )", align="C", ln=True)
 
-    # --- LOGIKA PEMANGGILAN TANDA TANGAN ---
-    # Petugas: Dipaksa huruf kecil sesuai file di github (misal: alhatma.png)
-    file_ttd_petugas = f"{petugas.lower()}.png" 
-    # Pasien: Diambil dari data path atau canvas
-    file_ttd_pasien = data.get('ttd_pasien') 
-
-    # Render TTD Petugas jika filenya ada
-    if os.path.exists(file_ttd_petugas):
-        pdf.image(file_ttd_petugas, x=40, y=posisi_y_ttd + 8, h=18)
-    
-    # Render TTD Pasien jika filenya ada
-    if file_ttd_pasien and os.path.exists(file_ttd_pasien):
-        pdf.image(file_ttd_pasien, x=135, y=posisi_y_ttd + 8, h=18)
-
-    # Beri jarak agar nama tidak menimpa gambar TTD
-    pdf.ln(25) 
-    
-    pdf.set_x(12)
-    pdf.set_font("helvetica", "B", 10)
-    pdf.cell(93, 5, f"( {clean(petugas).upper()} )", align="C")
-    pdf.cell(93, 5, f"( {clean(data.get('nama')).upper()} )", align="C", ln=True)
-
-    # Garis penutup bawah
     pdf.line(10, pdf.get_y() + 2, 200, pdf.get_y() + 2)
-
     return bytes(pdf.output())
