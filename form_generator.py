@@ -3,38 +3,31 @@ import os
 from datetime import datetime
 
 def buat_formulir_otomatis(data, petugas):
-    # Menggunakan FPDF2 (versi yang mendukung Unicode)
-    # Jika menggunakan fpdf standar, ganti ke 'fpdf2' via pip install fpdf2
+    # Menggunakan fpdf2 untuk dukungan Unicode
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     
-    # --- PENTING: MENAMBAHKAN FONT UNICODE ---
-    # Ganti 'path/to/font.ttf' dengan lokasi file font Mandarin Anda
-    try:
-        pdf.add_font('UnicodeFont', '', 'msyh.ttf', uni=True)
-        pdf.add_font('UnicodeFontB', '', 'msyhbd.ttf', uni=True) # Versi Bold
-        font_utama = 'UnicodeFont'
-        font_bold = 'UnicodeFontB'
-    except:
-        # Fallback jika font tidak ditemukan agar tidak crash
-        font_utama = 'helvetica'
-        font_bold = 'helvetica'
+    # --- LOAD FONT UNICODE ---
+    # Pastikan file .ttf ini ada di folder proyek Anda
+    font_path = "msyh.ttf" # Ganti dengan font Mandarin yang Anda miliki
+    if os.path.exists(font_path):
+        pdf.add_font("Mandarin", "", font_path)
+        pdf.add_font("MandarinB", "", font_path) # Gunakan file yang sama jika tidak ada versi Bold
+        font_utama = "Mandarin"
+        font_bold = "MandarinB"
+    else:
+        # Fallback jika font tidak ditemukan (akan error jika ada Mandarin)
+        font_utama = "helvetica"
+        font_bold = "helvetica"
 
     pdf.add_page()
     
     def clean(text):
-        if not text: return "-"
-        return str(text)
+        return str(text) if text else "-"
 
-    # --- KOP FORMULIR (Sesuai Struktur Sebelumnya) ---
-    pdf.set_line_width(0.3)
-    pdf.rect(10, 10, 90, 32) 
-    
-    # --- JUDUL BILINGUAL ---
+    # --- KOP & JUDUL BILINGUAL ---
     pdf.ln(34)
-    pdf.set_line_width(0.5)
-    
-    # Gunakan font unicode yang sudah didaftarkan
-    pdf.set_font(font_bold, size=11)
+    pdf.set_font(font_bold, size=12)
+    # Teks Mandarin sekarang aman digunakan dengan font Unicode
     pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN / 患者登记表", border=1, ln=True, align="C")
     
     pdf.set_font(font_bold, size=10)
@@ -44,6 +37,7 @@ def buat_formulir_otomatis(data, petugas):
     pdf.set_font(font_bold, size=10)
     pdf.cell(190, 8, " IDENTITAS PASIEN / 患者身份 ( bagian ini harus lengkap / 这部分必须完整 )", border=1, ln=True)
 
+    # Label Bilingual sesuai referensi gambar
     labels = [
         ["NAMA LENGKAP / 姓名", 'nama'], 
         ["TEMPAT LAHIR / 出生地点", 'tempat_lahir'], 
@@ -66,16 +60,13 @@ def buat_formulir_otomatis(data, petugas):
         pdf.set_font(font_utama, size=10)
         pdf.cell(115, 7.5, f": {clean(data.get(key))}", border=1, ln=True)
 
-    # --- SURAT PERNYATAAN BILINGUAL ---
+    # --- SURAT PERNYATAAN ---
     pdf.ln(4)
     y_pernyataan = pdf.get_y()
-    pdf.rect(10, y_pernyataan, 190, 75) 
-
+    pdf.rect(10, y_pernyataan, 190, 80) 
     pdf.set_xy(12, y_pernyataan + 3)
     pdf.set_font(font_bold, size=10)
     pdf.cell(186, 6, "SURAT PERNYATAAN / 声明书", ln=True)
-    
-    # Isi pernyataan tetap Indonesia sesuai referensi terakhir
     pdf.set_font(font_utama, size=9)
     pdf.set_x(12)
     pdf.multi_cell(186, 5, "Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
