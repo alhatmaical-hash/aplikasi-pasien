@@ -82,4 +82,4 @@ def buat_formulir_otomatis(data, petugas):
     pdf.cell(95, 10, "( ............................ )", align="C", ln=True)
 
     # 8. Output sebagai Byte (Bisa langsung diprint di browser)
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output()
