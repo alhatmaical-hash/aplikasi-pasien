@@ -1,61 +1,34 @@
-from PIL import Image, ImageDraw, ImageFont
+from fpdf import FPDF
 import os
 from datetime import datetime
 
-WARNA_HITAM = (0, 0, 0)
-WARNA_PUTIH = (255, 255, 255)
-
 def buat_formulir_otomatis(data, petugas):
-    # --- 1. Kertas A4 (300 DPI) ---
-    width, height = 2480, 3508
-    template = Image.new('RGB', (width, height), color=WARNA_PUTIH)
-    draw = ImageDraw.Draw(template)
-    
-    # --- 2. Inisialisasi Font Default (Pencegah Error) ---
-    # Kita buat nilai default dulu supaya tidak terjadi "local variable not associated with a value"
-    font_kop = ImageFont.load_default()
-    font_isi_bold = ImageFont.load_default()
-    font_isi = ImageFont.load_default()
-    font_pernyataan = ImageFont.load_default()
+    # 1. Inisialisasi PDF (Ukuran A4)
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
 
-    # --- 3. Mencoba Memuat Font Times New Roman ---
-    try:
-        # Cari font di sistem server
-        path_bold = "timesbd.ttf" if os.path.exists("timesbd.ttf") else "arialbd.ttf"
-        path_reg = "times.ttf" if os.path.exists("times.ttf") else "arial.ttf"
-        
-        # Jika font ditemukan, timpa nilai default dengan ukuran besar
-        font_kop = ImageFont.truetype(path_bold, 85)
-        font_isi_bold = ImageFont.truetype(path_bold, 50)
-        font_isi = ImageFont.truetype(path_reg, 50)
-        font_pernyataan = ImageFont.truetype(path_reg, 45)
-    except Exception as e:
-        print(f"Gagal memuat font spesifik, menggunakan default: {e}")
+    # 2. Membuat Kop Formulir (Garis Luar)
+    pdf.set_line_width(1)
+    pdf.rect(10, 10, 190, 40) # Kotak Kop
 
-    # --- 4. Kop Formulir ---
-    margin = 150
-    draw.rectangle([margin, 100, width - margin, 500], outline=WARNA_HITAM, width=8)
-    
-    t1, t2 = "FORMULIR PENDAFTARAN PASIEN", "KLINIK HARITA FERONICKEL OBI"
-    draw.text(((width - draw.textlength(t1, font=font_kop))/2, 180), t1, fill=WARNA_HITAM, font=font_kop)
-    draw.text(((width - draw.textlength(t2, font=font_kop))/2, 300), t2, fill=WARNA_HITAM, font=font_kop)
+    # 3. Memasukkan Logo (Pastikan file .jpg ada di folder utama)
+    if os.path.exists("harita.jpg"):
+        pdf.image("harita.jpg", x=12, y=12, h=25)
+    if os.path.exists("hjf.jpg"):
+        pdf.image("hjf.jpg", x=45, y=12, h=25)
+    if os.path.exists("smk3.jpg"):
+        pdf.image("smk3.jpg", x=165, y=12, h=25)
 
-    # --- 5. Penempelan Logo (Harus Sesuai Nama File di GitHub) ---
-    def paste_logo(path, pos, size=(380, 280)):
-        if os.path.exists(path):
-            img = Image.open(path).convert("RGBA")
-            img = img.resize(size, Image.Resampling.LANCZOS)
-            template.paste(img, pos, img)
+    # 4. Judul Kop (Besar & Bold)
+    pdf.set_font("Times", "B", 18)
+    pdf.set_xy(10, 18)
+    pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN", ln=True, align="C")
+    pdf.set_font("Times", "B", 16)
+    pdf.cell(190, 10, "KLINIK HARITA FERONICKEL OBI", ln=True, align="C")
 
-    # Pastikan file ini ada di folder utama GitHub Anda
-    paste_logo("harita.jpg", (margin + 40, 140))    
-    paste_logo("hjf.jpg", (margin + 450, 140))      
-    paste_logo("smk3.jpg", (width - margin - 420, 140)) 
-
-    # --- 6. Tabel Data Pasien (14 Kolom) ---
-    y_table = 600
-    baris_h = 145 # Sedikit lebih tinggi agar lega
-    col_split = 950 # Jarak label ke data
+    # 5. Tabel Data Pasien (Tulisan Ukuran 12 - Sangat Jelas)
+    pdf.ln(15) # Jarak ke tabel
     
     labels = [
         "NAMA LENGKAP", "TEMPAT LAHIR", "TANGGAL LAHIR", "JENIS KELAMIN", 
@@ -72,39 +45,41 @@ def buat_formulir_otomatis(data, petugas):
         data.get('lokasi_kerja','-'), data.get('gol_darah','-')
     ]
 
+    pdf.set_font("Times", "", 12)
     for i in range(len(labels)):
-        curr_y = y_table + (i * baris_h)
-        draw.rectangle([margin, curr_y, width - margin, curr_y + baris_h], outline=WARNA_HITAM, width=4)
-        # Label (Bold)
-        draw.text((margin + 40, curr_y + 45), labels[i], fill=WARNA_HITAM, font=font_isi_bold)
-        # Isi Data (Regular)
-        draw.text((margin + col_split, curr_y + 45), f":  {val[i]}", fill=WARNA_HITAM, font=font_isi)
+        pdf.set_font("Times", "B", 12)
+        pdf.cell(60, 10, labels[i], border=1) # Kolom Label
+        pdf.set_font("Times", "", 12)
+        pdf.cell(130, 10, f": {val[i]}", border=1, ln=True) # Kolom Isi
 
-    # --- 7. Pernyataan & Tanda Tangan ---
-    y_sign = curr_y + baris_h + 150
-    p_txt = ("Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan\n"
-             "dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
-    draw.text((margin + 40, y_sign), "SURAT PERNYATAAN:", fill=WARNA_HITAM, font=font_isi_bold)
-    draw.text((margin + 40, y_sign + 80), p_txt, fill=WARNA_HITAM, font=font_pernyataan)
+    # 6. Surat Pernyataan
+    pdf.ln(10)
+    pdf.set_font("Times", "B", 12)
+    pdf.cell(190, 10, "SURAT PERNYATAAN", ln=True, align="L")
+    pdf.set_font("Times", "", 11)
+    pernyataan = ("Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan "
+                  "dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
+    pdf.multi_cell(190, 7, pernyataan)
 
-    # Area Tanda Tangan
-    y_bottom = y_sign + 450
-    tgl_str = f"Kawasi, {datetime.now().strftime('%d %B %Y')}"
-    draw.text((width - margin - 650, y_bottom), tgl_str, fill=WARNA_HITAM, font=font_isi)
+    # 7. Tanda Tangan
+    pdf.ln(15)
+    tgl_skrg = f"Kawasi, {datetime.now().strftime('%d %B %Y')}"
+    pdf.cell(100, 10, "", ln=False)
+    pdf.cell(90, 10, tgl_skrg, ln=True, align="C")
     
-    draw.text((margin + 150, y_bottom + 100), "Petugas Penerimaan,", fill=WARNA_HITAM, font=font_isi)
-    draw.text((width - margin - 650, y_bottom + 100), "Pasien / Keluarga,", fill=WARNA_HITAM, font=font_isi)
+    pdf.cell(95, 10, "Petugas Penerimaan,", align="C")
+    pdf.cell(95, 10, "Pasien / Keluarga,", align="C", ln=True)
 
-    # Tanda Tangan Petugas (Jika ada file sig_petugas.png)
+    # Tempel Tanda Tangan Digital (Jika ada)
+    y_ttd = pdf.get_y()
     path_ttd = f"sig_{petugas.lower()}.png"
     if os.path.exists(path_ttd):
-        ttd = Image.open(path_ttd).convert("RGBA").resize((450, 280))
-        template.paste(ttd, (margin + 150, y_bottom + 180), ttd)
+        pdf.image(path_ttd, x=35, y=y_ttd, h=20)
 
-    draw.text((margin + 150, y_bottom + 480), f"( {petugas} )", fill=WARNA_HITAM, font=font_isi_bold)
-    draw.text((width - margin - 650, y_bottom + 480), "( ............................ )", fill=WARNA_HITAM, font=font_isi)
+    pdf.ln(25)
+    pdf.set_font("Times", "B", 12)
+    pdf.cell(95, 10, f"( {petugas} )", align="C")
+    pdf.cell(95, 10, "( ............................ )", align="C", ln=True)
 
-    # Simpan
-    fname = f"Form_{data.get('nama','pasien').replace(' ','_')}.png"
-    template.save(fname)
-    return fname
+    # 8. Output sebagai Byte (Bisa langsung diprint di browser)
+    return pdf.output(dest='S').encode('latin-1')
