@@ -558,8 +558,44 @@ elif menu == "Rekam Medis / 病历":
                     conn.commit()
                     st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
                     st.rerun()
+
+        # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
+        st.divider()
+        with st.expander("🗑️ Hapus Data Pasien"):
+            with st.form("hapus_pasien_form"):
+                st.warning("Hati-hati! Data yang dihapus tidak dapat dikembalikan.")
+                
+                # Buat list pilihan yang unik (ID - Tanggal - Nama)
+                # Ini agar kita tahu persis mana yang dihapus (misal ada 2 Alhatma di tgl berbeda)
+                pilihan_hapus = df.apply(lambda x: f"{x['id']} | {x['Tgl Daftar']} | {x['Nama Lengkap']}", axis=1).tolist()
+                
+                selected_data = st.selectbox("Pilih Data Spesifik yang akan dihapus", pilihan_hapus)
+                konfirmasi = st.checkbox(f"Saya yakin ingin menghapus data tersebut")
+                
+                btn_hapus = st.form_submit_button("Hapus Data Pasien")
+                
+                if btn_hapus:
+                    if konfirmasi:
+                        try:
+                            # Ambil ID saja dari teks pilihan (angka paling depan)
+                            id_target = int(selected_data.split(" | ")[0])
+                            
+                            with get_connection() as conn:
+                                cur = conn.cursor()
+                                # HAPUS BERDASARKAN ID (Bukan Nama)
+                                cur.execute("DELETE FROM pasien WHERE id = ?", (id_target,))
+                                conn.commit()
+                                
+                            st.success(f"Data dengan ID {id_target} telah berhasil dihapus.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Gagal menghapus data: {e}")
+                    else:
+                        st.error("Silakan centang kotak konfirmasi sebelum menghapus.")
+
+
     
-       # --- 5. FITUR CETAK FORMULIR OTOMATIS (VERSI BARU) ---
+       # --- 6. FITUR CETAK FORMULIR OTOMATIS (VERSI BARU) ---
         st.divider()
         with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
             st.info("Pilih pasien untuk membuat formulir otomatis dari data rekam medis.")
@@ -597,7 +633,7 @@ elif menu == "Rekam Medis / 病历":
                         file_name=hasil_cetak,
                         mime="image/png"
                     )
-        # --- 6. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
+        # --- 7. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
         st.divider()
         with st.expander("🚨 Hapus Seluruh Database (Admin Only)"):
             st.error("PERINGATAN: Tindakan ini akan menghapus SELURUH data pasien tanpa kecuali!")
