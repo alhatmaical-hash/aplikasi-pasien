@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 def buat_formulir_otomatis(data, petugas):
+    # 1. Fungsi Clean untuk mencegah error karakter
     def clean(text):
         if not text: return "-"
         return str(text).encode('ascii', 'ignore').decode('ascii')
@@ -37,6 +38,7 @@ def buat_formulir_otomatis(data, petugas):
     pdf.cell(lebar_kop_kiri - 30, 4, clean("Email: admin.klinik@hjferronickel.com"), ln=True)
     if path_smk3: pdf.image(path_smk3, x=85, y=13, h=12)
 
+    # Tabel Informasi Dokumen (Sisi Kanan)
     pdf.set_xy(100, kop_y)
     pdf.set_font("helvetica", "", 8)
     dok_info = [["No. Dok", "HJF-FR-OHS-113"], ["Tgl Terbit", "12-10-2023"], ["No. Rev", "03"], ["Hal", "3"]]
@@ -45,18 +47,18 @@ def buat_formulir_otomatis(data, petugas):
         pdf.cell(25, 8, h[0], border=1)
         pdf.cell(75, 8, h[1], border=1, ln=True, align="C")
 
-    # --- PERBAIKAN: KOLOM TERPISAH UNTUK JUDUL & NO RM ---
+    # --- BAGIAN JUDUL & NO RM (KOLOM TERPISAH) ---
     pdf.ln(2)
     pdf.set_line_width(0.5)
     
-    # 1. Kolom Judul (Berada di Atas)
+    # Kolom Judul
     pdf.set_font("helvetica", "B", 12)
     pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN", border=1, ln=True, align="C")
     
-    # 2. Kolom No Rekam Medis (Berada di Bawah Judul)
+    # Kolom No Rekam Medis - SEKARANG ALIGN LEFT
     pdf.set_font("helvetica", "B", 10)
-    # Menggunakan align="R" dan border=1 untuk membuat kotak tersendiri
-    pdf.cell(190, 8, "No. Rekam Medis :        ", border=1, ln=True, align="R")
+    # Menambahkan spasi sedikit di awal agar tidak terlalu menempel ke garis kiri
+    pdf.cell(190, 8, " No. Rekam Medis : ", border=1, ln=True, align="L") 
 
     # --- IDENTITAS PASIEN ---
     pdf.ln(0)
@@ -76,7 +78,7 @@ def buat_formulir_otomatis(data, petugas):
     # --- AREA SURAT PERNYATAAN & TTD ---
     pdf.ln(4)
     y_pernyataan = pdf.get_y()
-    pdf.rect(10, y_pernyataan, 190, 80) 
+    pdf.rect(10, y_pernyataan, 190, 80) # Bingkai kotak bawah
 
     pdf.set_xy(12, y_pernyataan + 3)
     pdf.set_font("helvetica", "B", 11)
@@ -99,13 +101,17 @@ def buat_formulir_otomatis(data, petugas):
     if path_ttd:
         pdf.image(path_ttd, x=37, y=pdf.get_y() + 5, h=16)
 
+    # Spasi untuk TTD
     pdf.ln(35) 
+    
+    # Nama di atas garis
     pdf.set_x(12)
     pdf.set_font("helvetica", "B", 10)
     pdf.cell(93, 5, f"( {clean(petugas).upper()} )", align="C")
     pdf.cell(93, 5, "( ............................ )", align="C", ln=True)
     
-    y_akhir = pdf.get_y() + 1
-    pdf.line(10, y_akhir, 200, y_akhir)
+    # Garis penutup kotak paling bawah
+    y_garis_akhir = pdf.get_y() + 1
+    pdf.line(10, y_garis_akhir, 200, y_garis_akhir)
 
     return bytes(pdf.output())
