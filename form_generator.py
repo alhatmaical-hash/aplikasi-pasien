@@ -7,36 +7,42 @@ def buat_formulir_otomatis(data, petugas):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     
-    # --- PENGATURAN KOP FORMULIR ---
+    # --- FUNGSI PENCARI LOGO (Mencegah Error Nama File) ---
+    def cari_gambar(nama_dasar):
+        # Mencoba berbagai ekstensi file yang mungkin Anda upload ke GitHub
+        for ext in ['.jpg', '.png', '.jpeg', '.JPG', '.PNG']:
+            path = nama_dasar + ext
+            if os.path.exists(path):
+                return path
+        return None
+
+    # --- KOP FORMULIR ---
     pdf.set_line_width(0.8)
     pdf.rect(10, 10, 190, 40) 
 
-    # 2. Logika Pemanggilan Logo (Pastikan file harita.jpg, hjf.jpg, smk3.jpg ada di GitHub)
-    # Posisi Y disesuaikan agar logo terlihat besar dan sejajar dengan teks
-    y_logo = 13 
-    
-    if os.path.exists("harita.jpg"): 
-        pdf.image("harita.jpg", x=12, y=y_logo, h=33)
-    
-    if os.path.exists("hjf.jpg"): 
-        pdf.image("hjf.jpg", x=47, y=y_logo, h=33)
-    
-    if os.path.exists("smk3.jpg"): 
-        pdf.image("smk3.jpg", x=163, y=y_logo, h=33)
+    # Mencari dan memasang logo
+    path_harita = cari_gambar("harita")
+    path_hjf = cari_gambar("hjf")
+    path_smk3 = cari_gambar("smk3")
 
-    # Teks Kop (Helvetica Bold)
+    # Posisi Y diatur agar logo terlihat besar dan rapi
+    if path_harita: pdf.image(path_harita, x=12, y=13, h=33)
+    if path_hjf: pdf.image(path_hjf, x=47, y=13, h=33)
+    if path_smk3: pdf.image(path_smk3, x=163, y=13, h=33)
+
+    # Teks Kop
     pdf.set_font("helvetica", "B", 18)
     pdf.set_xy(10, 18)
     pdf.cell(190, 10, "FORMULIR PENDAFTARAN PASIEN", ln=True, align="C")
     pdf.set_font("helvetica", "B", 16)
     pdf.cell(190, 10, "KLINIK HARITA FERONICKEL OBI", ln=True, align="C")
 
-    # 3. Fungsi Pembersih Teks (Mencegah Error Karakter Mandarin)
+    # --- PEMBERSIH TEKS (PENTING: Agar tidak error jika ada Mandarin) ---
     def clean(text):
         if not text: return "-"
         return str(text).encode('ascii', 'ignore').decode('ascii')
 
-    # 4. Tabel Data Pasien (Tinggi baris disesuaikan agar muat 1 halaman)
+    # --- TABEL DATA PASIEN (14 BARIS) ---
     pdf.ln(10)
     labels = [
         "NAMA LENGKAP", "TEMPAT LAHIR", "TANGGAL LAHIR", "JENIS KELAMIN", 
@@ -58,36 +64,25 @@ def buat_formulir_otomatis(data, petugas):
     pdf.set_font("helvetica", "", 12)
     for i in range(len(labels)):
         pdf.set_font("helvetica", "B", 12)
-        pdf.cell(65, 8.5, labels[i], border=1) # Tinggi baris 8.5mm
+        pdf.cell(65, 8.5, labels[i], border=1)
         pdf.set_font("helvetica", "", 12)
         pdf.cell(125, 8.5, f": {val[i]}", border=1, ln=True)
 
-    # 5. Surat Pernyataan
-    pdf.ln(8)
-    pdf.set_font("helvetica", "B", 12)
-    pdf.cell(190, 8, "SURAT PERNYATAAN", ln=True)
-    pdf.set_font("helvetica", "", 11)
-    pernyataan = ("Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan "
-                  "dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
-    pdf.multi_cell(190, 6, pernyataan)
-
-    # 6. Tanda Tangan
+    # --- TANDA TANGAN ---
     pdf.ln(8)
     tgl_skrg = f"Kawasi, {datetime.now().strftime('%d %B %Y')}"
-    pdf.cell(95, 8, "", ln=False)
+    pdf.cell(95, 8, "Petugas Penerimaan,", align="C")
     pdf.cell(95, 8, tgl_skrg, ln=True, align="C")
     
-    pdf.cell(95, 8, "Petugas Penerimaan,", align="C")
-    pdf.cell(95, 8, "Pasien / Keluarga,", align="C", ln=True)
-
-    # Tanda Tangan Digital Petugas
-    path_ttd = f"sig_{petugas.lower()}.png"
-    if os.path.exists(path_ttd):
+    # Mencari Tanda Tangan Digital Petugas
+    path_ttd = cari_gambar(f"sig_{petugas.lower()}")
+    if path_ttd:
         pdf.image(path_ttd, x=35, y=pdf.get_y(), h=18)
 
-    pdf.ln(22) # Ruang tanda tangan manual
+    pdf.ln(25)
     pdf.set_font("helvetica", "B", 12)
     pdf.cell(95, 8, f"( {clean(petugas)} )", align="C")
     pdf.cell(95, 8, "( ............................ )", align="C", ln=True)
 
+    # Mengembalikan data bytes untuk download_button Streamlit
     return bytes(pdf.output())
