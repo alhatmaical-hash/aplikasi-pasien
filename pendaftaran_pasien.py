@@ -530,40 +530,25 @@ elif menu == "Rekam Medis / 病历":
             mime='text/csv',
         )
         # --- FITUR EDIT / RENAME NAMA PASIEN ---
-       with st.expander("✏️ Edit / Rename Nama Pasien"):
-            # 1. Pastikan opsi_edit selalu ada, meskipun list kosong []
+       st.divider()
+        with st.expander("✏️ Edit / Rename Nama Pasien"):
             opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-    
-            # 2. Buat selectbox
-            data_terpilih = st.selectbox("Pilih Pasien", opsi_edit, key="select_edit_nama")
-    
-        # --- PERBAIKAN KRUSIAL: Cek apakah data_terpilih ADA isinya ---
-            if data_terpilih: 
-                try:
-                    # Lakukan split hanya jika data_terpilih bukan None
-                    parts = data_terpilih.split(" | ")
-                    id_target_edit = int(parts[0])
-                    nama_lama = parts[1]
+            data_terpilih = st.selectbox("Pilih Pasien untuk di-rename", opsi_edit)
             
-            with st.form("form_perubahan_nama"):
-                nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
-                submit_rename = st.form_submit_button("Simpan Perubahan Nama")
+            if data_terpilih:
+                parts = data_terpilih.split(" | ")
+                id_target, nama_lama = int(parts[0]), parts[1]
                 
-                if submit_rename:
-                    if not nama_baru.strip():
-                        st.error("Nama tidak boleh kosong!")
-                    else:
-                        with get_connection() as conn:
-                            conn.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
-                            conn.commit()
-                        st.success(f"Nama berhasil diubah menjadi: {nama_baru}")
-                        st.rerun()
-        except Exception as e:
-            st.error(f"Gagal memproses data: {e}")
-    else:
-        # Jika tabel kosong atau tidak ada data terpilih
-        st.info("Tidak ada data pasien yang terpilih untuk diedit.")
-
+                with st.form("form_edit_nama"):
+                    nama_baru = st.text_input("Nama Baru", value=nama_lama)
+                    if st.form_submit_button("Simpan Perubahan"):
+                        if nama_baru.strip():
+                            with get_connection() as conn:
+                                conn.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target))
+                                conn.commit()
+                            st.success("Nama berhasil diubah!"); st.rerun()
+                        else:
+                            st.error("Nama tidak boleh kosong.")
         # --- 4. FORM UPDATE STATUS ---
         st.divider()
         with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
