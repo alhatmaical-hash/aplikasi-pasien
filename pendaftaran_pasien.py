@@ -446,24 +446,33 @@ elif menu == "Rekam Medis / 病历":
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
     
-    with get_connection() as conn:
+     with get_connection() as conn:
         query = """
-        SELECT 
-            id, tgl_daftar AS 'Tgl Daftar', nama_lengkap AS 'Nama Lengkap', 
-            nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
-            departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
-            agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender',
-            tgl_lahir AS 'TTL', alergi AS 'Alergi', gol_darah AS 'Gol Darah',
-            blok_mes AS 'Blok/Kamar', lokasi_kerja AS 'Area Kerja',
-            lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
-        FROM pasien
-        WHERE tgl_daftar BETWEEN ? AND ?
-        """
-        # Pastikan dt_mulai dan dt_selesai sudah didefinisikan di bagian filter atas
-        try:
-            df = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
-        except Exception as e:
-            st.error(f"Gagal memuat data: {e}")
+    SELECT 
+        id, 
+        tgl_daftar AS 'Tgl Daftar', 
+        nama_lengkap AS 'Nama Lengkap', 
+        nik AS 'NIK/ID', 
+        no_hp AS 'WhatsApp',
+        perusahaan AS 'Perusahaan', 
+        departemen AS 'Departemen', 
+        jabatan AS 'Jabatan',
+        pernah_berobat AS 'Status',
+        agama AS 'Agama',
+        dokter AS 'Dokter',
+        gender AS 'Gender',
+        tgl_lahir AS 'TTL',
+        alergi AS 'Alergi',
+        gol_darah AS 'Gol Darah',
+        blok_mes AS 'Blok/Kamar',
+        lokasi_kerja AS 'Area Kerja',
+        lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
+        status_antrian
+    FROM pasien
+    WHERE tgl_daftar BETWEEN ? AND ?
+    """
+    df = pd.read_sql(query, conn)
+
     
     
     if not df.empty:
