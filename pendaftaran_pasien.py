@@ -119,13 +119,20 @@ if 'logged_in' not in st.session_state:
 # 1. JIKA MODE PASIEN (DARI BARCODE) -> LANGSUNG ATUR MENU
 if is_pasien_mode:
     menu = "Pendaftaran / 登记"
-    # Tambahkan CSS untuk menyembunyikan sidebar agar layar HP bersih
     st.markdown("### 🏥 Sistem Pendaftaran Mandiri")
     st.info("Silakan isi formulir di bawah ini dengan data yang benar.")
-        [data-testid="stSidebar"] {display: none;}
-        [data-testid="stSidebarNav"] {display: none;}
-    </style>""", unsafe_allow_html=True)
-
+    
+    # Bungkus CSS dalam st.markdown dengan benar
+    st.markdown("""
+        <style>
+        [data-testid="stSidebar"] {
+            display: none;
+        }
+        [data-testid="stSidebarNav"] {
+            display: none;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 # 2. JIKA SUDAH LOGIN (STAFF/ADMIN)
 elif st.session_state['logged_in']:
     role_user = st.session_state.get('role')
