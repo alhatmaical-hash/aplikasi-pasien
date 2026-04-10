@@ -434,7 +434,8 @@ elif menu == "Rekam Medis / 病历":
         blok_mes AS 'Blok/Kamar',
         lokasi_kerja AS 'Area Kerja',
         lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
-        status_antrian
+        status_antrian,
+        jenis_kunjungan
     FROM pasien
     """
     df = pd.read_sql(query, conn)
