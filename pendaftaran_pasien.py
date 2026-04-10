@@ -940,62 +940,99 @@ elif menu == "Pengaturan Master / 设置":
                     st.rerun()
         # update files check 09-04-2026
 elif menu == "Dashboard Analitik":
-        st.header("📈 Dashboard Statistik Klinik")
+    st.header("📊 Analisis Data Kunjungan Pasien")
+    
+    # --- 1. FILTER PERIODE ---
+    with st.container(border=True):
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            t1 = st.date_input("📅 Dari Tanggal", datetime.now(), key="ds_t1")
+        with c2:
+            j1 = st.time_input("🕒 Jam", datetime.strptime("00:00", "%H:%M").time(), key="ds_j1")
+        with c3:
+            t2 = st.date_input("📅 Sampai Tanggal", datetime.now(), key="ds_t2")
+        with c4:
+            j2 = st.time_input("🕒 Jam", datetime.strptime("23:59", "%H:%M").time(), key="ds_j2")
+
+    dt_mulai = f"{t1} {j1}"
+    dt_selesai = f"{t2} {j2}"
+
+    # --- 2. AMBIL DATA ---
+    with get_connection() as conn:
+        query = """
+        SELECT perusahaan, departemen, pernah_berobat, dokter 
+        FROM pasien 
+        WHERE tgl_daftar BETWEEN ? AND ?
+        """
+        df_dash = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
+
+    if not df_dash.empty:
+        # --- 3. RINGKASAN UTAMA (METRICS) ---
+        total = len(df_dash)
+        p_lama = len(df_dash[df_dash['pernah_berobat'].str.contains('Iya Sudah', na=False)])
+        p_baru = len(df_dash[df_dash['pernah_berobat'].str.contains('Belum Pernah', na=False)])
         
-        # --- FILTER PERIODE ---
-        with st.container(border=True):
-            st.subheader("📅 Rentang Waktu Laporan")
-            c1, c2, c3, c4 = st.columns(4)
-            with c1:
-                t1 = st.date_input("Dari Tanggal", datetime.now(), key="ds_t1")
-            with c2:
-                j1 = st.time_input("Jam", datetime.strptime("00:00", "%H:%M").time(), key="ds_j1")
-            with c3:
-                t2 = st.date_input("Sampai Tanggal", datetime.now(), key="ds_t2")
-            with c4:
-                j2 = st.time_input("Jam", datetime.strptime("23:59", "%H:%M").time(), key="ds_j2")
+        st.markdown("### 📌 Ikhtisar Kunjungan")
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.metric("Total Kunjungan", f"{total} Pasien", delta_color="normal")
+        with m2:
+            st.metric("Pasien Baru", f"{p_baru}", delta=f"{(p_baru/total*100):.1f}%" if total > 0 else "0%")
+        with m3:
+            st.metric("Pasien Lama", f"{p_lama}", delta=f"{(p_lama/total*100):.1f}%" if total > 0 else "0%")
 
-        dt_mulai = f"{t1} {j1}"
-        dt_selesai = f"{t2} {j2}"
+        st.divider()
 
-        # --- AMBIL DATA ---
-        with get_connection() as conn:
-            # Kita ambil data minimal saja untuk statistik agar ringan
-            query = """
-            SELECT perusahaan, pernah_berobat, dokter, tgl_daftar 
-            FROM pasien 
-            WHERE tgl_daftar BETWEEN ? AND ?
-            """
-            df_dash = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
+        # --- 4. GRAFIK & TABEL ANALISIS ---
+        col_kiri, col_kanan = st.columns([1, 1])
 
-        # --- TAMPILKAN STATISTIK ---
-        if not df_dash.empty:
-            st.divider()
-            # Row 1: Metrik Angka
-            m1, m2, m3, m4 = st.columns(4)
+        with col_kiri:
+            st.subheader("🏢 Kunjungan Per Perusahaan")
+            # Menghitung jumlah per perusahaan
+            perusahaan_counts = df_dash['perusahaan'].value_counts().reset_index()
+            perusahaan_counts.columns = ['Perusahaan', 'Jumlah']
+            st.bar_chart(perusahaan_counts.set_index('Perusahaan'), color="#00b0f0")
             
-            total = len(df_dash)
-            lama = len(df_dash[df_dash['pernah_berobat'].str.contains('Iya Sudah', na=False)])
-            baru = len(df_dash[df_dash['pernah_berobat'].str.contains('Belum Pernah', na=False)])
-            hjf = len(df_dash[df_dash['perusahaan'].str.contains('HJF', na=False)])
+        with col_kanan:
+            st.subheader("🩺 Beban Kerja Dokter")
+            dokter_counts = df_dash['dokter'].value_counts()
+            st.bar_chart(dokter_counts, color="#ff9900")
 
-            m1.metric("Total Kunjungan", f"{total} Org")
-            m2.metric("Pasien Lama", f"{lama}")
-            m3.metric("Pasien Baru", f"{baru}")
-            m4.metric("PT. HJF", f"{hjf}")
+        st.divider()
 
-            # Row 2: Visualisasi
-            st.divider()
-            col_left, col_right = st.columns(2)
-            
-            with col_left:
-                st.subheader("🏢 Top 5 Perusahaan")
-                st.bar_chart(df_dash['perusahaan'].value_counts().head(5))
+        # --- 5. TABEL RINCIAN TERBANYAK (Ini yang Anda Minta) ---
+        st.subheader("📋 Tabel Rincian Kunjungan Terbanyak")
+        st.info("Tabel di bawah merincikan perbandingan Pasien Baru dan Lama berdasarkan Perusahaan & Departemen.")
+        
+        # Logika grouping untuk tabel pasien baru vs lama
+        # Kita buat kolom dummy untuk mempermudah hitung
+        df_dash['Pasien Baru'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Belum Pernah' in str(x) else 0)
+        df_dash['Pasien Lama'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Iya Sudah' in str(x) else 0)
+        
+        summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg({
+            'Pasien Baru': 'sum',
+            'Pasien Lama': 'sum'
+        }).reset_index()
+        
+        # Tambahkan kolom Total
+        summary_table['Total Pasien'] = summary_table['Pasien Baru'] + summary_table['Pasien Lama']
+        
+        # Urutkan berdasarkan total terbanyak
+        summary_table = summary_table.sort_values(by='Total Pasien', ascending=False)
+        
+        # Tampilkan dengan styling agar cantik
+        st.dataframe(
+            summary_table,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "perusahaan": "Perusahaan",
+                "departemen": "Departemen",
+                "Pasien Baru": st.column_config.NumberColumn("🆕 Pasien Baru", format="%d"),
+                "Pasien Lama": st.column_config.NumberColumn("🔄 Pasien Lama", format="%d"),
+                "Total Pasien": st.column_config.ProgressColumn("📊 Total", min_value=0, max_value=int(summary_table['Total Pasien'].max()))
+            }
+        )
 
-            with col_right:
-                st.subheader("👨‍⚕️ Beban Dokter")
-                st.bar_chart(df_dash['dokter'].value_counts())
-        else:
-            st.info("Silakan tentukan rentang waktu untuk melihat data statistik.")
-
-
+    else:
+        st.warning("⚠️ Tidak ada data ditemukan untuk periode ini. Silakan ubah filter tanggal/jam di atas.")
