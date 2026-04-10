@@ -1007,4 +1007,41 @@ elif menu == "Dashboard Analitik":
         # --- 5. TABEL RINCIAN PROFESIONAL ---
         st.subheader("📋 Tabel Rincian Departemen & Perusahaan")
         
-        summary_table = df_dash.groupby(['perusahaan',
+        summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg({
+            'Baru': 'sum',
+            'Lama': 'sum',
+            'Berobat': 'sum',
+            'Pasien Kontrol': 'sum',
+            'UGD': 'sum'
+        }).reset_index()
+
+        summary_table['Total Dept'] = summary_table[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
+        summary_table['Akumulasi PT'] = summary_table.groupby('perusahaan')['Total Dept'].transform('sum')
+        
+        # Pastikan angka menjadi Integer untuk tampilan bersih
+        for col in ['Baru', 'Lama', 'Berobat', 'Pasien Kontrol', 'UGD', 'Total Dept', 'Akumulasi PT']:
+            summary_table[col] = summary_table[col].astype(int)
+
+        summary_table = summary_table.sort_values(by=['Akumulasi PT', 'Total Dept'], ascending=False)
+        max_pt = int(summary_table['Akumulasi PT'].max()) if summary_table['Akumulasi PT'].max() > 0 else 1
+
+        st.dataframe(
+            summary_table,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "perusahaan": "🏢 Perusahaan",
+                "departemen": "📁 Departemen",
+                "Baru": st.column_config.NumberColumn("🆕 Baru"),
+                "Lama": st.column_config.NumberColumn("🔄 Lama"),
+                "Berobat": st.column_config.NumberColumn("🩺 Berobat"),
+                "Pasien Kontrol": st.column_config.NumberColumn("📅 Kontrol"),
+                "UGD": st.column_config.NumberColumn("🚨 UGD"),
+                "Total Dept": st.column_config.NumberColumn("📊 Total Dept"),
+                "Akumulasi PT": st.column_config.ProgressColumn(
+                    "📈 Total PT", format="%d", min_value=0, max_value=max_pt, color="blue"
+                )
+            }
+        )
+    else:
+        st.warning(f"⚠️ Tidak ada data ditemukan untuk periode ini.")
