@@ -967,27 +967,26 @@ elif menu == "Dashboard Analitik":
 
         dt_mulai = f"{t1} {j1}"
         dt_selesai = f"{t2} {j2}"
-        st.caption(f"🔎 Rentang Data: **{dt_mulai}** s/d **{dt_selesai}**")
+        st.caption(f"🔎 Menampilkan data dari: **{dt_mulai}** sampai **{dt_selesai}**")
 
     # --- 2. AMBIL DATA ---
     with get_connection() as conn:
         df_dash = pd.read_sql("SELECT * FROM pasien WHERE tgl_daftar BETWEEN ? AND ?", conn, params=(dt_mulai, dt_selesai))
 
     if not df_dash.empty:
-        # --- 3. PROSES DATA (PERBAIKAN LOGIKA KOTAK MERAH) ---
-        # Membersihkan data teks agar seragam & mengabaikan Huruf Besar/Kecil
+        # --- 3. PROSES DATA (PERBAIKAN LOGIKA) ---
+        # Membersihkan data teks agar tidak error jika ada data kosong (None/NaN)
         df_dash['jk_clean'] = df_dash['jenis_kunjungan'].fillna('').astype(str).str.upper()
         df_dash['pb_clean'] = df_dash['pernah_berobat'].fillna('').astype(str).str.upper()
 
-        # Logika Pasien Baru vs Lama (Memperbaiki error "terhitung lama semua")
-        df_dash['Baru'] = df_dash['pb_clean'].apply(lambda x: 1 if 'BELUM' in x or 'BARU' in x else 0)
-        df_dash['Lama'] = df_dash['pb_clean'].apply(lambda x: 1 if 'SUDAH' in x or ('IYA' in x and 'BELUM' not in x) else 0)
+        # Logika Pasien Baru vs Lama (Mencari kata kunci agar teks Mandarin terhitung)
+        df_dash['Baru'] = df_dash['pb_clean'].apply(lambda x: 1 if 'BELUM' in x else 0)
+        df_dash['Lama'] = df_dash['pb_clean'].apply(lambda x: 1 if 'SUDAH' in x or ('PERNAH' in x and 'BELUM' not in x) else 0)
         
-        # Logika Jenis Kunjungan (Mencari Kata Kunci agar teks Mandarin tetap terhitung)
+        # Logika Jenis Kunjungan (Anti-Error & Akurat)
         df_dash['Berobat'] = df_dash['jk_clean'].apply(lambda x: 1 if 'BEROBAT' in x else 0)
         df_dash['UGD'] = df_dash['jk_clean'].apply(lambda x: 1 if 'UGD' in x else 0)
         
-        # Penggabungan Pasien Kontrol
         list_kontrol = ['KONTROL', 'RAWAT LUKA', '复查', '体检', 'POST']
         df_dash['Pasien Kontrol'] = df_dash['jk_clean'].apply(lambda x: 1 if any(k in x for k in list_kontrol) else 0)
 
@@ -1003,30 +1002,42 @@ elif menu == "Dashboard Analitik":
 
         st.divider()
 
-        # --- 5. TABEL RINCIAN & GRAFIK (PROFESIONAL) ---
-        col_tabel, col_grafik = st.columns([3, 2])
+        # --- 5. TABEL RINCIAN UTAMA ---
+        st.subheader("📋 Tabel Rincian Departemen & Perusahaan")
+        summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg({
+            'Baru': 'sum', 'Lama': 'sum', 'Berobat': 'sum', 'Pasien Kontrol': 'sum', 'UGD': 'sum'
+        }).reset_index()
+        
+        summary_table['Total Dept'] = summary_table[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
+        summary_table = summary_table.sort_values(by='Total Dept', ascending=False)
+        
+        st.dataframe(summary_table, use_container_width=True, hide_index=True)
 
-        with col_tabel:
-            st.subheader("📋 Rincian Departemen")
-            summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg({
-                'Baru': 'sum', 'Lama': 'sum', 'Berobat': 'sum', 'Pasien Kontrol': 'sum', 'UGD': 'sum'
-            }).reset_index()
-            
-            summary_table['Total Dept'] = summary_table[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
-            summary_table = summary_table.sort_values('Total Dept', ascending=False)
-            
-            st.dataframe(summary_table, use_container_width=True, hide_index=True)
+        st.divider()
 
-        with col_grafik:
+        # --- 6. REKAPITULASI GRAFIK (PER PT & PER DEPT) ---
+        col_pt, col_dept = st.columns(2)
+
+        with col_pt:
             st.subheader("🏢 Rekapitulasi Per PT")
             pt_rekap = df_dash.groupby('perusahaan').size().reset_index(name='Jumlah')
             pt_rekap = pt_rekap.sort_values('Jumlah', ascending=False)
             
-            # Menampilkan Grafik Batang untuk melihat PT mana yang paling banyak kunjungan
+            # Tampilkan Grafik Batang
             st.bar_chart(pt_rekap.set_index('perusahaan'))
+            # Tampilkan Tabel
+            st.dataframe(pt_rekap, use_container_width=True, hide_index=True)
+
+        with col_dept:
+            st.subheader("📁 Rekapitulasi Per Departemen")
+            # Mengambil 10 Departemen terbanyak agar tidak terlalu penuh
+            dept_rekap = df_dash.groupby('departemen').size().reset_index(name='Jumlah')
+            dept_rekap = dept_rekap.sort_values('Jumlah', ascending=False).head(10)
             
-            # Tabel Akumulasi PT Terpisah
-            st.table(pt_rekap)
+            # Tampilkan Grafik Batang
+            st.bar_chart(dept_rekap.set_index('departemen'))
+            # Tampilkan Tabel
+            st.dataframe(dept_rekap, use_container_width=True, hide_index=True)
 
     else:
-        st.warning(f"⚠️ Tidak ada data pendaftaran pada shift {'pagi' if 'Pagi' in shift else 'malam'} untuk tanggal ini.")
+        st.warning(f"⚠️ Tidak ada data ditemukan untuk shift {'pagi' if 'Pagi' in shift else 'malam'} pada tanggal ini.")
