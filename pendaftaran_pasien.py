@@ -120,7 +120,8 @@ if 'logged_in' not in st.session_state:
 if is_pasien_mode:
     menu = "Pendaftaran / 登记"
     # Tambahkan CSS untuk menyembunyikan sidebar agar layar HP bersih
-    st.markdown("""<style>
+    st.markdown("### 🏥 Sistem Pendaftaran Mandiri")
+    st.info("Silakan isi formulir di bawah ini dengan data yang benar.")
         [data-testid="stSidebar"] {display: none;}
         [data-testid="stSidebarNav"] {display: none;}
     </style>""", unsafe_allow_html=True)
