@@ -371,39 +371,6 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Menu Rekam Medis")
-
-    # --- TAMBAHAN DASHBOARD & FILTER (TEMPEL DI SINI) ---
-    st.subheader("🔍 Statistik & Filter Kunjungan")
-    with st.container(border=True):
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            tgl_mulai = st.date_input("Dari Tanggal", datetime.now())
-        with c2:
-            jam_mulai = st.time_input("Dari Jam", datetime.strptime("00:00", "%H:%M").time())
-        with c3:
-            tgl_selesai = st.date_input("Sampai Tanggal", datetime.now())
-        with c4:
-            jam_selesai = st.time_input("Sampai Jam", datetime.strptime("23:59", "%H:%M").time())
-
-    # Format waktu untuk filter SQL
-    dt_mulai = f"{tgl_mulai} {jam_mulai}"
-    dt_selesai = f"{tgl_selesai} {jam_selesai}"
-
-    # Query singkat untuk statistik dashboard
-    with get_connection() as conn:
-        df_stat = pd.read_sql("SELECT pernah_berobat, perusahaan FROM pasien WHERE tgl_daftar BETWEEN ? AND ?", 
-                              conn, params=(dt_mulai, dt_selesai))
-    
-    # Tampilan Dashboard Metric
-    if not df_stat.empty:
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total Pasien", f"{len(df_stat)} Orang")
-        m2.metric("Pasien Lama", f"{len(df_stat[df_stat['pernah_berobat'].str.contains('Iya Sudah', na=False)])} Org")
-        m3.metric("Pasien Baru", f"{len(df_stat[df_stat['pernah_berobat'].str.contains('Belum Pernah', na=False)])} Org")
-        m4.metric("PT. HJF", f"{len(df_stat[df_stat['perusahaan'].str.contains('HJF', na=False)])} Org")
-    
-    st.divider()
-    # --- AKHIR TAMBAHAN ---
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
         # SEMUA baris di bawah ini harus menjorok ke kanan (tambah 1 TAB / 4 SPASI)
         opts_dr_raw = get_master("Dokter")['nama'].tolist()
@@ -469,7 +436,6 @@ elif menu == "Rekam Medis / 病历":
         lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
         status_antrian
     FROM pasien
-    WHERE tgl_daftar BETWEEN ? AND ?
     """
     df = pd.read_sql(query, conn)
 
@@ -538,39 +504,42 @@ elif menu == "Rekam Medis / 病历":
             file_name='data_rekam_medis.csv',
             mime='text/csv',
         )
-        # --- FITUR EDIT / RENAME NAMA PASIEN ---
+         # --- FITUR EDIT / RENAME NAMA PASIEN ---
         st.divider()
         with st.expander("✏️ Edit / Rename Nama Pasien"):
-            # 1. Pastikan opsi_edit selalu terdefinisi
-            opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-            
-            if not opsi_edit:
-                st.warning("Tidak ada data pasien untuk diedit pada filter ini.")
-            else:
-                # 2. Masukkan selectbox ke dalam variabel
-                data_terpilih = st.selectbox("Pilih Pasien", opsi_edit, key="sb_edit_nama")
+            with st.form("edit_nama_form"):
+                st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
                 
-                # --- PERBAIKAN UTAMA: Cek jika data_terpilih tidak None ---
-                if data_terpilih:
-                    try:
-                        # 3. Proses split hanya jika data ada
-                        parts = data_terpilih.split(" | ")
-                        id_target_edit = int(parts[0])
-                        nama_lama = parts[1]
-                        
-                        with st.form("form_rename_p"):
-                            nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
-                            if st.form_submit_button("Simpan Perubahan"):
-                                if nama_baru.strip():
-                                    with get_connection() as conn:
-                                        conn.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
-                                        conn.commit()
-                                    st.success(f"Berhasil diubah ke: {nama_baru}")
-                                    st.rerun()
-                                else:
-                                    st.error("Nama tidak boleh kosong!")
-                    except Exception as e:
-                        st.error(f"Terjadi kesalahan data: {e}")
+                # Pilihan pasien berdasarkan data yang sedang tampil di tabel
+                # Format: ID | Nama (agar unik)
+                opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
+                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
+                
+                # Ambil nama lama sebagai default value
+                nama_lama = data_terpilih.split(" | ")[1]
+                id_target_edit = int(data_terpilih.split(" | ")[0])
+                
+                nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
+                
+                btn_rename = st.form_submit_button("Simpan Perubahan Nama")
+                
+                if btn_rename:
+                    if nama_baru.strip() == "":
+                        st.error("Nama tidak boleh kosong!")
+                    else:
+                        try:
+                            with get_connection() as conn:
+                                cur = conn.cursor()
+                                # Update nama di tabel pasien
+                                cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
+                                conn.commit()
+                                
+                            st.success(f"Berhasil! Nama telah diubah dari '{nama_lama}' menjadi '{nama_baru}'")
+                            st.balloons()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Gagal memperbarui nama: {e}")
+
         # --- 4. FORM UPDATE STATUS ---
         st.divider()
         with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
