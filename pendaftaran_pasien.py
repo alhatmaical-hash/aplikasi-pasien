@@ -67,7 +67,8 @@ def init_db():
         ("no_hp", "TEXT"), ("agama", "TEXT"), ("dokter", "TEXT"),
         ("gender", "TEXT"), ("blok_mes", "TEXT"), ("tgl_lahir", "TEXT"),
         ("alergi", "TEXT"), ("gol_darah", "TEXT"), ("lokasi_kerja", "TEXT"),
-        ("lokasi_mcu", "TEXT"),("is_authorized", "INTEGER DEFAULT 0")
+        ("lokasi_mcu", "TEXT"),("is_authorized", "INTEGER DEFAULT 0"),
+        ("jenis_kunjungan", "TEXT")
     ]
     
     for kolom, tipe in kolom_tambahan:
@@ -954,102 +955,78 @@ elif menu == "Dashboard Analitik":
     dt_mulai = f"{t1} {j1}"
     dt_selesai = f"{t2} {j2}"
 
-    # --- 2. AMBIL DATA (Ditambahkan jenis_kunjungan) ---
+    # --- 2. AMBIL DATA DENGAN PREVENTIF ERROR ---
     with get_connection() as conn:
-        query = """
-        SELECT perusahaan, departemen, pernah_berobat, dokter, jenis_kunjungan 
-        FROM pasien 
-        WHERE tgl_daftar BETWEEN ? AND ?
-        """
-        df_dash = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
+        try:
+            # Menggunakan SELECT * untuk menghindari error kolom hilang
+            query = "SELECT * FROM pasien WHERE tgl_daftar BETWEEN ? AND ?"
+            df_dash = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
+        except Exception as e:
+            st.error(f"Gagal memuat data: {e}")
+            df_dash = pd.DataFrame()
 
     if not df_dash.empty:
-       # --- 3. PROSES DATA UNTUK TABEL RINCIAN ---
-        # Buat kolom kategori kunjungan secara otomatis
-        kategori = ['Berobat', 'Masuk UGD', 'Kontrol MCU', 'Kontrol', 'Rawat Luka', 'Kontrol Post Rujuk']
+        # --- 3. PROSES DATA (CLEANING) ---
+        # Jika kolom jenis_kunjungan belum ada di database lama, buat kolom dummy agar tidak error
+        if 'jenis_kunjungan' not in df_dash.columns:
+            df_dash['jenis_kunjungan'] = "Lain-lain"
+
+        # Kategori Kunjungan
+        kategori_kunjungan = ['Berobat', 'Masuk UGD', 'Kontrol MCU', 'Kontrol', 'Rawat Luka', 'Kontrol Post Rujuk']
         
-        for kat in kategori:
-            # Gunakan penanganan teks yang bersih (strip dan split untuk ambil kata depan saja)
+        for kat in kategori_kunjungan:
+            # Gunakan penanganan teks yang lebih fleksibel (mencari kata di dalam kalimat)
             df_dash[kat] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if kat in str(x) else 0)
         
-        # Agregasi
-        summary = df_dash.groupby(['perusahaan', 'departemen']).agg({
-            'pernah_berobat': 'count', # Ini untuk Total Dept
-            'Berobat': 'sum',
-            'Masuk UGD': 'sum',
-            'Kontrol MCU': 'sum'
-        }).reset_index()
-        
-        summary.rename(columns={'pernah_berobat': 'Total Dept'}, inplace=True)
-        
-        # Hitung Akumulasi Per Perusahaan (PT)
-        summary['Total Akumulasi PT'] = summary.groupby('perusahaan')['Total Dept'].transform('sum')
-        summary = summary.sort_values(by=['Total Akumulasi PT', 'Total Dept'], ascending=False)
-
         # --- 4. GRAFIK ANALISIS ---
         col_kiri, col_kanan = st.columns(2)
         with col_kiri:
             st.subheader("🏢 Kunjungan Per Perusahaan")
-            perusahaan_counts = df_dash['perusahaan'].value_counts().reset_index()
-            perusahaan_counts.columns = ['Perusahaan', 'Jumlah']
-            st.bar_chart(perusahaan_counts.set_index('Perusahaan'), color="#00b0f0")
+            if 'perusahaan' in df_dash.columns:
+                st.bar_chart(df_dash['perusahaan'].value_counts(), color="#00b0f0")
             
         with col_kanan:
-            st.subheader("🩺 Beban Kerja Dokter")
-            st.bar_chart(df_dash['dokter'].value_counts(), color="#ff9900")
+            st.subheader("逐步 Beban Kerja Dokter")
+            if 'dokter' in df_dash.columns:
+                st.bar_chart(df_dash['dokter'].value_counts(), color="#ff9900")
 
         st.divider()
 
         # --- 5. TABEL RINCIAN TERPERINCI ---
-        st.subheader("📋 Tabel Rincian Kunjungan Terbanyak")
-        st.info("Tabel merincikan jumlah pasien per Departemen dan total akumulasi per Perusahaan.")
+        st.subheader("📋 Tabel Rincian Kunjungan")
         
-        # Penyiapan Data Status
-        df_dash['Baru'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Belum Pernah' in str(x) else 0)
-        df_dash['Lama'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Iya Sudah' in str(x) else 0)
-        
-        # Penyiapan Jenis Kunjungan (Case Sensitive)
-        kategori_kunjungan = ['Berobat', 'Masuk UGD', 'Kontrol MCU', 'Kontrol', 'Rawat Luka', 'Kontrol Post Rujuk']
-        for kat in kategori_kunjungan:
-            df_dash[kat] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if str(x).strip() == kat else 0)
-        
-        # Agregasi
-        agg_dict = {'Baru': 'sum', 'Lama': 'sum', 'id': 'count'} # Pakai 'id' atau kolom lain untuk count
-        for kat in kategori_kunjungan:
-            agg_dict[kat] = 'sum'
-
-        # Jika query awal tidak ada 'id', kita buat count dari salah satu kolom
+        # Agregasi Data
         summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg({
-            'Baru': 'sum', 'Lama': 'sum',
-            'Berobat': 'sum', 'Masuk UGD': 'sum', 'Kontrol MCU': 'sum',
-            'Kontrol': 'sum', 'Rawat Luka': 'sum', 'Kontrol Post Rujuk': 'sum'
+            'nama_lengkap': 'count',
+            'Berobat': 'sum',
+            'Masuk UGD': 'sum',
+            'Kontrol MCU': 'sum',
+            'Kontrol': 'sum',
+            'Rawat Luka': 'sum',
+            'Kontrol Post Rujuk': 'sum'
         }).reset_index()
 
-        # Hitung Total per Dept
-        summary_table['Total Dept'] = summary_table[kategori_kunjungan].sum(axis=1)
+        summary_table.rename(columns={'nama_lengkap': 'Total Dept'}, inplace=True)
         
-        # Hitung Total Akumulasi Perusahaan
+        # Hitung Akumulasi Total PT
         summary_table['Total PT'] = summary_table.groupby('perusahaan')['Total Dept'].transform('sum')
-        
-        # Urutkan
         summary_table = summary_table.sort_values(by=['Total PT', 'Total Dept'], ascending=False)
         
-        # Tampilkan Tabel
+        # Tampilan Tabel Final
         st.dataframe(
             summary_table,
             use_container_width=True,
             hide_index=True,
             column_config={
                 "perusahaan": "🏢 Perusahaan",
-                "departemen": "📁 Departemen",
-                "Total Dept": st.column_config.NumberColumn("📍 Total Dept", format="%d"),
+                "Total Dept": st.column_config.NumberColumn("📍 Total Dept"),
                 "Total PT": st.column_config.ProgressColumn(
-                    "📊 Akumulasi Perusahaan",
+                    "📊 Akumulasi PT",
                     min_value=0,
-                    max_value=int(summary_table['Total PT'].max()),
+                    max_value=int(summary_table['Total PT'].max() if not summary_table.empty else 100),
                     format="%d"
                 )
             }
         )
     else:
-        st.warning("⚠️ Tidak ada data ditemukan untuk periode ini.")
+        st.warning("⚠️ Tidak ada data ditemukan untuk periode tanggal tersebut.")
