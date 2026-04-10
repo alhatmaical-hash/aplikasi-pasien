@@ -946,14 +946,10 @@ elif menu == "Dashboard Analitik":
     # --- 1. FILTER PERIODE ---
     with st.container(border=True):
         c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            t1 = st.date_input("📅 Dari Tanggal", datetime.now(), key="ds_t1")
-        with c2:
-            j1 = st.time_input("🕒 Jam", datetime.strptime("00:00", "%H:%M").time(), key="ds_j1")
-        with c3:
-            t2 = st.date_input("📅 Sampai Tanggal", datetime.now(), key="ds_t2")
-        with c4:
-            j2 = st.time_input("🕒 Jam", datetime.strptime("23:59", "%H:%M").time(), key="ds_j2")
+        with c1: t1 = st.date_input("📅 Dari Tanggal", datetime.now(), key="ds_t1")
+        with c2: j1 = st.time_input("🕒 Jam", datetime.strptime("00:00", "%H:%M").time(), key="ds_j1")
+        with c3: t2 = st.date_input("📅 Sampai Tanggal", datetime.now(), key="ds_t2")
+        with c4: j2 = st.time_input("🕒 Jam", datetime.strptime("23:59", "%H:%M").time(), key="ds_j2")
 
     dt_mulai = f"{t1} {j1}"
     dt_selesai = f"{t2} {j2}"
@@ -968,21 +964,27 @@ elif menu == "Dashboard Analitik":
         df_dash = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
 
     if not df_dash.empty:
-        # --- 3. RINGKASAN UTAMA (METRICS) ---
-        total = len(df_dash)
-        p_lama = len(df_dash[df_dash['pernah_berobat'].str.contains('Iya Sudah', na=False)])
-        p_baru = len(df_dash[df_dash['pernah_berobat'].str.contains('Belum Pernah', na=False)])
+       # --- 3. PROSES DATA UNTUK TABEL RINCIAN ---
+        # Buat kolom kategori kunjungan secara otomatis
+        kategori = ['Berobat', 'Masuk UGD', 'Kontrol MCU', 'Kontrol', 'Rawat Luka', 'Kontrol Post Rujuk']
         
-        st.markdown("### 📌 Ikhtisar Kunjungan")
-        m1, m2, m3 = st.columns(3)
-        with m1:
-            st.metric("Total Kunjungan", f"{total} Pasien")
-        with m2:
-            st.metric("Pasien Baru", f"{p_baru}", delta=f"{(p_baru/total*100):.1f}%" if total > 0 else "0%")
-        with m3:
-            st.metric("Pasien Lama", f"{p_lama}", delta=f"{(p_lama/total*100):.1f}%" if total > 0 else "0%")
-
-        st.divider()
+        for kat in kategori:
+            # Gunakan penanganan teks yang bersih (strip dan split untuk ambil kata depan saja)
+            df_dash[kat] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if kat in str(x) else 0)
+        
+        # Agregasi
+        summary = df_dash.groupby(['perusahaan', 'departemen']).agg({
+            'pernah_berobat': 'count', # Ini untuk Total Dept
+            'Berobat': 'sum',
+            'Masuk UGD': 'sum',
+            'Kontrol MCU': 'sum'
+        }).reset_index()
+        
+        summary.rename(columns={'pernah_berobat': 'Total Dept'}, inplace=True)
+        
+        # Hitung Akumulasi Per Perusahaan (PT)
+        summary['Total Akumulasi PT'] = summary.groupby('perusahaan')['Total Dept'].transform('sum')
+        summary = summary.sort_values(by=['Total Akumulasi PT', 'Total Dept'], ascending=False)
 
         # --- 4. GRAFIK ANALISIS ---
         col_kiri, col_kanan = st.columns(2)
