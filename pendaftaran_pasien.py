@@ -536,10 +536,12 @@ elif menu == "Rekam Medis / 病历":
         with st.expander("✏️ Edit / Rename Nama Pasien"):
             with st.form("edit_nama_form"):
                 st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
-                
-                # Pilihan pasien berdasarkan data yang sedang tampil di tabel
-                # Format: ID | Nama (agar unik)
+                # --- 1. BUAT VARIABELNYA DULU (Baris ini harus di atas) ---
                 opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
+                # Inisialisasi widget selectbox ke dalam variabel 'data_terpilih'
+                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
+                
+        
                 if data_terpilih:  # Pastikan data_terpilih tidak None atau Kosong
                     nama_lama = data_terpilih.split(" | ")[1]
                     id_target_edit = int(data_terpilih.split(" | ")[0])
