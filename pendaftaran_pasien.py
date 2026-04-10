@@ -3,10 +3,9 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import io
-import plotly.express as px
 import pytz
 from datetime import datetime, time, timedelta
-from form_generator import buat_formulir_otomatis
+
 
 # --- LANGKAH 0: INISIALISASI (TARUH PALING ATAS SETELAH IMPORT) ---
 # Ini harus ada supaya komputer lain tidak bingung mencari variabelnya
@@ -39,88 +38,75 @@ def get_connection():
     return sqlite3.connect('klinik_data.db', check_same_thread=False)
 
 def init_db():
-    conn = get_connection()
-    c = conn.cursor()
-    
-    # 1. Tabel User
-    c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-    
-    # 2. Tabel Master
-    c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
-    
-    # 3. Tabel Pasien Utama
-    c.execute('''CREATE TABLE IF NOT EXISTS pasien (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tgl_daftar DATE,
-                    status_antrian TEXT,
-                    nama_lengkap TEXT, 
-                    nik TEXT, 
-                    pernah_berobat TEXT, 
-                    perusahaan TEXT, 
-                    departemen TEXT, 
-                    jabatan TEXT)''')
-    
-    c.execute('CREATE TABLE IF NOT EXISTS dokter_jaga_harian (id INTEGER PRIMARY KEY, nama_dokter TEXT)')
-
-    # --- Update Schema (Kolom Baru) ---
-    kolom_tambahan = [
-        ("no_hp", "TEXT"), ("agama", "TEXT"), ("dokter", "TEXT"),
-        ("gender", "TEXT"), ("blok_mes", "TEXT"), ("tgl_lahir", "TEXT"),
-        ("alergi", "TEXT"), ("gol_darah", "TEXT"), ("lokasi_kerja", "TEXT"),
-        ("lokasi_mcu", "TEXT"),("is_authorized", "INTEGER DEFAULT 0"),
-        ("jenis_kunjungan", "TEXT")
-    ]
-    
-    for kolom, tipe in kolom_tambahan:
-        try:
-            c.execute(f"ALTER TABLE pasien ADD COLUMN {kolom} {tipe}")
-        except:
-            pass 
-
-    # --- Isi Data Master Dokter ---
-    daftar_dokter = ["DR. JOKO", "DR. DEDEK", "DR. KARTIKA", "DR. DOMINICUS", "DR. ANDIKA", "DR. RANDY"]
-    for nama_dr in daftar_dokter:
-        c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES (?,?)", ("Dokter", nama_dr))
-    
-    # 4. Tabel Data Dinamis
-    c.execute('''CREATE TABLE IF NOT EXISTS pasien_custom_data (
-                    pasien_id INTEGER, field_name TEXT, field_value TEXT)''')
-    
-    # 5. Tabel SKD
-    c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nama_pasien TEXT, departemen TEXT, nama_file TEXT,
-                    file_data BLOB, tgl_upload TIMESTAMP, bulan_skd INTEGER, tahun_skd INTEGER)''')
-    
-    # Tambah Admin
-    c.execute("INSERT OR IGNORE INTO users VALUES (?,?,?)", ('admin', 'admin123', 'Admin'))
-    
-    # SIMPAN DAN TUTUP (Hanya di akhir fungsi)
-    conn.commit()
-    conn.close()
-
-# Jalankan fungsinya
-init_db()
-
-
-# --- 3. FUNGSI DATA ---
-def init_db():
+    # Menggunakan 'with' agar koneksi otomatis tertutup jika terjadi error
     with get_connection() as conn:
+        conn.execute('PRAGMA journal_mode=WAL;')
         c = conn.cursor()
-        # Baris ini yang WAJIB ada:
-        c.execute('CREATE TABLE IF NOT EXISTS dokter_jaga_harian (id INTEGER PRIMARY KEY, nama_dokter TEXT)')
         
-        # ... kode pembuatan tabel lainnya (pasien, master_dokter, dll) ...
+        # 1. Tabel User
+        c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
+        
+        # 2. Tabel Master
+        c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
+        
+        # 3. Tabel Pasien Utama
+        c.execute('''CREATE TABLE IF NOT EXISTS pasien (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        tgl_daftar TIMESTAMP,
+                        status_antrian TEXT,
+                        nama_lengkap TEXT, 
+                        nik TEXT, 
+                        pernah_berobat TEXT, 
+                        perusahaan TEXT, 
+                        departemen TEXT, 
+                        jabatan TEXT)''')
+        
+        c.execute('CREATE TABLE IF NOT EXISTS dokter_jaga_harian (id INTEGER PRIMARY KEY, nama_dokter TEXT)')
+
+        # --- Update Schema (Kolom Baru) ---
+        kolom_tambahan = [
+            ("no_hp", "TEXT"), ("agama", "TEXT"), ("dokter", "TEXT"),
+            ("gender", "TEXT"), ("blok_mes", "TEXT"), ("tgl_lahir", "TEXT"),
+            ("alergi", "TEXT"), ("gol_darah", "TEXT"), ("lokasi_kerja", "TEXT"),
+            ("lokasi_mcu", "TEXT"), ("is_authorized", "INTEGER DEFAULT 0"),
+            ("jenis_kunjungan", "TEXT")
+        ]
+        
+        for kolom, tipe in kolom_tambahan:
+            try:
+                c.execute(f"ALTER TABLE pasien ADD COLUMN {kolom} {tipe}")
+            except:
+                pass 
+
+        # --- Isi Data Master Dokter ---
+        daftar_dokter = ["DR. JOKO", "DR. DEDEK", "DR. KARTIKA", "DR. DOMINICUS", "DR. ANDIKA", "DR. RANDY"]
+        for nama_dr in daftar_dokter:
+            c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES (?,?)", ("Dokter", nama_dr))
+        
+        # 4. Tabel Data Dinamis
+        c.execute('''CREATE TABLE IF NOT EXISTS pasien_custom_data (
+                        pasien_id INTEGER, field_name TEXT, field_value TEXT)''')
+        
+        # 5. Tabel SKD
+        c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        nama_pasien TEXT, departemen TEXT, nama_file TEXT,
+                        file_data BLOB, tgl_upload TIMESTAMP, bulan_skd INTEGER, tahun_skd INTEGER)''')
+        
+        # Tambah Admin Default
+        c.execute("INSERT OR IGNORE INTO users VALUES (?,?,?)", ('admin', 'admin123', 'Admin'))
+        
         conn.commit()
 
-def get_master(kategori):
-    with get_connection() as conn:
-        # Mengambil data dari tabel master berdasarkan kategori
-        query = "SELECT id, nama FROM master_data WHERE kategori = ?"
-        return pd.read_sql(query, conn, params=(kategori,))
-
+# Jalankan inisialisasi database SEKALI SAJA
 init_db()
 
+# --- 3. FUNGSI DATA (DENGAN CACHE) ---
+@st.cache_data
+def get_master(kategori):
+    with get_connection() as conn:
+        query = "SELECT id, nama FROM master_data WHERE kategori = ?"
+        return pd.read_sql(query, conn, params=(kategori,))
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
 # Ambil parameter dari URL
 params = st.query_params
@@ -301,7 +287,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             st.session_state['proses_simpan'] = True
 
             # 2. Definisikan required fields
-            if pernah == "Iya Sudah / 是nya":
+            if pernah == "Iya Sudah / 是的": 
                 required = {"Nama": nama_lengkap, "NIK": nik, "Perusahaan": perusahaan, "Dept": dept}
             else:
                 required = {"Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Perusahaan": perusahaan, "Area": lokasi_kerja}
@@ -609,6 +595,7 @@ elif menu == "Rekam Medis / 病历":
                 btn_cetak = st.form_submit_button("Buat Formulir Sekarang")
         
                 if btn_cetak:
+                    from form_generator import buat_formulir_otomatis
                     try:
                         row = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
                         data_pasien = {
