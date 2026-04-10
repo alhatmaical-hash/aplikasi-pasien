@@ -450,30 +450,22 @@ elif menu == "Rekam Medis / 病历":
 
     with get_connection() as conn:
         query = """
-    SELECT 
-        id, 
-        tgl_daftar AS 'Tgl Daftar', 
-        nama_lengkap AS 'Nama Lengkap', 
-        nik AS 'NIK/ID', 
-        no_hp AS 'WhatsApp',
-        perusahaan AS 'Perusahaan', 
-        departemen AS 'Departemen', 
-        jabatan AS 'Jabatan',
-        pernah_berobat AS 'Status',
-        agama AS 'Agama',
-        dokter AS 'Dokter',
-        gender AS 'Gender',
-        tgl_lahir AS 'TTL',
-        alergi AS 'Alergi',
-        gol_darah AS 'Gol Darah',
-        blok_mes AS 'Blok/Kamar',
-        lokasi_kerja AS 'Area Kerja',
-        lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
-        status_antrian
-    FROM pasien
-    WHERE tgl_daftar BETWEEN ? AND ?
-    df = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
-    """
+        SELECT 
+            id, tgl_daftar AS 'Tgl Daftar', nama_lengkap AS 'Nama Lengkap', 
+            nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
+            departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
+            agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender',
+            tgl_lahir AS 'TTL', alergi AS 'Alergi', gol_darah AS 'Gol Darah',
+            blok_mes AS 'Blok/Kamar', lokasi_kerja AS 'Area Kerja',
+            lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
+        FROM pasien
+        WHERE tgl_daftar BETWEEN ? AND ?
+        """
+        # Pastikan dt_mulai dan dt_selesai sudah didefinisikan di bagian filter atas
+        try:
+            df = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
+        except Exception as e:
+            st.error(f"Gagal memuat data: {e}")
     
     
     if not df.empty:
@@ -483,6 +475,8 @@ elif menu == "Rekam Medis / 病历":
         # Proses Filtering: Tabel akan menyusut sesuai ketikan Anda
         if search_term:
             df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+    else:
+        st.info("Belum ada data pasien pada rentang waktu ini.")
 
         # --- 1. LOGIKA WARNA (STYLING) ---
         def color_row(row):
