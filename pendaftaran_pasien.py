@@ -445,9 +445,7 @@ elif menu == "Rekam Medis / 病历":
                 st.success(f"Berhasil! NIK {nik_izin} sekarang diizinkan mendaftar ulang.")
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
-    dt_mulai = f"{tgl_mulai} {jam_mulai}"
-    dt_selesai = f"{tgl_selesai} {jam_selesai}"
-
+    
     with get_connection() as conn:
         query = """
         SELECT 
