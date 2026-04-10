@@ -985,11 +985,11 @@ elif menu == "Dashboard Analitik":
         df_dash['Baru'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Belum Pernah' in str(x) else 0)
         df_dash['Lama'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Iya Sudah' in str(x) else 0)
         
-        df_dash['Berobat'] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if str(x) == 'Berobat' else 0)
+        df_dash['Berobat'] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if 'Berobat' in str(x) else 0)
         df_dash['UGD'] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if 'UGD' in str(x) else 0)
         
         # Penggabungan Pasien Kontrol
-        list_kontrol = ['Kontrol MCU', 'Kontrol', 'Rawat Luka', 'Kontrol Post Rujuk']
+        list_kontrol = ['Kontrol', 'Rawat Luka', '复查', '体检'] 
         df_dash['Pasien Kontrol'] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if any(k in str(x) for k in list_kontrol) else 0)
 
         # --- 4. TAMPILKAN TOTAL KESELURUHAN (METRICS) ---
@@ -1018,7 +1018,7 @@ elif menu == "Dashboard Analitik":
         summary_table['Total Dept'] = summary_table[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
         summary_table['Akumulasi PT'] = summary_table.groupby('perusahaan')['Total Dept'].transform('sum')
         summary_table = summary_table.sort_values(by=['Akumulasi PT', 'Total Dept'], ascending=False)
-
+        max_pt = int(summary_table['Akumulasi PT'].max()) if not summary_table.empty and summary_table['Akumulasi PT'].max() > 0 else 1
         st.dataframe(
             summary_table,
             use_container_width=True,
@@ -1026,7 +1026,13 @@ elif menu == "Dashboard Analitik":
             column_config={
                 "perusahaan": "🏢 Perusahaan",
                 "departemen": "📁 Departemen",
-                "Akumulasi PT": st.column_config.ProgressColumn("Total PT", format="%d", min_value=0, max_value=int(summary_table['Akumulasi PT'].max()))
+                # Pastikan max_value tidak nol
+                "Akumulasi PT": st.column_config.ProgressColumn(
+                    "Total PT", 
+                    format="%d", 
+                    min_value=0, 
+                   max_value=max_pt
+                )
             }
         )
     else:
