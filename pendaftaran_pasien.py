@@ -445,6 +445,8 @@ elif menu == "Rekam Medis / 病历":
                 st.success(f"Berhasil! NIK {nik_izin} sekarang diizinkan mendaftar ulang.")
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
+    dt_mulai = f"{tgl_mulai} {jam_mulai}"
+    dt_selesai = f"{tgl_selesai} {jam_selesai}"
 
     with get_connection() as conn:
         query = """
@@ -472,7 +474,7 @@ elif menu == "Rekam Medis / 病历":
     WHERE tgl_daftar BETWEEN ? AND ?
     df = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
     """
-    df = pd.read_sql(query, conn)
+    
     
     if not df.empty:
         # --- TAMBAHAN: FITUR PENCARIAN (Ubah di sini) ---
