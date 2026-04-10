@@ -704,10 +704,10 @@ elif menu == "Rekam Medis / 病历":
                 else:
                     st.error("Sandi Admin salah! Akses ditolak.")
 
-    else:
-        st.info("Belum ada data pasien / 还没有病人数据。")
+            else:
+                st.info("Belum ada data pasien / 还没有病人数据。")
     
-    conn.close()
+        conn.close()
 
 
 # --- MENU SKD ---
