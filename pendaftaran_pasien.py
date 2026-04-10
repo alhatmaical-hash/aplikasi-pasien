@@ -415,7 +415,7 @@ elif menu == "Rekam Medis / 病历":
     
      with get_connection() as conn:
         query = """
-    SELECT 
+     SELECT 
         id, 
         tgl_daftar AS 'Tgl Daftar', 
         nama_lengkap AS 'Nama Lengkap', 
