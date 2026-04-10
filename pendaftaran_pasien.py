@@ -974,81 +974,37 @@ elif menu == "Dashboard Analitik":
         df_dash = pd.read_sql("SELECT * FROM pasien WHERE tgl_daftar BETWEEN ? AND ?", conn, params=(dt_mulai, dt_selesai))
 
     if not df_dash.empty:
-        # --- 3. PROSES DATA (PERBAIKAN LOGIKA KOTAK MERAH) ---
-        # Membersihkan data teks agar seragam (Huruf Besar & Tanpa Spasi Berlebih)
-        df_dash['jk_clean'] = df_dash['jenis_kunjungan'].astype(str).str.upper()
-        df_dash['pb_clean'] = df_dash['pernah_berobat'].astype(str).str.upper()
+        # --- 3. PROSES DATA (PERBAIKAN TYPERROR & LOGIKA) ---
+        # Membersihkan data teks dan menangani nilai NULL/NaN secara otomatis
+        df_dash['jk_clean'] = df_dash['jenis_kunjungan'].fillna('').astype(str).str.upper()
+        df_dash['pb_clean'] = df_dash['pernah_berobat'].fillna('').astype(str).str.upper()
 
-        # Logika Pasien Baru vs Lama (Menggunakan Syarat yang Berlawanan)
-        df_dash['Baru'] = df_dash['pb_clean'].apply(lambda x: 1 if 'BELUM PERNAH' in x else 0)
-        df_dash['Lama'] = df_dash['pb_clean'].apply(lambda x: 1 if 'IYA SUDAH' in x or 'PERNAH' in x and 'BELUM' not in x else 0)
+        # Logika Pasien Baru vs Lama yang Akurat
+        df_dash['Baru'] = df_dash['pb_clean'].apply(lambda x: 1 if 'BELUM' in x else 0)
+        df_dash['Lama'] = df_dash['pb_clean'].apply(lambda x: 1 if 'SUDAH' in x or ('PERNAH' in x and 'BELUM' not in x) else 0)
         
-        # Logika Jenis Kunjungan (Mencari Kata Kunci)
+        # Logika Jenis Kunjungan (Anti-Error karena x pasti string)
         df_dash['Berobat'] = df_dash['jk_clean'].apply(lambda x: 1 if 'BEROBAT' in x else 0)
         df_dash['UGD'] = df_dash['jk_clean'].apply(lambda x: 1 if 'UGD' in x else 0)
         
         # Penggabungan Pasien Kontrol
-        list_kontrol = ['KONTROL', 'RAWAT LUKA', '复查', '体检', 'POST RUJUK']
+        list_kontrol = ['KONTROL', 'RAWAT LUKA', '复查', '体检', 'POST']
         df_dash['Pasien Kontrol'] = df_dash['jk_clean'].apply(lambda x: 1 if any(k in x for k in list_kontrol) else 0)
 
         # --- 4. TAMPILKAN TOTAL KESELURUHAN (METRICS) ---
         st.subheader(f"📌 Ringkasan Laporan - Shift {'Pagi' if 'Pagi' in shift else 'Malam'}")
         m1, m2, m3, m4, m5, m6 = st.columns(6)
         
-        # Menggunakan warna (delta) untuk estetika profesional
         m1.metric("Total Pasien", len(df_dash))
-        m2.metric("Berobat", df_dash['Berobat'].sum())
-        m3.metric("Kontrol", df_dash['Pasien Kontrol'].sum())
-        m4.metric("Masuk UGD", df_dash['UGD'].sum())
-        m5.metric("Pasien Baru", df_dash['Baru'].sum())
-        m6.metric("Pasien Lama", df_dash['Lama'].sum())
+        m2.metric("Berobat", int(df_dash['Berobat'].sum()))
+        m3.metric("Kontrol", int(df_dash['Pasien Kontrol'].sum()))
+        m4.metric("Masuk UGD", int(df_dash['UGD'].sum()))
+        m5.metric("Pasien Baru", int(df_dash['Baru'].sum()))
+        m6.metric("Pasien Lama", int(df_dash['Lama'].sum()))
 
         st.divider()
 
         # --- 5. TABEL RINCIAN PROFESIONAL ---
         st.subheader("📋 Tabel Rincian Departemen & Perusahaan")
         
-        summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg({
-            'Baru': 'sum',
-            'Lama': 'sum',
-            'Berobat': 'sum',
-            'Pasien Kontrol': 'sum',
-            'UGD': 'sum'
-        }).reset_index()
-
-        # Hitung Total Per Departemen
-        summary_table['Total Dept'] = summary_table[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
-        
-        # Hitung Akumulasi Per Perusahaan
-        summary_table['Akumulasi PT'] = summary_table.groupby('perusahaan')['Total Dept'].transform('sum')
-        
-        # Urutkan berdasarkan yang paling banyak kunjungan
-        summary_table = summary_table.sort_values(by=['Akumulasi PT', 'Total Dept'], ascending=False)
-
-        # Menentukan nilai maksimal untuk Progress Bar agar tidak error
-        max_pt = int(summary_table['Akumulasi PT'].max()) if not summary_table.empty and summary_table['Akumulasi PT'].max() > 0 else 1
-
-        st.dataframe(
-            summary_table,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "perusahaan": st.column_config.TextColumn("🏢 Perusahaan"),
-                "departemen": st.column_config.TextColumn("📁 Departemen"),
-                "Baru": st.column_config.NumberColumn("🆕 Baru", format="%d"),
-                "Lama": st.column_config.NumberColumn("🔄 Lama", format="%d"),
-                "Berobat": st.column_config.NumberColumn("🩺 Berobat", format="%d"),
-                "Pasien Kontrol": st.column_config.NumberColumn("📅 Kontrol", format="%d"),
-                "UGD": st.column_config.NumberColumn("🚨 UGD", format="%d"),
-                "Total Dept": st.column_config.NumberColumn("📊 Total Dept", format="%d"),
-                "Akumulasi PT": st.column_config.ProgressColumn(
-                    "📈 Total PT", 
-                    format="%d", 
-                    min_value=0, 
-                    max_value=max_pt,
-                    color="blue"
-                )
-            }
-        )
-    else:
-        st.warning(f"⚠️ Tidak ada data untuk shift {'pagi' if 'Pagi' in shift else 'malam'} pada tanggal ini.")
+        summary_table = df_dash.groupby(['perusahaan',
