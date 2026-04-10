@@ -531,19 +531,19 @@ elif menu == "Rekam Medis / 病历":
         )
         # --- FITUR EDIT / RENAME NAMA PASIEN ---
        with st.expander("✏️ Edit / Rename Nama Pasien"):
-    # 1. Pastikan opsi_edit selalu ada, meskipun list kosong []
-    opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
+            # 1. Pastikan opsi_edit selalu ada, meskipun list kosong []
+            opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
     
-    # 2. Buat selectbox
-    data_terpilih = st.selectbox("Pilih Pasien", opsi_edit, key="select_edit_nama")
+            # 2. Buat selectbox
+            data_terpilih = st.selectbox("Pilih Pasien", opsi_edit, key="select_edit_nama")
     
-    # --- PERBAIKAN KRUSIAL: Cek apakah data_terpilih ADA isinya ---
-    if data_terpilih: 
-        try:
-            # Lakukan split hanya jika data_terpilih bukan None
-            parts = data_terpilih.split(" | ")
-            id_target_edit = int(parts[0])
-            nama_lama = parts[1]
+        # --- PERBAIKAN KRUSIAL: Cek apakah data_terpilih ADA isinya ---
+            if data_terpilih: 
+                try:
+                    # Lakukan split hanya jika data_terpilih bukan None
+                    parts = data_terpilih.split(" | ")
+                    id_target_edit = int(parts[0])
+                    nama_lama = parts[1]
             
             with st.form("form_perubahan_nama"):
                 nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
