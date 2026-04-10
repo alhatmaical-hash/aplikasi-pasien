@@ -529,7 +529,7 @@ elif menu == "Rekam Medis / 病历":
             file_name='data_rekam_medis.csv',
             mime='text/csv',
         )
-         st.divider()
+        st.divider()
         with st.expander("✏️ Edit / Rename Nama Pasien"):
             with st.form("edit_nama_form"):
                 st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
