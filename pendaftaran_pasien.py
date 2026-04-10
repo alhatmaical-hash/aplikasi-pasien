@@ -398,7 +398,6 @@ elif menu == "Rekam Medis / 病历":
             st.success("Jadwal Berhasil Disimpan!")
             st.rerun()
     # --- 2. FITUR OTORISASI (TEMPEL DI SINI) ---
-
     with st.expander("🔐 Otorisasi Daftar Ulang"):
         st.info("Gunakan fitur ini untuk memberi izin pendaftaran ulang kepada NIK yang sudah terdaftar hari ini.")
         nik_izin = st.text_input("Masukkan NIK Pasien yang ingin diberi izin")
@@ -439,8 +438,6 @@ elif menu == "Rekam Medis / 病历":
     FROM pasien
     """
     df = pd.read_sql(query, conn)
-
-    
     
     if not df.empty:
         # --- TAMBAHAN: FITUR PENCARIAN (Ubah di sini) ---
@@ -449,8 +446,6 @@ elif menu == "Rekam Medis / 病历":
         # Proses Filtering: Tabel akan menyusut sesuai ketikan Anda
         if search_term:
             df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
-    else:
-        st.info("Belum ada data pasien pada rentang waktu ini.")
 
         # --- 1. LOGIKA WARNA (STYLING) ---
         def color_row(row):
@@ -505,7 +500,7 @@ elif menu == "Rekam Medis / 病历":
             file_name='data_rekam_medis.csv',
             mime='text/csv',
         )
-         # --- FITUR EDIT / RENAME NAMA PASIEN ---
+        # --- FITUR EDIT / RENAME NAMA PASIEN ---
         st.divider()
         with st.expander("✏️ Edit / Rename Nama Pasien"):
             with st.form("edit_nama_form"):
