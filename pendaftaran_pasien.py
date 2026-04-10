@@ -1000,30 +1000,41 @@ elif menu == "Dashboard Analitik":
 
         st.divider()
 
-       # --- 5. TABEL RINCIAN TERBANYAK (VERSI UPDATE) ---
+      # --- 5. TABEL RINCIAN KUNJUNGAN TERPERINCI ---
         st.subheader("📋 Tabel Rincian Kunjungan Terbanyak")
-        st.info("Tabel ini merincikan perbandingan pasien per Departemen, serta total akumulasi per Perusahaan.")
+        st.info("Tabel ini merincikan jumlah pasien berdasarkan Departemen, Jenis Kunjungan, dan Total Akumulasi per Perusahaan.")
         
-        # Penyiapan Data
-        df_dash['Pasien Baru'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Belum Pernah' in str(x) else 0)
-        df_dash['Pasien Lama'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Iya Sudah' in str(x) else 0)
+        # 1. Penyiapan Data Status (Baru/Lama)
+        df_dash['Baru'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Belum Pernah' in str(x) else 0)
+        df_dash['Lama'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Iya Sudah' in str(x) else 0)
         
-        # Agregasi dasar per Perusahaan & Departemen
-        summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg({
-            'Pasien Baru': 'sum',
-            'Pasien Lama': 'sum'
-        }).reset_index()
+        # 2. Penyiapan Data Jenis Kunjungan (Gunakan kolom 'tujuan_kunjungan' atau kolom relevan di DB Anda)
+        # Asumsi: Nama kolom jenis kunjungan di database Anda adalah 'jenis_kunjungan'
+        kategori_kunjungan = ['Berobat', 'Masuk UGD', 'Kontrol MCU', 'Kontrol', 'Rawat Luka', 'Kontrol Post Rujuk']
         
-        # Hitung Total per baris (Departemen)
-        summary_table['Total Dept'] = summary_table['Pasien Baru'] + summary_table['Pasien Lama']
+        for kat in kategori_kunjungan:
+            df_dash[kat] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if str(x).strip() == kat else 0)
         
-        # Hitung Total per Perusahaan (Akumulasi semua Dept dalam satu perusahaan)
+        # 3. Agregasi Data per Perusahaan & Departemen
+        agg_dict = {
+            'Baru': 'sum',
+            'Lama': 'sum',
+            'Total Dept': 'count' # Menghitung total baris per departemen
+        }
+        # Tambahkan kategori kunjungan ke dalam dictionary agregasi
+        for kat in kategori_kunjungan:
+            agg_dict[kat] = 'sum'
+
+        summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg(agg_dict).reset_index()
+        
+        # 4. HITUNG TOTAL PERUSAHAAN (Akumulasi Benar)
+        # Menghitung total semua pasien dalam satu perusahaan (gabungan semua departemen)
         summary_table['Total Perusahaan'] = summary_table.groupby('perusahaan')['Total Dept'].transform('sum')
         
-        # Urutkan: Perusahaan Terbesar dulu, lalu Dept Terbesar di dalamnya
+        # 5. Urutkan: Perusahaan dengan total terbanyak di atas
         summary_table = summary_table.sort_values(by=['Total Perusahaan', 'Total Dept'], ascending=False)
         
-        # Tampilkan Tabel
+        # 6. Tampilkan Tabel dengan Konfigurasi Kolom
         st.dataframe(
             summary_table,
             use_container_width=True,
@@ -1031,12 +1042,18 @@ elif menu == "Dashboard Analitik":
             column_config={
                 "perusahaan": st.column_config.TextColumn("🏢 Perusahaan"),
                 "departemen": st.column_config.TextColumn("📁 Departemen"),
-                "Pasien Baru": st.column_config.NumberColumn("🆕 Baru"),
-                "Pasien Lama": st.column_config.NumberColumn("🔄 Lama"),
+                "Baru": st.column_config.NumberColumn("🆕 Baru"),
+                "Lama": st.column_config.NumberColumn("🔄 Lama"),
+                "Berobat": st.column_config.NumberColumn("💊 Berobat"),
+                "Masuk UGD": st.column_config.NumberColumn("🚑 UGD"),
+                "Kontrol MCU": st.column_config.NumberColumn("🔍 MCU"),
+                "Kontrol": st.column_config.NumberColumn("📅 Kontrol"),
+                "Rawat Luka": st.column_config.NumberColumn("🩹 Luka"),
+                "Kontrol Post Rujuk": st.column_config.NumberColumn("🏥 Rujuk"),
                 "Total Dept": st.column_config.NumberColumn("📍 Total Dept"),
                 "Total Perusahaan": st.column_config.ProgressColumn(
                     "📊 Total Akumulasi PT", 
-                    help="Total seluruh kunjungan dari semua departemen di perusahaan ini",
+                    help="Jumlah total kunjungan dari seluruh departemen di perusahaan ini",
                     min_value=0, 
                     max_value=int(summary_table['Total Perusahaan'].max()),
                     format="%d"
