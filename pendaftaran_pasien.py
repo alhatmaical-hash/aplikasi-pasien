@@ -340,8 +340,12 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                     with get_connection() as conn:
                         cur = conn.cursor()
                         # Update INSERT dengan kolom is_authorized (Ada 19 kolom & 19 tanda tanya)
-                        cur.execute('''INSERT INTO pasien (tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, departemen, jabatan, no_hp, agama, gender, blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, status_antrian, dokter, is_authorized, jenis_kunjungan)
-                                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                        cur.execute('''INSERT INTO pasien (
+                                            tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, 
+                                            departemen, jabatan, no_hp, agama, gender, 
+                                            blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, 
+                                            lokasi_mcu, status_antrian, dokter, is_authorized, jenis_kunjungan)
+                                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                                        (waktu_sekarang.strftime("%Y-%m-%d %H:%M:%S"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
                                         no_hp, agama, gender, blok_mes, tgl_gabung, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih, 0, jenis_kunjungan))
                         
