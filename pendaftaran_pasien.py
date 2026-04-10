@@ -944,89 +944,87 @@ elif menu == "Pengaturan Master / 设置":
 elif menu == "Dashboard Analitik":
     st.header("📊 Analisis Data Kunjungan Pasien")
     
-    # --- 1. FILTER PERIODE ---
+    # --- 1. FILTER PERIODE DENGAN PILIHAN SHIFT ---
     with st.container(border=True):
-        c1, c2, c3, c4 = st.columns(4)
-        with c1: t1 = st.date_input("📅 Dari Tanggal", datetime.now(), key="ds_t1")
-        with c2: j1 = st.time_input("🕒 Jam", datetime.strptime("00:00", "%H:%M").time(), key="ds_j1")
-        with c3: t2 = st.date_input("📅 Sampai Tanggal", datetime.now(), key="ds_t2")
-        with c4: j2 = st.time_input("🕒 Jam", datetime.strptime("23:59", "%H:%M").time(), key="ds_j2")
+        st.subheader("⏱️ Pilih Waktu Laporan")
+        col_shift, col_tgl = st.columns([1, 2])
+        
+        with col_shift:
+            shift = st.radio("Pilih Shift:", ["Pagi (07:00 - 18:00)", "Malam (19:00 - 07:00)"], horizontal=False)
+        
+        with col_tgl:
+            tgl_laporan = st.date_input("📅 Tanggal Laporan", datetime.now())
 
-    dt_mulai = f"{t1} {j1}"
-    dt_selesai = f"{t2} {j2}"
+        # Logika Penentuan Jam Berdasarkan Shift
+        if "Pagi" in shift:
+            j1 = time(7, 0)
+            j2 = time(18, 0)
+            t1 = tgl_laporan
+            t2 = tgl_laporan
+        else:
+            # Shift Malam (Melintasi Hari)
+            j1 = time(19, 0)
+            j2 = time(7, 0)
+            t1 = tgl_laporan
+            t2 = tgl_laporan + timedelta(days=1) # Selesai di pagi hari berikutnya
 
-    # --- 2. AMBIL DATA DENGAN PREVENTIF ERROR ---
+        dt_mulai = f"{t1} {j1}"
+        dt_selesai = f"{t2} {j2}"
+        
+        st.caption(f"🔎 Menampilkan data dari: **{dt_mulai}** sampai **{dt_selesai}**")
+
+    # --- 2. AMBIL DATA ---
     with get_connection() as conn:
-        try:
-            # Menggunakan SELECT * untuk menghindari error kolom hilang
-            query = "SELECT * FROM pasien WHERE tgl_daftar BETWEEN ? AND ?"
-            df_dash = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
-        except Exception as e:
-            st.error(f"Gagal memuat data: {e}")
-            df_dash = pd.DataFrame()
+        df_dash = pd.read_sql("SELECT * FROM pasien WHERE tgl_daftar BETWEEN ? AND ?", conn, params=(dt_mulai, dt_selesai))
 
     if not df_dash.empty:
-        # --- 3. PROSES DATA (CLEANING) ---
-        # Jika kolom jenis_kunjungan belum ada di database lama, buat kolom dummy agar tidak error
-        if 'jenis_kunjungan' not in df_dash.columns:
-            df_dash['jenis_kunjungan'] = "Lain-lain"
+        # --- 3. PROSES PENGGABUNGAN KOLOM KONTROL ---
+        df_dash['Baru'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Belum Pernah' in str(x) else 0)
+        df_dash['Lama'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Iya Sudah' in str(x) else 0)
+        
+        df_dash['Berobat'] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if str(x) == 'Berobat' else 0)
+        df_dash['UGD'] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if 'UGD' in str(x) else 0)
+        
+        # Penggabungan Pasien Kontrol
+        list_kontrol = ['Kontrol MCU', 'Kontrol', 'Rawat Luka', 'Kontrol Post Rujuk']
+        df_dash['Pasien Kontrol'] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if any(k in str(x) for k in list_kontrol) else 0)
 
-        # Kategori Kunjungan
-        kategori_kunjungan = ['Berobat', 'Masuk UGD', 'Kontrol MCU', 'Kontrol', 'Rawat Luka', 'Kontrol Post Rujuk']
-        
-        for kat in kategori_kunjungan:
-            # Gunakan penanganan teks yang lebih fleksibel (mencari kata di dalam kalimat)
-            df_dash[kat] = df_dash['jenis_kunjungan'].apply(lambda x: 1 if kat in str(x) else 0)
-        
-        # --- 4. GRAFIK ANALISIS ---
-        col_kiri, col_kanan = st.columns(2)
-        with col_kiri:
-            st.subheader("🏢 Kunjungan Per Perusahaan")
-            if 'perusahaan' in df_dash.columns:
-                st.bar_chart(df_dash['perusahaan'].value_counts(), color="#00b0f0")
-            
-        with col_kanan:
-            st.subheader("逐步 Beban Kerja Dokter")
-            if 'dokter' in df_dash.columns:
-                st.bar_chart(df_dash['dokter'].value_counts(), color="#ff9900")
+        # --- 4. TAMPILKAN TOTAL KESELURUHAN (METRICS) ---
+        st.subheader(f"📌 Ringkasan Laporan - Shift {'Pagi' if 'Pagi' in shift else 'Malam'}")
+        m1, m2, m3, m4, m5, m6 = st.columns(6)
+        m1.metric("Total Pasien", len(df_dash))
+        m2.metric("Berobat", df_dash['Berobat'].sum())
+        m3.metric("Kontrol", df_dash['Pasien Kontrol'].sum())
+        m4.metric("Masuk UGD", df_dash['UGD'].sum())
+        m5.metric("Pasien Baru", df_dash['Baru'].sum())
+        m6.metric("Pasien Lama", df_dash['Lama'].sum())
 
         st.divider()
 
-        # --- 5. TABEL RINCIAN TERPERINCI ---
-        st.subheader("📋 Tabel Rincian Kunjungan")
+        # --- 5. TABEL RINCIAN ---
+        st.subheader("📋 Tabel Rincian Departemen & Perusahaan")
         
-        # Agregasi Data
         summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg({
-            'nama_lengkap': 'count',
+            'Baru': 'sum',
+            'Lama': 'sum',
             'Berobat': 'sum',
-            'Masuk UGD': 'sum',
-            'Kontrol MCU': 'sum',
-            'Kontrol': 'sum',
-            'Rawat Luka': 'sum',
-            'Kontrol Post Rujuk': 'sum'
+            'Pasien Kontrol': 'sum',
+            'UGD': 'sum'
         }).reset_index()
 
-        summary_table.rename(columns={'nama_lengkap': 'Total Dept'}, inplace=True)
-        
-        # Hitung Akumulasi Total PT
-        summary_table['Total PT'] = summary_table.groupby('perusahaan')['Total Dept'].transform('sum')
-        summary_table = summary_table.sort_values(by=['Total PT', 'Total Dept'], ascending=False)
-        
-        # Tampilan Tabel Final
+        summary_table['Total Dept'] = summary_table[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
+        summary_table['Akumulasi PT'] = summary_table.groupby('perusahaan')['Total Dept'].transform('sum')
+        summary_table = summary_table.sort_values(by=['Akumulasi PT', 'Total Dept'], ascending=False)
+
         st.dataframe(
             summary_table,
             use_container_width=True,
             hide_index=True,
             column_config={
                 "perusahaan": "🏢 Perusahaan",
-                "Total Dept": st.column_config.NumberColumn("📍 Total Dept"),
-                "Total PT": st.column_config.ProgressColumn(
-                    "📊 Akumulasi PT",
-                    min_value=0,
-                    max_value=int(summary_table['Total PT'].max() if not summary_table.empty else 100),
-                    format="%d"
-                )
+                "departemen": "📁 Departemen",
+                "Akumulasi PT": st.column_config.ProgressColumn("Total PT", format="%d", min_value=0, max_value=int(summary_table['Akumulasi PT'].max()))
             }
         )
     else:
-        st.warning("⚠️ Tidak ada data ditemukan untuk periode tanggal tersebut.")
+        st.warning(f"⚠️ Tidak ada data untuk shift {'pagi' if 'Pagi' in shift else 'malam'} pada tanggal ini.")
