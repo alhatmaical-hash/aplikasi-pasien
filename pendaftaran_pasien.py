@@ -540,7 +540,15 @@ elif menu == "Rekam Medis / 病历":
                 # Pilihan pasien berdasarkan data yang sedang tampil di tabel
                 # Format: ID | Nama (agar unik)
                 opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
+                if data_terpilih:  # Pastikan data_terpilih tidak None atau Kosong
+                    nama_lama = data_terpilih.split(" | ")[1]
+                    id_target_edit = int(data_terpilih.split(" | ")[0])
+                    nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
+                    btn_rename = st.form_submit_button("Simpan Perubahan Nama")
+                    if btn_rename:
+                else:
+                    st.warning("Tidak ada data pasien untuk diedit.")
+                    st.form_submit_button("Simpan Perubahan Nama", disabled=True)
                 
                 # Ambil nama lama sebagai default value
                 nama_lama = data_terpilih.split(" | ")[1]
