@@ -5,7 +5,7 @@ from datetime import datetime
 import io
 import plotly.express as px
 import pytz
-
+from datetime import datetime, time, timedelta
 from form_generator import buat_formulir_otomatis
 
 # --- LANGKAH 0: INISIALISASI (TARUH PALING ATAS SETELAH IMPORT) ---
@@ -955,7 +955,7 @@ elif menu == "Dashboard Analitik":
         with col_tgl:
             tgl_laporan = st.date_input("📅 Tanggal Laporan", datetime.now())
 
-        # Logika Penentuan Jam Berdasarkan Shift
+        # TARO DI SINI (Setelah input tgl_laporan dan shift didapat)
         if "Pagi" in shift:
             j1 = time(7, 0)
             j2 = time(18, 0)
@@ -966,7 +966,7 @@ elif menu == "Dashboard Analitik":
             j1 = time(19, 0)
             j2 = time(7, 0)
             t1 = tgl_laporan
-            t2 = tgl_laporan + timedelta(days=1) # Selesai di pagi hari berikutnya
+            t2 = tgl_laporan + timedelta(days=1) 
 
         dt_mulai = f"{t1} {j1}"
         dt_selesai = f"{t2} {j2}"
