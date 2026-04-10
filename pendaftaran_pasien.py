@@ -546,6 +546,8 @@ elif menu == "Rekam Medis / 病历":
                     nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
                     btn_rename = st.form_submit_button("Simpan Perubahan Nama")
                     if btn_rename:
+                        if nama_baru.strip() == "":
+                            st.error("Nama tidak boleh kosong!")
                 else:
                     st.warning("Tidak ada data pasien untuk diedit.")
                     st.form_submit_button("Simpan Perubahan Nama", disabled=True)
