@@ -956,6 +956,7 @@ elif menu == "Dashboard Analitik":
         with col_tgl:
             tgl_laporan = st.date_input("📅 Tanggal Laporan", datetime.now())
 
+        # Logika Jam Shift (Sesuai kode pendaftaran Anda)
         if "Pagi" in shift:
             j1, j2 = time(7, 0), time(18, 0)
             t1, t2 = tgl_laporan, tgl_laporan
@@ -971,24 +972,26 @@ elif menu == "Dashboard Analitik":
         df_dash = pd.read_sql("SELECT * FROM pasien WHERE tgl_daftar BETWEEN ? AND ?", conn, params=(dt_mulai, dt_selesai))
 
     if not df_dash.empty:
-        # --- 3. PROSES DATA (LOGIKA BAHASA INDONESIA BERSIH) ---
-        # Membersihkan data dan mengubah ke HURUF BESAR agar pencarian akurat
+        # --- 3. PROSES DATA (LOGIKA SINKRON DENGAN FORM) ---
+        # Bersihkan data agar tidak case-sensitive
         df_dash['jk'] = df_dash['jenis_kunjungan'].fillna('').astype(str).str.upper()
         df_dash['pb'] = df_dash['pernah_berobat'].fillna('').astype(str).str.upper()
 
-        # Logika Kategori Kunjungan
-        df_dash['Berobat'] = df_dash['jk'].apply(lambda x: 1 if 'BEROBAT' in x else 0)
-        df_dash['UGD'] = df_dash['jk'].apply(lambda x: 1 if 'UGD' in x else 0)
+        # A. Logika Berobat (Hanya yang murni 'Berobat')
+        df_dash['Berobat'] = df_dash['jk'].apply(lambda x: 1 if x == 'BEROBAT' else 0)
         
-        # Logika Kontrol (Mencakup Rawat Luka & MCU)
+        # B. Logika Kontrol (Mencakup Kontrol MCU, Post Rujuk, Rawat Luka)
         list_k = ['KONTROL', 'RAWAT LUKA', 'POST', 'MCU']
         df_dash['Pasien Kontrol'] = df_dash['jk'].apply(lambda x: 1 if any(k in x for k in list_k) else 0)
 
-        # Logika Pasien Baru vs Lama
-        df_dash['Baru'] = df_dash['pb'].apply(lambda x: 1 if 'BELUM' in x or 'BARU' in x else 0)
-        df_dash['Lama'] = df_dash['pb'].apply(lambda x: 1 if 'SUDAH' in x or 'IYA' in x else 0)
+        # C. Logika UGD (Mencakup Masuk UGD)
+        df_dash['UGD'] = df_dash['jk'].apply(lambda x: 1 if 'UGD' in x else 0)
 
-        # --- 4. TAMPILKAN METRICS RINGKASAN ---
+        # D. Logika Pasien Baru vs Lama (Sesuai teks "Iya Sudah / 是的")
+        df_dash['Baru'] = df_dash['pb'].apply(lambda x: 1 if 'BELUM' in x else 0)
+        df_dash['Lama'] = df_dash['pb'].apply(lambda x: 1 if 'IYA' in x or 'SUDAH' in x else 0)
+
+        # --- 4. TAMPILKAN METRICS ---
         st.subheader(f"📌 Ringkasan Shift {'Pagi' if 'Pagi' in shift else 'Malam'}")
         m1, m2, m3, m4, m5, m6 = st.columns(6)
         m1.metric("Total Pasien", len(df_dash))
@@ -1000,33 +1003,24 @@ elif menu == "Dashboard Analitik":
 
         st.divider()
 
-        # --- 5. TABEL RINCIAN DEPARTEMEN ---
+        # --- 5. TABEL RINCIAN ---
         st.subheader("📋 Rincian Departemen & Perusahaan")
         summary = df_dash.groupby(['perusahaan', 'departemen']).agg({
             'Baru': 'sum', 'Lama': 'sum', 'Berobat': 'sum', 'Pasien Kontrol': 'sum', 'UGD': 'sum'
         }).reset_index()
-        summary['Total Dept'] = summary[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
-        
-        st.dataframe(summary.sort_values('Total Dept', ascending=False), use_container_width=True, hide_index=True)
+        summary['Total'] = summary[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
+        st.dataframe(summary.sort_values('Total', ascending=False), use_container_width=True, hide_index=True)
 
-        st.divider()
-
-        # --- 6. REKAPITULASI GRAFIK (PER PT & PER DEPT) ---
-        col_pt, col_dept = st.columns(2)
-        
-        with col_pt:
-            st.subheader("🏢 Rekapitulasi Per PT")
-            pt_data = df_dash.groupby('perusahaan').size().reset_index(name='Jumlah')
-            pt_data = pt_data.sort_values('Jumlah', ascending=False)
+        # --- 6. GRAFIK (SIDE BY SIDE) ---
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("🏢 Per Perusahaan")
+            pt_data = df_dash.groupby('perusahaan').size().reset_index(name='Jml')
             st.bar_chart(pt_data.set_index('perusahaan'))
-            st.table(pt_data) # Tabel sederhana di bawah grafik
-
-        with col_dept:
-            st.subheader("📁 Rekapitulasi Per Departemen")
-            dept_data = df_dash.groupby('departemen').size().reset_index(name='Jumlah')
-            dept_data = dept_data.sort_values('Jumlah', ascending=False).head(10) # Ambil top 10
+        with c2:
+            st.subheader("📁 Per Departemen")
+            dept_data = df_dash.groupby('departemen').size().reset_index(name='Jml')
             st.bar_chart(dept_data.set_index('departemen'))
-            st.table(dept_data) # Tabel sederhana di bawah grafik
 
     else:
-        st.warning(f"⚠️ Tidak ada data ditemukan untuk shift {'pagi' if 'Pagi' in shift else 'malam'} pada tanggal ini.")
+        st.warning(f"⚠️ Tidak ada data pendaftaran untuk shift ini.")
