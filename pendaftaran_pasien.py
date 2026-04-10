@@ -165,7 +165,7 @@ else:
     st.sidebar.success(f"🔓 {role_user}: {st.session_state['username']}")
     
     if role_user == "Admin":
-        menu_list = ["Pendaftaran Pasien", "Rekam Medis / 病历", "SKD / 医生证明", "Pengaturan Master / 设置"]
+        menu_list = ["Pendaftaran Pasien", "Rekam Medis / 病历", "SKD / 医生证明", "Pengaturan Master / 设置","Dashboard Analitik"]
     else:
         menu_list = ["SKD / 医生证明"]
     
@@ -939,6 +939,63 @@ elif menu == "Pengaturan Master / 设置":
                     conn.close()
                     st.rerun()
         # update files check 09-04-2026
+elif menu == "Dashboard Analitik":
+        st.header("📈 Dashboard Statistik Klinik")
+        
+        # --- FILTER PERIODE ---
+        with st.container(border=True):
+            st.subheader("📅 Rentang Waktu Laporan")
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                t1 = st.date_input("Dari Tanggal", datetime.now(), key="ds_t1")
+            with c2:
+                j1 = st.time_input("Jam", datetime.strptime("00:00", "%H:%M").time(), key="ds_j1")
+            with c3:
+                t2 = st.date_input("Sampai Tanggal", datetime.now(), key="ds_t2")
+            with c4:
+                j2 = st.time_input("Jam", datetime.strptime("23:59", "%H:%M").time(), key="ds_j2")
 
+        dt_mulai = f"{t1} {j1}"
+        dt_selesai = f"{t2} {j2}"
+
+        # --- AMBIL DATA ---
+        with get_connection() as conn:
+            # Kita ambil data minimal saja untuk statistik agar ringan
+            query = """
+            SELECT perusahaan, pernah_berobat, dokter, tgl_daftar 
+            FROM pasien 
+            WHERE tgl_daftar BETWEEN ? AND ?
+            """
+            df_dash = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
+
+        # --- TAMPILKAN STATISTIK ---
+        if not df_dash.empty:
+            st.divider()
+            # Row 1: Metrik Angka
+            m1, m2, m3, m4 = st.columns(4)
+            
+            total = len(df_dash)
+            lama = len(df_dash[df_dash['pernah_berobat'].str.contains('Iya Sudah', na=False)])
+            baru = len(df_dash[df_dash['pernah_berobat'].str.contains('Belum Pernah', na=False)])
+            hjf = len(df_dash[df_dash['perusahaan'].str.contains('HJF', na=False)])
+
+            m1.metric("Total Kunjungan", f"{total} Org")
+            m2.metric("Pasien Lama", f"{lama}")
+            m3.metric("Pasien Baru", f"{baru}")
+            m4.metric("PT. HJF", f"{hjf}")
+
+            # Row 2: Visualisasi
+            st.divider()
+            col_left, col_right = st.columns(2)
+            
+            with col_left:
+                st.subheader("🏢 Top 5 Perusahaan")
+                st.bar_chart(df_dash['perusahaan'].value_counts().head(5))
+
+            with col_right:
+                st.subheader("👨‍⚕️ Beban Dokter")
+                st.bar_chart(df_dash['dokter'].value_counts())
+        else:
+            st.info("Silakan tentukan rentang waktu untuk melihat data statistik.")
 
 
