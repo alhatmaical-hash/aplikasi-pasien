@@ -398,6 +398,7 @@ elif menu == "Rekam Medis / 病历":
             st.success("Jadwal Berhasil Disimpan!")
             st.rerun()
     # --- 2. FITUR OTORISASI (TEMPEL DI SINI) ---
+
     with st.expander("🔐 Otorisasi Daftar Ulang"):
         st.info("Gunakan fitur ini untuk memberi izin pendaftaran ulang kepada NIK yang sudah terdaftar hari ini.")
         nik_izin = st.text_input("Masukkan NIK Pasien yang ingin diberi izin")
@@ -412,10 +413,10 @@ elif menu == "Rekam Medis / 病历":
                 st.success(f"Berhasil! NIK {nik_izin} sekarang diizinkan mendaftar ulang.")
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
-    
-     with get_connection() as conn:
+
+    with get_connection() as conn:
         query = """
-     SELECT 
+    SELECT 
         id, 
         tgl_daftar AS 'Tgl Daftar', 
         nama_lengkap AS 'Nama Lengkap', 
