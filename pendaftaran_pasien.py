@@ -165,7 +165,7 @@ else:
     st.sidebar.success(f"🔓 {role_user}: {st.session_state['username']}")
     
     if role_user == "Admin":
-        menu_list = ["Pendaftaran Pasien", "Rekam Medis / 病历", "SKD / 医生证明", "Pengaturan Master / 设置","Dashboard Analitik"]
+        menu_list = ["Pendaftaran Pasien", "Rekam Medis / 病历", "SKD / 医生证明", ","Dashboard Analitik","Pengaturan Master / 设置"]
     else:
         menu_list = ["SKD / 医生证明"]
     
