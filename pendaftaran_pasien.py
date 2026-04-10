@@ -371,6 +371,39 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
     st.header("📊 Menu Rekam Medis")
+
+    # --- TAMBAHAN DASHBOARD & FILTER (TEMPEL DI SINI) ---
+    st.subheader("🔍 Statistik & Filter Kunjungan")
+    with st.container(border=True):
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            tgl_mulai = st.date_input("Dari Tanggal", datetime.now())
+        with c2:
+            jam_mulai = st.time_input("Dari Jam", datetime.strptime("00:00", "%H:%M").time())
+        with c3:
+            tgl_selesai = st.date_input("Sampai Tanggal", datetime.now())
+        with c4:
+            jam_selesai = st.time_input("Sampai Jam", datetime.strptime("23:59", "%H:%M").time())
+
+    # Format waktu untuk filter SQL
+    dt_mulai = f"{tgl_mulai} {jam_mulai}"
+    dt_selesai = f"{tgl_selesai} {jam_selesai}"
+
+    # Query singkat untuk statistik dashboard
+    with get_connection() as conn:
+        df_stat = pd.read_sql("SELECT pernah_berobat, perusahaan FROM pasien WHERE tgl_daftar BETWEEN ? AND ?", 
+                              conn, params=(dt_mulai, dt_selesai))
+    
+    # Tampilan Dashboard Metric
+    if not df_stat.empty:
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Total Pasien", f"{len(df_stat)} Orang")
+        m2.metric("Pasien Lama", f"{len(df_stat[df_stat['pernah_berobat'].str.contains('Iya Sudah', na=False)])} Org")
+        m3.metric("Pasien Baru", f"{len(df_stat[df_stat['pernah_berobat'].str.contains('Belum Pernah', na=False)])} Org")
+        m4.metric("PT. HJF", f"{len(df_stat[df_stat['perusahaan'].str.contains('HJF', na=False)])} Org")
+    
+    st.divider()
+    # --- AKHIR TAMBAHAN ---
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
         # SEMUA baris di bawah ini harus menjorok ke kanan (tambah 1 TAB / 4 SPASI)
         opts_dr_raw = get_master("Dokter")['nama'].tolist()
@@ -436,6 +469,8 @@ elif menu == "Rekam Medis / 病历":
         lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
         status_antrian
     FROM pasien
+    WHERE tgl_daftar BETWEEN ? AND ?
+    df = pd.read_sql(query, conn, params=(dt_mulai, dt_selesai))
     """
     df = pd.read_sql(query, conn)
     
