@@ -108,22 +108,42 @@ def get_master(kategori):
         query = "SELECT id, nama FROM master_data WHERE kategori = ?"
         return pd.read_sql(query, conn, params=(kategori,))
 # --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
-# Ambil parameter dari URL
 params = st.query_params
 is_pasien_mode = params.get("mode") == "pasien"
+
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
-# JIKA MODE PASIEN (DARI BARCODE)
-if is_pasien_mode:
-    # Langsung tetapkan menu ke Pendaftaran tanpa sidebar navigasi
-    menu = "Pendaftaran / 登记"
-    st.info("Sistem Pendaftaran Mandiri Pasien")
-    # Bagian kode pendaftaran Anda akan berjalan di bawah (setelah blok login ini)
+# --- LOGIKA NAVIGASI ---
 
-# JIKA BUKAN MODE PASIEN DAN BELUM LOGIN (TAMPILAN NORMAL)
-elif not st.session_state['logged_in']:
+# 1. JIKA MODE PASIEN (DARI BARCODE) -> LANGSUNG ATUR MENU
+if is_pasien_mode:
+    menu = "Pendaftaran / 登记"
+    # Tambahkan CSS untuk menyembunyikan sidebar agar layar HP bersih
+    st.markdown("""<style>
+        [data-testid="stSidebar"] {display: none;}
+        [data-testid="stSidebarNav"] {display: none;}
+    </style>""", unsafe_allow_html=True)
+
+# 2. JIKA SUDAH LOGIN (STAFF/ADMIN)
+elif st.session_state['logged_in']:
+    role_user = st.session_state.get('role')
+    st.sidebar.success(f"🔓 {role_user}: {st.session_state['username']}")
+    
+    if role_user == "Admin":
+        menu_list = ["Pendaftaran Pasien", "Rekam Medis / 病历", "SKD / 医生证明", "Dashboard Analitik", "Pengaturan Master / 设置"]
+    else:
+        menu_list = ["SKD / 医生证明"]
+    
+    menu = st.sidebar.selectbox("Pilih Menu", menu_list)
+    if st.sidebar.button("🚪 Logout"):
+        st.session_state['logged_in'] = False
+        st.rerun()
+
+# 3. JIKA BELUM LOGIN & BUKAN MODE PASIEN
+else:
     st.sidebar.title("🏥 Klinik Apps")
+    # Pasien yang tidak lewat barcode masih bisa memilih form pendaftaran di sidebar
     page_mode = st.sidebar.radio("Navigasi", ["Login Staff", "Form Pendaftaran"])
     
     if page_mode == "Form Pendaftaran":
@@ -144,22 +164,10 @@ elif not st.session_state['logged_in']:
                     st.rerun()
                 else:
                     st.error("Username atau Password salah")
+        
+        # PENTING: st.stop() hanya dijalankan jika user memilih "Login Staff" 
+        # dan belum berhasil login. Jika memilih "Form Pendaftaran", stop dilewati.
         st.stop()
-
-# JIKA SUDAH LOGIN (STAFF/ADMIN)
-else:
-    role_user = st.session_state.get('role')
-    st.sidebar.success(f"🔓 {role_user}: {st.session_state['username']}")
-    
-    if role_user == "Admin":
-        menu_list = ["Pendaftaran Pasien", "Rekam Medis / 病历", "SKD / 医生证明", "Dashboard Analitik", "Pengaturan Master / 设置"]
-    else:
-        menu_list = ["SKD / 医生证明"]
-    
-    menu = st.sidebar.selectbox("Pilih Menu", menu_list)
-    if st.sidebar.button("🚪 Logout"):
-        st.session_state['logged_in'] = False
-        st.rerun()
 # --- 5. LOGIKA HALAMAN ---
 
 # --- MENU PENDAFTARAN (Admin & Publik) ---
