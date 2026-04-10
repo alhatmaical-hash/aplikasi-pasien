@@ -1000,37 +1000,47 @@ elif menu == "Dashboard Analitik":
 
         st.divider()
 
-        # --- 5. TABEL RINCIAN TERBANYAK (Ini yang Anda Minta) ---
+       # --- 5. TABEL RINCIAN TERBANYAK (VERSI UPDATE) ---
         st.subheader("📋 Tabel Rincian Kunjungan Terbanyak")
-        st.info("Tabel di bawah merincikan perbandingan Pasien Baru dan Lama berdasarkan Perusahaan & Departemen.")
+        st.info("Tabel ini merincikan perbandingan pasien per Departemen, serta total akumulasi per Perusahaan.")
         
-        # Logika grouping untuk tabel pasien baru vs lama
-        # Kita buat kolom dummy untuk mempermudah hitung
+        # Penyiapan Data
         df_dash['Pasien Baru'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Belum Pernah' in str(x) else 0)
         df_dash['Pasien Lama'] = df_dash['pernah_berobat'].apply(lambda x: 1 if 'Iya Sudah' in str(x) else 0)
         
+        # Agregasi dasar per Perusahaan & Departemen
         summary_table = df_dash.groupby(['perusahaan', 'departemen']).agg({
             'Pasien Baru': 'sum',
             'Pasien Lama': 'sum'
         }).reset_index()
         
-        # Tambahkan kolom Total
-        summary_table['Total Pasien'] = summary_table['Pasien Baru'] + summary_table['Pasien Lama']
+        # Hitung Total per baris (Departemen)
+        summary_table['Total Dept'] = summary_table['Pasien Baru'] + summary_table['Pasien Lama']
         
-        # Urutkan berdasarkan total terbanyak
-        summary_table = summary_table.sort_values(by='Total Pasien', ascending=False)
+        # Hitung Total per Perusahaan (Akumulasi semua Dept dalam satu perusahaan)
+        summary_table['Total Perusahaan'] = summary_table.groupby('perusahaan')['Total Dept'].transform('sum')
         
-        # Tampilkan dengan styling agar cantik
+        # Urutkan: Perusahaan Terbesar dulu, lalu Dept Terbesar di dalamnya
+        summary_table = summary_table.sort_values(by=['Total Perusahaan', 'Total Dept'], ascending=False)
+        
+        # Tampilkan Tabel
         st.dataframe(
             summary_table,
             use_container_width=True,
             hide_index=True,
             column_config={
-                "perusahaan": "Perusahaan",
-                "departemen": "Departemen",
-                "Pasien Baru": st.column_config.NumberColumn("🆕 Pasien Baru", format="%d"),
-                "Pasien Lama": st.column_config.NumberColumn("🔄 Pasien Lama", format="%d"),
-                "Total Pasien": st.column_config.ProgressColumn("📊 Total", min_value=0, max_value=int(summary_table['Total Pasien'].max()))
+                "perusahaan": st.column_config.TextColumn("🏢 Perusahaan"),
+                "departemen": st.column_config.TextColumn("📁 Departemen"),
+                "Pasien Baru": st.column_config.NumberColumn("🆕 Baru"),
+                "Pasien Lama": st.column_config.NumberColumn("🔄 Lama"),
+                "Total Dept": st.column_config.NumberColumn("📍 Total Dept"),
+                "Total Perusahaan": st.column_config.ProgressColumn(
+                    "📊 Total Akumulasi PT", 
+                    help="Total seluruh kunjungan dari semua departemen di perusahaan ini",
+                    min_value=0, 
+                    max_value=int(summary_table['Total Perusahaan'].max()),
+                    format="%d"
+                )
             }
         )
 
