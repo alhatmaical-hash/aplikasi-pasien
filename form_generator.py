@@ -90,9 +90,16 @@ def buat_formulir_otomatis(data, petugas):
     pdf.set_x(12)
     pdf.multi_cell(186, 5, "Dengan ini saya menyatakan setuju untuk dilakukan pemeriksaan dan tindakan yang diperlukan dalam upaya kesembuhan/keselamatan jiwa saya/pasien tersebut.")
 
- # --- AREA TANDA TANGAN ---
+# --- AREA TANDA TANGAN ---
     pdf.ln(10)
-    pdf.cell(186, 5, f"Kawasi, {datetime.now().strftime('%d %B %Y')}", ln=True, align="R")
+    
+    # TAMBAHKAN LOGIKA TIMEZONE DI SINI
+    import pytz
+    tz_wit = pytz.timezone('Asia/Jayapura') # Waktu Indonesia Timur (WIT)
+    tgl_sekarang = datetime.now(tz_wit).strftime('%d %B %Y')
+    
+    # Gunakan variabel tgl_sekarang agar muncul 12 April 2026
+    pdf.cell(186, 5, f"Kawasi, {tgl_sekarang}", ln=True, align="R")
     
     # Simpan posisi Y saat ini
     posisi_y_ttd = pdf.get_y()
