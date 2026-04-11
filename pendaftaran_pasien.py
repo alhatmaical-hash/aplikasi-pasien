@@ -486,13 +486,18 @@ elif menu == "Rekam Medis / 病历":
 
         # Logika Warna
         def color_row(row):
-            status = row['status_antrian']
-            if status == "Menunggu Konsul Dokter": return ['background-color: #ffff00; color: black'] * len(row)
-            elif status == "Menunggu Hasil Lab & Radiologi": return ['background-color: #00b0f0; color: white'] * len(row)
-            elif status == "Batas Download SKD": return ['background-color: #ff9900; color: white'] * len(row)
-            elif status == "Batas Operan & Daftar Pasien": return ['background-color: #c8e6c9'] * len(row)
-            elif status == "Batal Berobat": return ['background-color: #ff4b4b; color: white'] * len(row)
-            return [''] * len(row)
+            status = str(row['status_antrian']) # Pastikan dibaca sebagai teks
+            if "Kuning" in status: 
+                return ['background-color: #ffff00; color: black'] * len(row)
+            elif "Biru" in status: 
+                return ['background-color: #00b0f0; color: white'] * len(row)
+            elif "Orange" in status: 
+                return ['background-color: #ff9900; color: white'] * len(row)
+            elif "Hijau" in status: 
+                return ['background-color: #c8e6c9; color: black'] * len(row)
+            elif "Merah" in status: 
+                return ['background-color: #ff4b4b; color: white'] * len(row)
+           return [''] * len(row)
 
         st.dataframe(
             df.style.apply(color_row, axis=1), 
