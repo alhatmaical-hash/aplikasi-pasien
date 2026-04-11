@@ -605,7 +605,7 @@ elif menu == "Rekam Medis / 病历":
                             st.error(f"Gagal menghapus data: {e}")
                     else:
                         st.error("Silakan centang kotak konfirmasi sebelum menghapus.")
-)
+
     
         # --- 6. FITUR CETAK FORMULIR OTOMATIS (VERSI BARU) ---
         st.divider()
