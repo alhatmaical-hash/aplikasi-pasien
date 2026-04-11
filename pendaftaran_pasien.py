@@ -466,19 +466,32 @@ elif menu == "Rekam Medis / 病历":
         """
         df = pd.read_sql(query, conn)
     if not df.empty:
-        # Konversi tgl_daftar ke datetime untuk filtering
+        # 1. Konversi ke datetime (errors='coerce' agar tidak crash jika ada data aneh)
         df['Tgl Daftar'] = pd.to_datetime(df['Tgl Daftar'], errors='coerce')
         
-        # Filter Pencarian Nama
+        # 2. Backup data asli sebelum di-filter (untuk berjaga-jaga)
+        df_tampil = df.copy()
+        
+        # 3. Jalankan Filter Pencarian Nama
         if search_term:
-            df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
-        # Filter Bulan
+            df_tampil = df_tampil[df_tampil['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+        
+        # 4. Jalankan Filter Bulan (Hanya jika bukan 'Semua')
         if bulan_selected != "Semua":
             idx_bulan = list_bulan.index(bulan_selected)
-            df = df[df['Tgl Daftar'].dt.month == idx_bulan]
-        # Filter Tahun
+            # Pastikan data yang tanggalnya NaT (rusak) tidak hilang begitu saja
+            df_tampil = df_tampil[(df_tampil['Tgl Daftar'].dt.month == idx_bulan) | (df_tampil['Tgl Daftar'].isna())]
+            
+        # 5. Jalankan Filter Tahun (Hanya jika bukan 'Semua')
         if tahun_selected != "Semua":
-            df = df[df['Tgl Daftar'].dt.year == int(tahun_selected)]
+            df_tampil = df_tampil[(df_tampil['Tgl Daftar'].dt.year == int(tahun_selected)) | (df_tampil['Tgl Daftar'].isna())]
+
+        # --- TAMPILKAN TABEL ---
+        st.dataframe(
+            df_tampil.style.apply(color_row, axis=1), 
+            use_container_width=True, 
+            hide_index=True
+        )
         # Logika Warna
         def color_row(row):
             status = row['status_antrian']
