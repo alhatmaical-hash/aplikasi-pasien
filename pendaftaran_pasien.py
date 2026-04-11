@@ -310,7 +310,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             
             empty_fields = [k for k, v in required.items() if str(v).strip() in ["", "None", "[]"]]
 
-          if not empty_fields:
+            if not empty_fields:
                 try:
                     tz_wit = pytz.timezone('Asia/Jayapura')
                     waktu_sekarang = datetime.now(tz_wit)
