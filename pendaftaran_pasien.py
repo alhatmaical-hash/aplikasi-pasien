@@ -956,16 +956,21 @@ elif menu == "Pengaturan Master / 设置":
 elif menu == "Dashboard Analitik":
     st.header("📊 Analisis Data Kunjungan Pasien")
     
-   # --- 1. FILTER PERIODE SHIFT ---
+ # --- 1. FILTER PERIODE SHIFT ---
 with st.container(border=True):
     st.subheader("⏱️ Pilih Waktu Laporan")
     col_shift, col_tgl = st.columns([1, 2])
     
     with col_shift:
-        # Menambahkan opsi "1/4 Jam Malam"
+        # Menambahkan dua opsi Jam Rawan
         shift = st.radio(
             "Pilih Shift:", 
-            ["Pagi (07:00 - 18:00)", "Malam (18:00 - 07:00)", "Jam Rawan (18:00 - 22:00)"], 
+            [
+                "Pagi (07:00 - 18:00)", 
+                "Jam Rawan (1) 18:00 - 22:00", 
+                "Jam Rawan (2) 22:00 - 07:00",
+                "Malam Full (18:00 - 07:00)"
+            ], 
             horizontal=False
         )
         
@@ -976,11 +981,19 @@ with st.container(border=True):
     if "Pagi" in shift:
         j1, j2 = "07:00:00", "18:00:00"
         t1, t2 = tgl_laporan, tgl_laporan
-    elif "Jam Rawan" in shift:
-        # Gunakan string format lengkap untuk memastikan SQL membaca dengan benar
-        j1, j2 = "18:00:00", "22:00:59" 
+        
+    elif "(1)" in shift:
+        # Jam Rawan 1: 18:00 sampai 22:00 (hari yang sama)
+        j1, j2 = "18:00:00", "22:00:00"
         t1, t2 = tgl_laporan, tgl_laporan
+        
+    elif "(2)" in shift:
+        # Jam Rawan 2: 22:00 sampai 07:00 (lewat tengah malam)
+        j1, j2 = "22:00:01", "07:00:00"
+        t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1)
+        
     else:
+        # Malam Full
         j1, j2 = "18:00:00", "07:00:00"
         t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1)
 
