@@ -956,70 +956,56 @@ elif menu == "Pengaturan Master / 设置":
 elif menu == "Dashboard Analitik":
     st.header("📊 Analisis Data Kunjungan Pasien")
     
- # --- 1. FILTER PERIODE SHIFT ---
-with st.container(border=True):
-    st.subheader("⏱️ Pilih Waktu Laporan")
-    col_shift, col_tgl = st.columns([1, 2])
-    
-    with col_shift:
-        # Menambahkan dua opsi Jam Rawan
-        shift = st.radio(
-            "Pilih Shift:", 
-            [
-                "Pagi (07:00 - 18:00)", 
-                "Jam Malam (1) 18:00 - 22:00", 
-                "Jam Malam (2) 22:00 - 06:00",
-                "Malam Full (18:00 - 07:00)"
-            ], 
-            horizontal=False
-        )
+    # --- 1. FILTER PERIODE SHIFT (Sudah Menjorok ke Dalam) ---
+    with st.container(border=True):
+        st.subheader("⏱️ Pilih Waktu Laporan")
+        col_shift, col_tgl = st.columns([1, 2])
         
-    with col_tgl:
-        tgl_laporan = st.date_input("📅 Tanggal Laporan", datetime.now())
+        with col_shift:
+            shift = st.radio(
+                "Pilih Shift:", 
+                [
+                    "Pagi (07:00 - 18:00)", 
+                    "Jam Malam (1) 18:00 - 22:00", 
+                    "Jam Malam (2) 22:00 - 06:00",
+                    "Malam Full (18:00 - 07:00)"
+                ], 
+                horizontal=False
+            )
+            
+        with col_tgl:
+            tgl_laporan = st.date_input("📅 Tanggal Laporan", datetime.now())
 
-    # --- Logika Jam & Rentang Data ---
-    if "Pagi" in shift:
-        j1, j2 = "07:00:00", "18:00:00"
-        t1, t2 = tgl_laporan, tgl_laporan
-        
-    elif "(1)" in shift:
-        # Jam Malam 1: 18:00 sampai 22:00 (hari yang sama)
-        j1, j2 = "18:00:00", "22:00:00"
-        t1, t2 = tgl_laporan, tgl_laporan
-        
-    elif "(2)" in shift:
-        # Jam Malam 2: 22:00 sampai 06:00 (lewat tengah malam)
-        j1, j2 = "22:00:01", "06:00:00"
-        t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1)
-        
-    else:
-        # Malam Full
-        j1, j2 = "18:00:00", "07:00:00"
-        t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1)
+        # --- Logika Jam & Rentang Data ---
+        if "Pagi" in shift:
+            j1, j2 = "07:00:00", "18:00:00"
+            t1, t2 = tgl_laporan, tgl_laporan
+        elif "(1)" in shift:
+            j1, j2 = "18:00:00", "22:00:00"
+            t1, t2 = tgl_laporan, tgl_laporan
+        elif "(2)" in shift:
+            j1, j2 = "22:00:01", "06:00:00"
+            t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1)
+        else:
+            j1, j2 = "18:00:00", "07:00:00"
+            t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1)
 
-    dt_mulai, dt_selesai = f"{t1} {j1}", f"{t2} {j2}"
-    st.caption(f"🔎 Rentang Data: **{dt_mulai}** s/d **{dt_selesai}**")
+        dt_mulai, dt_selesai = f"{t1} {j1}", f"{t2} {j2}"
+        st.caption(f"🔎 Rentang Data: **{dt_mulai}** s/d **{dt_selesai}**")
+
     # --- 2. AMBIL DATA ---
     with get_connection() as conn:
         df_dash = pd.read_sql("SELECT * FROM pasien WHERE tgl_daftar BETWEEN ? AND ?", conn, params=(dt_mulai, dt_selesai))
 
     if not df_dash.empty:
-        # --- 3. PROSES DATA (LOGIKA SINKRON DENGAN FORM) ---
-        # Bersihkan data agar tidak case-sensitive
+        # --- 3. PROSES DATA ---
         df_dash['jk'] = df_dash['jenis_kunjungan'].fillna('').astype(str).str.upper()
         df_dash['pb'] = df_dash['pernah_berobat'].fillna('').astype(str).str.upper()
 
-        # A. Logika Berobat (Hanya yang murni 'Berobat')
         df_dash['Berobat'] = df_dash['jk'].apply(lambda x: 1 if x == 'BEROBAT' else 0)
-        
-        # B. Logika Kontrol (Mencakup Kontrol MCU, Post Rujuk, Rawat Luka)
         list_k = ['KONTROL', 'RAWAT LUKA', 'POST', 'MCU']
         df_dash['Pasien Kontrol'] = df_dash['jk'].apply(lambda x: 1 if any(k in x for k in list_k) else 0)
-
-        # C. Logika UGD (Mencakup Masuk UGD)
         df_dash['UGD'] = df_dash['jk'].apply(lambda x: 1 if 'UGD' in x else 0)
-
-        # D. Logika Pasien Baru vs Lama (Sesuai teks "Iya Sudah / 是的")
         df_dash['Baru'] = df_dash['pb'].apply(lambda x: 1 if 'BELUM' in x else 0)
         df_dash['Lama'] = df_dash['pb'].apply(lambda x: 1 if 'IYA' in x or 'SUDAH' in x else 0)
 
@@ -1043,7 +1029,7 @@ with st.container(border=True):
         summary['Total'] = summary[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
         st.dataframe(summary.sort_values('Total', ascending=False), use_container_width=True, hide_index=True)
 
-        # --- 6. GRAFIK (SIDE BY SIDE) ---
+        # --- 6. GRAFIK ---
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("🏢 Per Perusahaan")
@@ -1053,6 +1039,5 @@ with st.container(border=True):
             st.subheader("📁 Per Departemen")
             dept_data = df_dash.groupby('departemen').size().reset_index(name='Jml')
             st.bar_chart(dept_data.set_index('departemen'))
-
     else:
         st.warning(f"⚠️ Tidak ada data pendaftaran untuk shift ini.")
