@@ -446,6 +446,7 @@ elif menu == "Rekam Medis / 病历":
     SELECT 
         id, 
         tgl_daftar AS 'Tgl Daftar', 
+        jenis_kunjungan,
         nama_lengkap AS 'Nama Lengkap', 
         nik AS 'NIK/ID', 
         no_hp AS 'WhatsApp',
@@ -462,8 +463,8 @@ elif menu == "Rekam Medis / 病历":
         blok_mes AS 'Blok/Kamar',
         lokasi_kerja AS 'Area Kerja',
         lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
-        status_antrian,
-        jenis_kunjungan
+        status_antrian
+        
     FROM pasien
     ORDER BY id ASC
     """
