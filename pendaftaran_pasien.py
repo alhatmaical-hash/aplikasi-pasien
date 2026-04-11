@@ -464,7 +464,7 @@ elif menu == "Rekam Medis / 病历":
         # Pindahkan cari nama ke sini agar rapi dan beri KEY UNIK
         search_term = st.text_input("🔍 Cari Nama Pasien", "", key="cari_nama_pasien_rm")
 
-    # Kueri database yang sudah difilter berdasarkan bulan dan tahun
+   # 1. Ambil data dari database
     with get_connection() as conn:
         query = f"""
         SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
@@ -480,10 +480,21 @@ elif menu == "Rekam Medis / 病历":
         """
         df = pd.read_sql(query, conn)
 
-    # Menjalankan filter nama di level dataframe (jika ada input di kotak cari nama)
+    # 2. Cek apakah data ada
     if not df.empty:
+        # Jalankan filter pencarian nama (jika ada)
         if search_term:
             df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+
+        # 3. BARIS INI WAJIB ADA AGAR TABEL MUNCUL
+        st.dataframe(
+            df.style.apply(color_row, axis=1), 
+            use_container_width=True, 
+            hide_index=True
+        )
+    else:
+        # Jika data kosong (karena filter bulan/tahun belum ada isinya)
+        st.info(f"Belum ada data pasien pada periode {bulan_pilih} {tahun_pilih}.")
 
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
