@@ -7,3 +7,4 @@ plotly
 pytz
 Pillow
 fpdf2
+streamlit-autorefresh
