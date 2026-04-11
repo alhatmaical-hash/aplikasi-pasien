@@ -600,8 +600,8 @@ elif menu == "Rekam Medis / 病历":
                             st.error("❌ Nama tidak ditemukan. Pastikan copy-paste nama dengan benar.")
                 else:
                     st.warning("⚠️ Mohon tempelkan nama pasien.")
-       
-        # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
+
+     # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
         st.divider()
         with st.expander("🗑️ Hapus Data Pasien"):
             with st.form("hapus_pasien_form"):
@@ -721,6 +721,12 @@ elif menu == "Rekam Medis / 病历":
     
         conn.close()
 
+
+
+
+
+       
+       
 
 # --- MENU SKD ---
 elif menu == "SKD / 医生证明":
