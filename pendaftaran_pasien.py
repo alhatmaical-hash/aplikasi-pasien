@@ -497,7 +497,7 @@ elif menu == "Rekam Medis / 病历":
                 return ['background-color: #c8e6c9; color: black'] * len(row)
             elif "Merah" in status: 
                 return ['background-color: #ff4b4b; color: white'] * len(row)
-           return [''] * len(row)
+            return [''] * len(row)
 
         st.dataframe(
             df.style.apply(color_row, axis=1), 
