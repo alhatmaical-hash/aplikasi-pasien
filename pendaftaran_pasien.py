@@ -968,7 +968,7 @@ with st.container(border=True):
             [
                 "Pagi (07:00 - 18:00)", 
                 "Jam Malam (1) 18:00 - 22:00", 
-                "Jam Malam (2) 22:00 - 07:00",
+                "Jam Malam (2) 22:00 - 06:00",
                 "Malam Full (18:00 - 07:00)"
             ], 
             horizontal=False
@@ -983,13 +983,13 @@ with st.container(border=True):
         t1, t2 = tgl_laporan, tgl_laporan
         
     elif "(1)" in shift:
-        # Jam Rawan 1: 18:00 sampai 22:00 (hari yang sama)
+        # Jam Malam 1: 18:00 sampai 22:00 (hari yang sama)
         j1, j2 = "18:00:00", "22:00:00"
         t1, t2 = tgl_laporan, tgl_laporan
         
     elif "(2)" in shift:
-        # Jam Rawan 2: 22:00 sampai 07:00 (lewat tengah malam)
-        j1, j2 = "22:00:01", "07:00:00"
+        # Jam Malam 2: 22:00 sampai 06:00 (lewat tengah malam)
+        j1, j2 = "22:00:01", "06:00:00"
         t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1)
         
     else:
