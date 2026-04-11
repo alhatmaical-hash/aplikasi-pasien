@@ -439,64 +439,37 @@ elif menu == "Rekam Medis / 病历":
                 st.success(f"Berhasil! NIK {nik_izin} sekarang diizinkan mendaftar ulang.")
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
-   # --- BAGIAN 3: TABEL ANTRIAN DENGAN FILTER PERIODE ---
+
+    # --- BAGIAN 3: TABEL ANTRIAN ---
     st.write("---")
     st.subheader("📋 Daftar Antrian Pasien")
+    search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
 
-    # Membuat 3 kolom agar filter sejajar (Bulan, Tahun, Cari Nama)
-    col_f1, col_f2, col_f3 = st.columns([1, 1, 2])
-
-    with col_f1:
-        list_bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
-                      "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
-        bulan_idx = datetime.now().month - 1
-        bulan_pilih = st.selectbox("📅 Bulan", list_bulan, index=bulan_idx, key="filter_bln_rm")
-        mapping_bulan = {nama: str(i+1).zfill(2) for i, nama in enumerate(list_bulan)}
-        filter_bln = mapping_bulan[bulan_pilih]
-
-    with col_f2:
-        tahun_skrg = datetime.now().year
-        list_tahun = [str(t) for t in range(2026, tahun_skrg + 6)]
-        tahun_pilih = st.selectbox("🗓️ Tahun", list_tahun, key="filter_thn_rm")
-
-    with col_f3:
-        # Pindahkan cari nama ke sini agar rapi dan beri KEY UNIK
-        search_term = st.text_input("🔍 Cari Nama Pasien", "", key="cari_nama_pasien_rm")
-
-    # Kueri database yang sudah difilter berdasarkan bulan dan tahun
     with get_connection() as conn:
-        query = f"""
+        query = """
         SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
                nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
                departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
                agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender', tgl_lahir AS 'TTL',
                alergi AS 'Alergi', gol_darah AS 'Gol Darah', blok_mes AS 'Blok/Kamar',
                lokasi_kerja AS 'Area Kerja', lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
-        FROM pasien 
-        WHERE strftime('%m', tgl_daftar) = '{filter_bln}' 
-          AND strftime('%Y', tgl_daftar) = '{tahun_pilih}'
-        ORDER BY id ASC
+        FROM pasien ORDER BY id ASC
         """
         df = pd.read_sql(query, conn)
 
-    # Menjalankan filter nama di level dataframe (jika ada input di kotak cari nama)
     if not df.empty:
+        # Filter Pencarian
         if search_term:
             df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
 
         # Logika Warna
         def color_row(row):
-            status = str(row['status_antrian']) # Pastikan dibaca sebagai teks
-            if "Kuning" in status: 
-                return ['background-color: #ffff00; color: black'] * len(row)
-            elif "Biru" in status: 
-                return ['background-color: #00b0f0; color: white'] * len(row)
-            elif "Orange" in status: 
-                return ['background-color: #ff9900; color: white'] * len(row)
-            elif "Hijau" in status: 
-                return ['background-color: #c8e6c9; color: black'] * len(row)
-            elif "Merah" in status: 
-                return ['background-color: #ff4b4b; color: white'] * len(row)
+            status = row['status_antrian']
+            if status == "Menunggu Konsul Dokter": return ['background-color: #ffff00; color: black'] * len(row)
+            elif status == "Menunggu Hasil Lab & Radiologi": return ['background-color: #00b0f0; color: white'] * len(row)
+            elif status == "Batas Download SKD": return ['background-color: #ff9900; color: white'] * len(row)
+            elif status == "Batas Operan & Daftar Pasien": return ['background-color: #c8e6c9'] * len(row)
+            elif status == "Batal Berobat": return ['background-color: #ff4b4b; color: white'] * len(row)
             return [''] * len(row)
 
         st.dataframe(
@@ -535,73 +508,71 @@ elif menu == "Rekam Medis / 病历":
             mime='text/csv',
         )
 
-        # --- FITUR EDIT / RENAME NAMA PASIEN ---
-    st.divider()
-    with st.expander("✏️ Edit / Rename Nama Pasien"):
-        if not df.empty:
+         # --- FITUR EDIT / RENAME NAMA PASIEN ---
+        st.divider()
+        with st.expander("✏️ Edit / Rename Nama Pasien"):
             with st.form("edit_nama_form"):
                 st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
                 
-                # Format: ID | Nama agar unik
+                # Pilihan pasien berdasarkan data yang sedang tampil di tabel
+                # Format: ID | Nama (agar unik)
                 opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-                data_terpilih = st.selectbox("Pilih Pasien", opsi_edit)
+                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
                 
-                # Parsing ID dan Nama Lama
-                id_target_edit = int(data_terpilih.split(" | ")[0])
+                # Ambil nama lama sebagai default value
                 nama_lama = data_terpilih.split(" | ")[1]
+                id_target_edit = int(data_terpilih.split(" | ")[0])
                 
                 nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
+                
                 btn_rename = st.form_submit_button("Simpan Perubahan Nama")
                 
                 if btn_rename:
                     if nama_baru.strip() == "":
                         st.error("Nama tidak boleh kosong!")
                     else:
-                        with get_connection() as conn:
-                            cur = conn.cursor()
-                            cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru.strip(), id_target_edit))
-                            conn.commit()
-                        st.success(f"Berhasil! Nama diubah menjadi '{nama_baru}'")
-                        st.rerun()
-        else:
-            st.warning("Tidak ada data untuk diedit.")
-
-    # --- 4. FORM UPDATE STATUS (VERSI TEMPEL NAMA) ---
-    st.divider()
-    with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
-        with st.form("update_status_form"):
-            nama_p = st.text_input("Pilih Nama Pasien", value="", placeholder="Tempel nama dari tabel di atas...")
-            
-            status_baru = st.selectbox("Pilih Status Baru", [
-                "Normal", 
-                "Kuning: Menunggu Konsul Dokter", 
-                "Biru: Menunggu Hasil Lab & Radiologi", 
-                "Orange: Batas Download SKD",
-                "Hijau: Batas Operan & Daftar Pasien",
-                "Merah: Batal Berobat"
-            ])
-            
-            btn_update = st.form_submit_button("Simpan Perubahan Status")
-            
-            if btn_update:
-                if nama_p:
-                    nama_p_clean = nama_p.strip()
-                    with get_connection() as conn:
-                        cur = conn.cursor()
-                        # Gunakan NOCASE agar tidak sensitif huruf besar/kecil
-                        sql = "UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ? COLLATE NOCASE"
-                        cur.execute(sql, (status_baru, nama_p_clean))
-                        conn.commit()
-                        
-                        if cur.rowcount > 0:
-                            st.success(f"✅ Berhasil mengupdate status {nama_p_clean}")
+                        try:
+                            with get_connection() as conn:
+                                cur = conn.cursor()
+                                # Update nama di tabel pasien
+                                cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
+                                conn.commit()
+                                
+                            st.success(f"Berhasil! Nama telah diubah dari '{nama_lama}' menjadi '{nama_baru}'")
+                            st.balloons()
                             st.rerun()
-                        else:
-                            st.error("❌ Nama tidak ditemukan. Pastikan copy-paste nama dengan benar.")
-                else:
-                    st.warning("⚠️ Mohon tempelkan nama pasien.")
+                        except Exception as e:
+                            st.error(f"Gagal memperbarui nama: {e}")
 
-     # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
+
+
+        # --- 4. FORM UPDATE STATUS ---
+        st.divider()
+        with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
+            with st.form("update_status_form"):
+                # Daftar nama di sini akan otomatis ikut terfilter jika Anda mencari nama di atas
+                nama_p = st.selectbox("Pilih Nama Pasien", df['Nama Lengkap'].tolist())
+                status_baru = st.selectbox("Pilih Status Baru", [
+                    "Normal", 
+                    "Menunggu Konsul Dokter", 
+                    "Menunggu Hasil Lab & Radiologi", 
+                    "Batas Download SKD",
+                    "Batas Operan & Daftar Pasien",
+                    "Batal Berobat"
+                ])
+                btn_update = st.form_submit_button("Simpan Perubahan")
+                
+                if btn_update:
+                    cur = conn.cursor()
+                    cur.execute("UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ?", (status_baru, nama_p))
+                    conn.commit()
+                    st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
+                    st.rerun()
+
+       
+
+       
+        # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
         st.divider()
         with st.expander("🗑️ Hapus Data Pasien"):
             with st.form("hapus_pasien_form"):
@@ -721,12 +692,6 @@ elif menu == "Rekam Medis / 病历":
     
         conn.close()
 
-
-
-
-
-       
-       
 
 # --- MENU SKD ---
 elif menu == "SKD / 医生证明":
