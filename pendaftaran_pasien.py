@@ -398,9 +398,14 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
   
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
+    from streamlit_autorefresh import st_autorefresh
+    # Menambahkan refresh otomatis agar data baru muncul tanpa reload manual
+    st_autorefresh(interval=5000, key="datarefresh") 
+    
     st.header("📊 Menu Rekam Medis")
+
+    # --- BAGIAN 1: ATUR DOKTER JAGA ---
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
-        # SEMUA baris di bawah ini harus menjorok ke kanan (tambah 1 TAB / 4 SPASI)
         opts_dr_raw = get_master("Dokter")['nama'].tolist()
         opts_dr = sorted(list(set(opts_dr_raw)))
         
@@ -425,7 +430,8 @@ elif menu == "Rekam Medis / 病历":
                 conn.commit()
             st.success("Jadwal Berhasil Disimpan!")
             st.rerun()
-    # --- 2. FITUR OTORISASI (TEMPEL DI SINI) ---
+
+    # --- BAGIAN 2: OTORISASI DAFTAR ULANG ---
     with st.expander("🔐 Otorisasi Daftar Ulang"):
         st.info("Gunakan fitur ini untuk memberi izin pendaftaran ulang kepada NIK yang sudah terdaftar hari ini.")
         nik_izin = st.text_input("Masukkan NIK Pasien yang ingin diberi izin")
@@ -434,51 +440,54 @@ elif menu == "Rekam Medis / 病历":
                 with get_connection() as conn:
                     tz_wit = pytz.timezone('Asia/Jayapura')
                     tgl_skrg = datetime.now(tz_wit).strftime("%Y-%m-%d")
-                    # Update is_authorized menjadi 1 untuk NIK tersebut pada hari ini
                     conn.execute("UPDATE pasien SET is_authorized = 1 WHERE nik = ? AND tgl_daftar LIKE ?", (nik_izin, f"{tgl_skrg}%"))
                     conn.commit()
                 st.success(f"Berhasil! NIK {nik_izin} sekarang diizinkan mendaftar ulang.")
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
 
-    with get_connection() as conn:
-        query = """
-    SELECT 
-        id, 
-        tgl_daftar AS 'Tgl Daftar', 
-        jenis_kunjungan,
-        nama_lengkap AS 'Nama Lengkap', 
-        nik AS 'NIK/ID', 
-        no_hp AS 'WhatsApp',
-        perusahaan AS 'Perusahaan', 
-        departemen AS 'Departemen', 
-        jabatan AS 'Jabatan',
-        pernah_berobat AS 'Status',
-        agama AS 'Agama',
-        dokter AS 'Dokter',
-        gender AS 'Gender',
-        tgl_lahir AS 'TTL',
-        alergi AS 'Alergi',
-        gol_darah AS 'Gol Darah',
-        blok_mes AS 'Blok/Kamar',
-        lokasi_kerja AS 'Area Kerja',
-        lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
-        status_antrian
-        
-    FROM pasien
-    ORDER BY id ASC
-    """
-    df = pd.read_sql(query, conn)
+    # --- BAGIAN 3: TABEL ANTRIAN (URUT DARI ATAS KE BAWAH) ---
+    st.write("---")
+    st.subheader("📋 Daftar Antrian Pasien")
     
-    if not df.empty:
-        # --- TAMBAHAN: FITUR PENCARIAN (Ubah di sini) ---
-        search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
+    # Fitur Pencarian milik Anda
+    search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
 
-        # Proses Filtering: Tabel akan menyusut sesuai ketikan Anda
+    with get_connection() as conn:
+        # Query lengkap sesuai kolom yang Anda inginkan
+        query = """
+        SELECT 
+            id, 
+            tgl_daftar AS 'Tgl Daftar', 
+            jenis_kunjungan,
+            nama_lengkap AS 'Nama Lengkap', 
+            nik AS 'NIK/ID', 
+            no_hp AS 'WhatsApp',
+            perusahaan AS 'Perusahaan', 
+            departemen AS 'Departemen', 
+            jabatan AS 'Jabatan',
+            pernah_berobat AS 'Status',
+            agama AS 'Agama',
+            dokter AS 'Dokter',
+            gender AS 'Gender',
+            tgl_lahir AS 'TTL',
+            alergi AS 'Alergi',
+            gol_darah AS 'Gol Darah',
+            blok_mes AS 'Blok/Kamar',
+            lokasi_kerja AS 'Area Kerja',
+            lokasi_mcu AS 'Lokasi Mcu Pertama Kali',
+            status_antrian
+        FROM pasien
+        ORDER BY id ASC
+        """
+        df = pd.read_sql(query, conn)
+
+    if not df.empty:
+        # Proses Filtering Pencarian
         if search_term:
             df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
 
-        # --- 1. LOGIKA WARNA (STYLING) ---
+        # --- LOGIKA WARNA (STYLING ASLI ANDA) ---
         def color_row(row):
             status = row['status_antrian']
             if status == "Menunggu Konsul Dokter":
@@ -490,24 +499,26 @@ elif menu == "Rekam Medis / 病历":
             elif status == "Batas Operan & Daftar Pasien":
                 return ['background-color: #c8e6c9'] * len(row)  # Hijau Muda
             elif status == "Batal Berobat":
-                return ['background-color: #ff4b4b; color: white'] * len(row) # Merah (Streamlit Red)
+                return ['background-color: #ff4b4b; color: white'] * len(row) # Merah
             return [''] * len(row)
 
         styled_df = df.style.apply(color_row, axis=1)
 
-        # Menampilkan tabel yang sudah terfilter dan berwarna
+        # Menampilkan tabel dengan Konfigurasi Kolom asli Anda
         st.dataframe(
             styled_df, 
             use_container_width=True, 
             hide_index=True,
             column_config={
-                "id": None, # Sembunyikan kolom ID agar tidak berantakan
+                "id": None, # Sembunyikan ID
                 "WhatsApp": st.column_config.TextColumn("WhatsApp"),
-                "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal & Waktu",format="DD/MM/YYYY HH:mm:ss"),
+                "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal & Waktu", format="DD/MM/YYYY HH:mm:ss"),
                 "Nama Lengkap": st.column_config.TextColumn("Nama Lengkap", width="large"),
-                "status_antrian": None 
+                "status_antrian": None # Sembunyikan kolom status agar bersih karena sudah ada warna
             }
         )
+    else:
+        st.info("Belum ada pasien yang mendaftar hari ini.")
         
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
