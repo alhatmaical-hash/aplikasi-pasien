@@ -974,15 +974,14 @@ with st.container(border=True):
 
     # --- Logika Jam & Rentang Data ---
     if "Pagi" in shift:
-        j1, j2 = time(7, 0), time(18, 0)
+        j1, j2 = "07:00:00", "18:00:00"
         t1, t2 = tgl_laporan, tgl_laporan
     elif "Jam Rawan" in shift:
-        # Logika khusus untuk Jam Rawan (Tetap di hari yang sama)
-        j1, j2 = time(18, 0), time(22, 0)
+        # Gunakan string format lengkap untuk memastikan SQL membaca dengan benar
+        j1, j2 = "18:00:00", "22:00:59" 
         t1, t2 = tgl_laporan, tgl_laporan
     else:
-        # Logika Shift Malam (Menyeberang ke hari berikutnya)
-        j1, j2 = time(18, 0), time(7, 0)
+        j1, j2 = "18:00:00", "07:00:00"
         t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1)
 
     dt_mulai, dt_selesai = f"{t1} {j1}", f"{t2} {j2}"
