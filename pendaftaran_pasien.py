@@ -573,9 +573,9 @@ elif menu == "Rekam Medis / 病历":
 
 
 
-          # --- 4. FORM UPDATE STATUS (VERSI PERBAIKAN TOTAL) ---
-          st.divider()
-          with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
+        # --- 4. FORM UPDATE STATUS (VERSI PERBAIKAN TOTAL) ---
+        st.divider()
+        with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
                 # Kita buka koneksi di sini agar variabel 'conn' pasti tersedia
                 with get_connection() as conn:
                     with st.form("update_status_form"):
