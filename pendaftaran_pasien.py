@@ -440,11 +440,42 @@ elif menu == "Rekam Medis / 病历":
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
 
-# --- BAGIAN 3: TABEL ANTRIAN ---
+# --- BAGIAN 3: TABEL ANTRIAN (VERSI AUTO-RESET BULANAN) ---
     st.write("---")
     st.subheader("📋 Daftar Antrian Pasien")
-    search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
+    
+    # 1. DEFINISIKAN FUNGSI WARNA (Taruh di paling atas agar tidak NameError)
+    def color_row(row):
+        # Gunakan .get() agar aman jika kolom tidak ditemukan
+        status = row.get('status_antrian', '')
+        if status == "Menunggu Konsul Dokter": 
+            return ['background-color: #ffff00; color: black'] * len(row)
+        elif status == "Menunggu Hasil Lab & Radiologi": 
+            return ['background-color: #00b0f0; color: white'] * len(row)
+        elif status == "Batas Download SKD": 
+            return ['background-color: #ff9900; color: white'] * len(row)
+        elif status == "Batas Operan & Daftar Pasien": 
+            return ['background-color: #c8e6c9; color: black'] * len(row)
+        elif status == "Batal Berobat": 
+            return ['background-color: #ff4b4b; color: white'] * len(row)
+        return [''] * len(row)
 
+    # 2. FILTER LAYOUT (Agar tabel otomatis kosong saat ganti bulan)
+    col_f1, col_f2, col_f3 = st.columns([2, 1, 1], gap="small")
+    with col_f1:
+        search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
+    with col_f2:
+        list_bulan = ["Semua", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+        # Otomatis deteksi bulan sekarang
+        bulan_sekarang = datetime.now().month
+        bulan_selected = st.selectbox("Pilih Bulan", list_bulan, index=bulan_sekarang)
+    with col_f3:
+        list_tahun = ["Semua"] + [str(t) for t in range(2025, 2035)]
+        tahun_sekarang = str(datetime.now().year)
+        idx_tahun = list_tahun.index(tahun_sekarang) if tahun_sekarang in list_tahun else 0
+        tahun_selected = st.selectbox("Pilih Tahun", list_tahun, index=idx_tahun)
+
+    # 3. AMBIL DATA
     with get_connection() as conn:
         query = """
         SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
@@ -453,36 +484,42 @@ elif menu == "Rekam Medis / 病历":
                agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender', tgl_lahir AS 'TTL',
                alergi AS 'Alergi', gol_darah AS 'Gol Darah', blok_mes AS 'Blok/Kamar',
                lokasi_kerja AS 'Area Kerja', lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
-        FROM pasien ORDER BY id ASC
+        FROM pasien ORDER BY id DESC
         """
         df = pd.read_sql(query, conn)
 
     if not df.empty:
-        # Filter Pencarian
+        # 4. KONVERSI TANGGAL UNTUK FILTER (Data tidak akan hilang)
+        df['tgl_dt'] = pd.to_datetime(df['Tgl Daftar'], errors='coerce')
+        df_tampil = df.copy()
+
+        # 5. EKSEKUSI FILTER
         if search_term:
-            df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+            df_tampil = df_tampil[df_tampil['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+        
+        if bulan_selected != "Semua":
+            idx_bulan = list_bulan.index(bulan_selected)
+            # Hanya tampilkan bulan yang dipilih (Agar tabel mulai baru setiap bulan)
+            df_tampil = df_tampil[df_tampil['tgl_dt'].dt.month == idx_bulan]
+            
+        if tahun_selected != "Semua":
+            df_tampil = df_tampil[df_tampil['tgl_dt'].dt.year == int(tahun_selected)]
 
-        # Logika Warna
-        def color_row(row):
-            status = row['status_antrian']
-            if status == "Menunggu Konsul Dokter": return ['background-color: #ffff00; color: black'] * len(row)
-            elif status == "Menunggu Hasil Lab & Radiologi": return ['background-color: #00b0f0; color: white'] * len(row)
-            elif status == "Batas Download SKD": return ['background-color: #ff9900; color: white'] * len(row)
-            elif status == "Batas Operan & Daftar Pasien": return ['background-color: #c8e6c9'] * len(row)
-            elif status == "Batal Berobat": return ['background-color: #ff4b4b; color: white'] * len(row)
-            return [''] * len(row)
-
+        # 6. TAMPILKAN TABEL DENGAN WARNA
         st.dataframe(
-            df.style.apply(color_row, axis=1), 
+            df_tampil.style.apply(color_row, axis=1), 
             use_container_width=True, 
             hide_index=True,
             column_config={
                 "id": None, 
+                "tgl_dt": None, # Sembunyikan kolom bantu
                 "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal", format="DD/MM/YY HH:mm"),
-                "status_antrian": st.column_config.TextColumn("Status Antrian") # Saya munculkan agar terlihat di tabel
+                "status_antrian": st.column_config.TextColumn("Status Antrian")
             }
         )
-
+        st.caption(f"Menampilkan {len(df_tampil)} data untuk periode {bulan_selected} {tahun_selected}.")
+    else:
+        st.info("Belum ada data pasien / 还没有病人数据。")
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
         col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
