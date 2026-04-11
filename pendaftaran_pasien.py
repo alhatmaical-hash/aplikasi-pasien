@@ -456,15 +456,16 @@ elif menu == "Rekam Medis / 病历":
         tahun_selected = st.selectbox("Pilih Tahun", list_tahun, index=1)
     with get_connection() as conn:
         query = """
-        SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap',
-            nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan',
-            departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
-            agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender', tgl_lahir AS 'TTL',
-            alergi AS 'Alergi', gol_darah AS 'Gol Darah', blok_mes AS 'Blok/Kamar',
-            lokasi_kerja AS 'Area Kerja', lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
+        SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
+               nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
+               departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
+               agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender', tgl_lahir AS 'TTL',
+               alergi AS 'Alergi', gol_darah AS 'Gol Darah', blok_mes AS 'Blok/Kamar',
+               lokasi_kerja AS 'Area Kerja', lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
         FROM pasien ORDER BY id ASC
         """
         df = pd.read_sql(query, conn)
+
     if not df.empty:
         # 1. Konversi ke datetime (errors='coerce' agar tidak crash jika ada data aneh)
         df['Tgl Daftar'] = pd.to_datetime(df['Tgl Daftar'], errors='coerce')
