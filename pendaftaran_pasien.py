@@ -439,48 +439,48 @@ elif menu == "Rekam Medis / 病历":
                 st.success(f"Berhasil! NIK {nik_izin} sekarang diizinkan mendaftar ulang.")
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
-    # --- BAGIAN  TABEL ANTRIAN DENGAN FILTER PERIODE ---
+   # --- BAGIAN 3: TABEL ANTRIAN DENGAN FILTER PERIODE ---
     st.write("---")
     st.subheader("📋 Daftar Antrian Pasien")
 
-    # Filter Waktu (Bulan & Tahun)
-    col_f1, col_f2 = st.columns(2)
+    # Membuat 3 kolom agar filter sejajar (Bulan, Tahun, Cari Nama)
+    col_f1, col_f2, col_f3 = st.columns([1, 1, 2])
+
     with col_f1:
         list_bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
                       "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
-        # Default ke bulan berjalan (April = index 3)
         bulan_idx = datetime.now().month - 1
-        bulan_pilih = st.selectbox("📅 Pilih Bulan", list_bulan, index=bulan_idx)
+        bulan_pilih = st.selectbox("📅 Bulan", list_bulan, index=bulan_idx, key="filter_bln_rm")
         mapping_bulan = {nama: str(i+1).zfill(2) for i, nama in enumerate(list_bulan)}
         filter_bln = mapping_bulan[bulan_pilih]
 
     with col_f2:
         tahun_skrg = datetime.now().year
-        # Daftar tahun dari 2026 sampai 5 tahun ke depan
         list_tahun = [str(t) for t in range(2026, tahun_skrg + 6)]
-        tahun_pilih = st.selectbox("🗓️ Pilih Tahun", list_tahun)
+        tahun_pilih = st.selectbox("🗓️ Tahun", list_tahun, key="filter_thn_rm")
 
-    search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
+    with col_f3:
+        # Pindahkan cari nama ke sini agar rapi dan beri KEY UNIK
+        search_term = st.text_input("🔍 Cari Nama Pasien", "", key="cari_nama_pasien_rm")
 
-    # --- BAGIAN 3: TABEL ANTRIAN ---
-    st.write("---")
-    st.subheader("📋 Daftar Antrian Pasien")
-    search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
-
+    # Kueri database yang sudah difilter berdasarkan bulan dan tahun
     with get_connection() as conn:
-        query = """
+        query = f"""
         SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
                nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
                departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
                agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender', tgl_lahir AS 'TTL',
                alergi AS 'Alergi', gol_darah AS 'Gol Darah', blok_mes AS 'Blok/Kamar',
                lokasi_kerja AS 'Area Kerja', lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
-        FROM pasien ORDER BY id ASC
+        FROM pasien 
+        WHERE strftime('%m', tgl_daftar) = '{filter_bln}' 
+          AND strftime('%Y', tgl_daftar) = '{tahun_pilih}'
+        ORDER BY id ASC
         """
         df = pd.read_sql(query, conn)
 
+    # Menjalankan filter nama di level dataframe (jika ada input di kotak cari nama)
     if not df.empty:
-        # Filter Pencarian
         if search_term:
             df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
 
