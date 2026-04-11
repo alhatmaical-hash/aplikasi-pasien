@@ -573,42 +573,47 @@ elif menu == "Rekam Medis / 病历":
 
 
 
-       # --- 4. FORM UPDATE STATUS ---
-        st.divider()
-        with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
-            with st.form("update_status_form"):
-                # Sekarang menggunakan text_input agar bisa dikosongkan/tempel nama
-                nama_p = st.text_input("Pilih Nama Pasien", value="", placeholder="Tempel nama pasien di sini...")
-                
-                # Pilihan status disesuaikan dengan keterangan warna di gambar
-                status_baru = st.selectbox("Pilih Status Baru", [
-                    "Normal", 
-                    "Kuning: Menunggu Konsul Dokter", 
-                    "Biru: Menunggu Hasil Lab & Radiologi", 
-                    "Orange: Batas Download SKD",
-                    "Hijau: Batas Operan & Daftar Pasien",
-                    "Merah: Batal Berobat"
-                ])
-                
-                btn_update = st.form_submit_button("Simpan Perubahan")
-                
-                if btn_update:
-                    if nama_p: # Pastikan nama tidak kosong
-                        cur = conn.cursor()
-                        # Membersihkan spasi di awal/akhir jika ada saat copy-paste
-                        nama_p_clean = nama_p.strip()
-                        
-                        cur.execute("UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ?", (status_baru, nama_p_clean))
-                        conn.commit()
-                        
-                        if cur.rowcount > 0:
-                            st.success(f"Status {nama_p_clean} berhasil diubah ke {status_baru}!")
-                            st.rerun()
+          # --- 4. FORM UPDATE STATUS (VERSI PERBAIKAN TOTAL) ---
+          st.divider()
+          with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
+                # Kita buka koneksi di sini agar variabel 'conn' pasti tersedia
+                with get_connection() as conn:
+                    with st.form("update_status_form"):
+                    # placeholder membantu Anda tahu harus melakukan apa
+                    nama_p = st.text_input("Pilih Nama Pasien", value="", placeholder="Tempel nama dari tabel di atas...")
+            
+                    status_baru = st.selectbox("Pilih Status Baru", [
+                        "Normal", 
+                        "Kuning: Menunggu Konsul Dokter", 
+                        "Biru: Menunggu Hasil Lab & Radiologi", 
+                        "Orange: Batas Download SKD",
+                        "Hijau: Batas Operan & Daftar Pasien",
+                        "Merah: Batal Berobat"
+                    ])
+            
+                    btn_update = st.form_submit_button("Simpan Perubahan")
+            
+                    if btn_update:
+                        if nama_p:
+                            # 1. Bersihkan spasi liar (strip)
+                            nama_p_clean = nama_p.strip()
+                            cur = conn.cursor()
+                            
+                            # 2. Gunakan query yang tidak peduli Huruf Besar/Kecil (COLLATE NOCASE)
+                            # Ini kunci agar "sudarto" dan "SUDARTO" dianggap sama
+                            sql = "UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ? COLLATE NOCASE"
+                            cur.execute(sql, (status_baru, nama_p_clean))
+                            conn.commit()
+                            
+                            # 3. Cek apakah ada baris yang benar-benar ter-update
+                            if cur.rowcount > 0:
+                                st.success(f"✅ Berhasil! Status {nama_p_clean} kini menjadi {status_baru}")
+                                st.rerun()
+                            else:
+                                # Jika masih gagal, kita beri tahu alasannya
+                                st.error(f"❌ Nama '{nama_p_clean}' tidak ditemukan di database. Pastikan tidak ada karakter aneh yang ikut tersalin.")
                         else:
-                            st.error("Nama tidak ditemukan! Pastikan nama yang ditempel sama persis dengan di tabel.")
-                    else:
-                        st.warning("Silakan tempel nama pasien terlebih dahulu.")
-
+                            st.warning("⚠️ Mohon tempelkan nama pasien terlebih dahulu.")
        
         # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
         st.divider()
