@@ -967,8 +967,8 @@ with st.container(border=True):
             "Pilih Shift:", 
             [
                 "Pagi (07:00 - 18:00)", 
-                "Jam Rawan (1) 18:00 - 22:00", 
-                "Jam Rawan (2) 22:00 - 07:00",
+                "Jam Malam (1) 18:00 - 22:00", 
+                "Jam Malam (2) 22:00 - 07:00",
                 "Malam Full (18:00 - 07:00)"
             ], 
             horizontal=False
