@@ -486,79 +486,128 @@ elif menu == "Rekam Medis / 病历":
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
         col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
-        with col_k1: st.info("🟡 Kuning: Konsul")
-        with col_k2: st.info("🔵 Biru: Lab/Rad")
-        with col_k3: st.warning("🟠 Orange: SKD")
-        with col_k4: st.success("🟢 Hijau: Operan")
-        with col_k5: st.error("🔴 Merah: Batal")
+        with col_k1:
+            st.info("🟡 **Kuning**: Menunggu Konsul Dokter")
+        with col_k2:
+            st.info("🔵 **Biru**: Menunggu Hasil Lab & Radiologi")
+        with col_k3:
+            st.warning("🟠 **Orange**: Batas Download SKD")
+        with col_k4:
+            st.success("🟢 **Hijau**: Batas Operan & Daftar Pasien")
+        with col_k5:
+            st.error("🔴 Merah: Batal Berobat")
 
-        # --- 3. FITUR UNDUH ---
+
+
+        # --- 3. FITUR UNDUH (CSV) ---
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Data (CSV)", data=csv, file_name='data_rekam_medis.csv', mime='text/csv')
+        st.download_button(
+            label="📥 Download Data (CSV)",
+            data=csv,
+            file_name='data_rekam_medis.csv',
+            mime='text/csv',
+        )
 
-        # --- 4. EDIT NAMA ---
+         # --- FITUR EDIT / RENAME NAMA PASIEN ---
         st.divider()
         with st.expander("✏️ Edit / Rename Nama Pasien"):
-            opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-            data_terpilih = st.selectbox("Pilih Pasien", opsi_edit, key="sb_edit")
-            id_target_edit = int(data_terpilih.split(" | ")[0])
-            nama_lama = data_terpilih.split(" | ")[1]
-            nama_baru = st.text_input("Nama Baru", value=nama_lama)
-            if st.button("Simpan Perubahan Nama"):
-                with get_connection() as conn:
-                    conn.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
-                    conn.commit()
-                st.success("Nama Berhasil Diubah!")
-                st.rerun()
+            with st.form("edit_nama_form"):
+                st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
+                
+                # Pilihan pasien berdasarkan data yang sedang tampil di tabel
+                # Format: ID | Nama (agar unik)
+                opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
+                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
+                
+                # Ambil nama lama sebagai default value
+                nama_lama = data_terpilih.split(" | ")[1]
+                id_target_edit = int(data_terpilih.split(" | ")[0])
+                
+                nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
+                
+                btn_rename = st.form_submit_button("Simpan Perubahan Nama")
+                
+                if btn_rename:
+                    if nama_baru.strip() == "":
+                        st.error("Nama tidak boleh kosong!")
+                    else:
+                        try:
+                            with get_connection() as conn:
+                                cur = conn.cursor()
+                                # Update nama di tabel pasien
+                                cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
+                                conn.commit()
+                                
+                            st.success(f"Berhasil! Nama telah diubah dari '{nama_lama}' menjadi '{nama_baru}'")
+                            st.balloons()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Gagal memperbarui nama: {e}")
 
-        # --- 5. UPDATE STATUS ---
-        with st.expander("🔄 Ganti Status Pasien"):
-            nama_p = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist(), key="sb_status")
-            status_baru = st.selectbox("Status Baru", ["Normal", "Menunggu Konsul Dokter", "Menunggu Hasil Lab & Radiologi", "Batas Download SKD", "Batas Operan & Daftar Pasien", "Batal Berobat"])
-            if st.button("Simpan Status"):
-                with get_connection() as conn:
-                    conn.execute("UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ?", (status_baru, nama_p))
-                    conn.commit()
-                st.success("Status Diperbarui!")
-                st.rerun()
 
-        # --- 6. HAPUS DATA SATUAN ---
+
+        # --- 4. FORM UPDATE STATUS ---
+        st.divider()
+        with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
+            with st.form("update_status_form"):
+                # Daftar nama di sini akan otomatis ikut terfilter jika Anda mencari nama di atas
+                nama_p = st.selectbox("Pilih Nama Pasien", df['Nama Lengkap'].tolist())
+                status_baru = st.selectbox("Pilih Status Baru", [
+                    "Normal", 
+                    "Menunggu Konsul Dokter", 
+                    "Menunggu Hasil Lab & Radiologi", 
+                    "Batas Download SKD",
+                    "Batas Operan & Daftar Pasien",
+                    "Batal Berobat"
+                ])
+                btn_update = st.form_submit_button("Simpan Perubahan")
+                
+                if btn_update:
+                    cur = conn.cursor()
+                    cur.execute("UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ?", (status_baru, nama_p))
+                    conn.commit()
+                    st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
+                    st.rerun()
+
+       
+
+       
+        # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
+        st.divider()
         with st.expander("🗑️ Hapus Data Pasien"):
-            pilihan_hapus = df.apply(lambda x: f"{x['id']} | {x['Tgl Daftar']} | {x['Nama Lengkap']}", axis=1).tolist()
-            selected_hapus = st.selectbox("Pilih Data", pilihan_hapus, key="sb_hapus")
-            konf = st.checkbox("Yakin hapus?")
-            if st.button("Hapus Data"):
-                if konf:
-                    id_h = int(selected_hapus.split(" | ")[0])
-                    with get_connection() as conn:
-                        conn.execute("DELETE FROM pasien WHERE id = ?", (id_h,))
-                        conn.commit()
-                    st.rerun()
-
-        # --- 7. CETAK PDF ---
-        with st.expander("🖨️ Cetak Formulir"):
-            nama_p_cetak = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist(), key="sb_cetak")
-            petugas = st.selectbox("Petugas", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
-            if st.button("Buat PDF"):
-                from form_generator import buat_formulir_otomatis
-                row = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
-                # Logika data_pasien Anda di sini...
-                # (Sama seperti kode Anda sebelumnya)
-                st.success("PDF Siap!")
-
-        # --- 8. HAPUS SEMUA ---
-        with st.expander("🚨 Hapus Seluruh Database"):
-            sandi = st.text_input("Sandi Admin", type="password")
-            if st.button("HAPUS SEMUA", type="primary"):
-                if sandi == "admin123":
-                    with get_connection() as conn:
-                        conn.execute("DELETE FROM pasien")
-                        conn.commit()
-                    st.rerun()
-    else:
-        st.info("Belum ada data pasien.")
+            with st.form("hapus_pasien_form"):
+                st.warning("Hati-hati! Data yang dihapus tidak dapat dikembalikan.")
+                
+                # Buat list pilihan yang unik (ID - Tanggal - Nama)
+                # Ini agar kita tahu persis mana yang dihapus (misal ada 2 Alhatma di tgl berbeda)
+                pilihan_hapus = df.apply(lambda x: f"{x['id']} | {x['Tgl Daftar']} | {x['Nama Lengkap']}", axis=1).tolist()
+                
+                selected_data = st.selectbox("Pilih Data Spesifik yang akan dihapus", pilihan_hapus)
+                konfirmasi = st.checkbox(f"Saya yakin ingin menghapus data tersebut")
+                
+                btn_hapus = st.form_submit_button("Hapus Data Pasien")
+                
+                if btn_hapus:
+                    if konfirmasi:
+                        try:
+                            # Ambil ID saja dari teks pilihan (angka paling depan)
+                            id_target = int(selected_data.split(" | ")[0])
+                            
+                            with get_connection() as conn:
+                                cur = conn.cursor()
+                                # HAPUS BERDASARKAN ID (Bukan Nama)
+                                cur.execute("DELETE FROM pasien WHERE id = ?", (id_target,))
+                                conn.commit()
+                                
+                            st.success(f"Data dengan ID {id_target} telah berhasil dihapus.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Gagal menghapus data: {e}")
+                    else:
+                        st.error("Silakan centang kotak konfirmasi sebelum menghapus.")
+)
     
-       # --- 6. FITUR CETAK FORMULIR OTOMATIS (VERSI BARU) ---
+        # --- 6. FITUR CETAK FORMULIR OTOMATIS (VERSI BARU) ---
         st.divider()
         with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
             st.info("Pilih pasien untuk membuat formulir otomatis dari data rekam medis.")
@@ -607,7 +656,8 @@ elif menu == "Rekam Medis / 病历":
                 
                 # Info tambahan untuk user
                 st.info("💡 Setelah klik tombol di atas, PDF akan terbuka. Gunakan tombol 'Print' di browser atau tekan Ctrl+P.")
-        # --- 7. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
+
+         # --- 7. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
         st.divider()
         with st.expander("🚨 Hapus Seluruh Database (Admin Only)"):
             st.error("PERINGATAN: Tindakan ini akan menghapus SELURUH data pasien tanpa kecuali!")
