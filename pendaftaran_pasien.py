@@ -535,85 +535,71 @@ elif menu == "Rekam Medis / 病历":
             mime='text/csv',
         )
 
-         # --- FITUR EDIT / RENAME NAMA PASIEN ---
-        st.divider()
-        with st.expander("✏️ Edit / Rename Nama Pasien"):
+        # --- FITUR EDIT / RENAME NAMA PASIEN ---
+    st.divider()
+    with st.expander("✏️ Edit / Rename Nama Pasien"):
+        if not df.empty:
             with st.form("edit_nama_form"):
                 st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
                 
-                # Pilihan pasien berdasarkan data yang sedang tampil di tabel
-                # Format: ID | Nama (agar unik)
+                # Format: ID | Nama agar unik
                 opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
+                data_terpilih = st.selectbox("Pilih Pasien", opsi_edit)
                 
-                # Ambil nama lama sebagai default value
-                nama_lama = data_terpilih.split(" | ")[1]
+                # Parsing ID dan Nama Lama
                 id_target_edit = int(data_terpilih.split(" | ")[0])
+                nama_lama = data_terpilih.split(" | ")[1]
                 
                 nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
-                
                 btn_rename = st.form_submit_button("Simpan Perubahan Nama")
                 
                 if btn_rename:
                     if nama_baru.strip() == "":
                         st.error("Nama tidak boleh kosong!")
                     else:
-                        try:
-                            with get_connection() as conn:
-                                cur = conn.cursor()
-                                # Update nama di tabel pasien
-                                cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
-                                conn.commit()
-                                
-                            st.success(f"Berhasil! Nama telah diubah dari '{nama_lama}' menjadi '{nama_baru}'")
-                            st.balloons()
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Gagal memperbarui nama: {e}")
-
-
-
-        # --- 4. FORM UPDATE STATUS (VERSI PERBAIKAN TOTAL) ---
-        st.divider()
-        with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
-                # Kita buka koneksi di sini agar variabel 'conn' pasti tersedia
-                with get_connection() as conn:
-                    with st.form("update_status_form"):
-                    # placeholder membantu Anda tahu harus melakukan apa
-                    nama_p = st.text_input("Pilih Nama Pasien", value="", placeholder="Tempel nama dari tabel di atas...")
-            
-                    status_baru = st.selectbox("Pilih Status Baru", [
-                        "Normal", 
-                        "Kuning: Menunggu Konsul Dokter", 
-                        "Biru: Menunggu Hasil Lab & Radiologi", 
-                        "Orange: Batas Download SKD",
-                        "Hijau: Batas Operan & Daftar Pasien",
-                        "Merah: Batal Berobat"
-                    ])
-            
-                    btn_update = st.form_submit_button("Simpan Perubahan")
-            
-                    if btn_update:
-                        if nama_p:
-                            # 1. Bersihkan spasi liar (strip)
-                            nama_p_clean = nama_p.strip()
+                        with get_connection() as conn:
                             cur = conn.cursor()
-                            
-                            # 2. Gunakan query yang tidak peduli Huruf Besar/Kecil (COLLATE NOCASE)
-                            # Ini kunci agar "sudarto" dan "SUDARTO" dianggap sama
-                            sql = "UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ? COLLATE NOCASE"
-                            cur.execute(sql, (status_baru, nama_p_clean))
+                            cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru.strip(), id_target_edit))
                             conn.commit()
-                            
-                            # 3. Cek apakah ada baris yang benar-benar ter-update
-                            if cur.rowcount > 0:
-                                st.success(f"✅ Berhasil! Status {nama_p_clean} kini menjadi {status_baru}")
-                                st.rerun()
-                            else:
-                                # Jika masih gagal, kita beri tahu alasannya
-                                st.error(f"❌ Nama '{nama_p_clean}' tidak ditemukan di database. Pastikan tidak ada karakter aneh yang ikut tersalin.")
+                        st.success(f"Berhasil! Nama diubah menjadi '{nama_baru}'")
+                        st.rerun()
+        else:
+            st.warning("Tidak ada data untuk diedit.")
+
+    # --- 4. FORM UPDATE STATUS (VERSI TEMPEL NAMA) ---
+    st.divider()
+    with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
+        with st.form("update_status_form"):
+            nama_p = st.text_input("Pilih Nama Pasien", value="", placeholder="Tempel nama dari tabel di atas...")
+            
+            status_baru = st.selectbox("Pilih Status Baru", [
+                "Normal", 
+                "Kuning: Menunggu Konsul Dokter", 
+                "Biru: Menunggu Hasil Lab & Radiologi", 
+                "Orange: Batas Download SKD",
+                "Hijau: Batas Operan & Daftar Pasien",
+                "Merah: Batal Berobat"
+            ])
+            
+            btn_update = st.form_submit_button("Simpan Perubahan Status")
+            
+            if btn_update:
+                if nama_p:
+                    nama_p_clean = nama_p.strip()
+                    with get_connection() as conn:
+                        cur = conn.cursor()
+                        # Gunakan NOCASE agar tidak sensitif huruf besar/kecil
+                        sql = "UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ? COLLATE NOCASE"
+                        cur.execute(sql, (status_baru, nama_p_clean))
+                        conn.commit()
+                        
+                        if cur.rowcount > 0:
+                            st.success(f"✅ Berhasil mengupdate status {nama_p_clean}")
+                            st.rerun()
                         else:
-                            st.warning("⚠️ Mohon tempelkan nama pasien terlebih dahulu.")
+                            st.error("❌ Nama tidak ditemukan. Pastikan copy-paste nama dengan benar.")
+                else:
+                    st.warning("⚠️ Mohon tempelkan nama pasien.")
        
         # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
         st.divider()
