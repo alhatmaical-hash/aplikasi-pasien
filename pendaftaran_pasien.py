@@ -440,7 +440,7 @@ elif menu == "Rekam Medis / 病历":
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
 
- # --- BAGIAN 3: TABEL ANTRIAN ---
+# --- BAGIAN 3: TABEL ANTRIAN ---
     st.write("---")
     st.subheader("📋 Daftar Antrian Pasien")
     search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
@@ -483,9 +483,6 @@ elif menu == "Rekam Medis / 病历":
             }
         )
 
-
-    else:
-        st.info("Belum ada data pasien / 还没有病人数据。")
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
         col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
@@ -694,6 +691,7 @@ elif menu == "Rekam Medis / 病历":
                 st.info("Belum ada data pasien / 还没有病人数据。")
     
         conn.close()
+
 
 
 # --- MENU SKD ---
