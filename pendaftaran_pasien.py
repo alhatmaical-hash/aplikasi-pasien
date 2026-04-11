@@ -440,13 +440,12 @@ elif menu == "Rekam Medis / 病历":
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
 
-# --- BAGIAN 3: TABEL ANTRIAN (VERSI AUTO-RESET BULANAN) ---
+    # --- BAGIAN 3: TABEL ANTRIAN (VERSI AUTO-RESET BULANAN) ---
     st.write("---")
     st.subheader("📋 Daftar Antrian Pasien")
     
-    # 1. DEFINISIKAN FUNGSI WARNA (Taruh di paling atas agar tidak NameError)
+    # 1. DEFINISIKAN FUNGSI WARNA
     def color_row(row):
-        # Gunakan .get() agar aman jika kolom tidak ditemukan
         status = row.get('status_antrian', '')
         if status == "Menunggu Konsul Dokter": 
             return ['background-color: #ffff00; color: black'] * len(row)
@@ -460,13 +459,12 @@ elif menu == "Rekam Medis / 病历":
             return ['background-color: #ff4b4b; color: white'] * len(row)
         return [''] * len(row)
 
-    # 2. FILTER LAYOUT (Agar tabel otomatis kosong saat ganti bulan)
+    # 2. FILTER LAYOUT
     col_f1, col_f2, col_f3 = st.columns([2, 1, 1], gap="small")
     with col_f1:
         search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
     with col_f2:
         list_bulan = ["Semua", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
-        # Otomatis deteksi bulan sekarang
         bulan_sekarang = datetime.now().month
         bulan_selected = st.selectbox("Pilih Bulan", list_bulan, index=bulan_sekarang)
     with col_f3:
@@ -489,7 +487,7 @@ elif menu == "Rekam Medis / 病历":
         df = pd.read_sql(query, conn)
 
     if not df.empty:
-        # 4. KONVERSI TANGGAL UNTUK FILTER (Data tidak akan hilang)
+        # 4. KONVERSI TANGGAL UNTUK FILTER
         df['tgl_dt'] = pd.to_datetime(df['Tgl Daftar'], errors='coerce')
         df_tampil = df.copy()
 
@@ -499,237 +497,24 @@ elif menu == "Rekam Medis / 病历":
         
         if bulan_selected != "Semua":
             idx_bulan = list_bulan.index(bulan_selected)
-            # Hanya tampilkan bulan yang dipilih (Agar tabel mulai baru setiap bulan)
             df_tampil = df_tampil[df_tampil['tgl_dt'].dt.month == idx_bulan]
             
         if tahun_selected != "Semua":
             df_tampil = df_tampil[df_tampil['tgl_dt'].dt.year == int(tahun_selected)]
 
-        # 6. TAMPILKAN TABEL DENGAN WARNA
+        # 6. TAMPILKAN TABEL
         st.dataframe(
             df_tampil.style.apply(color_row, axis=1), 
             use_container_width=True, 
             hide_index=True,
             column_config={
                 "id": None, 
-                "tgl_dt": None, # Sembunyikan kolom bantu
+                "tgl_dt": None,
                 "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal", format="DD/MM/YY HH:mm"),
                 "status_antrian": st.column_config.TextColumn("Status Antrian")
             }
         )
-        st.caption(f"Menampilkan {len(df_tampil)} data untuk periode {bulan_selected} {tahun_selected}.")
-    else:
-        st.info("Belum ada data pasien / 还没有病人数据。")
-        # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
-        st.markdown("### 📋 Keterangan Status")
-        col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
-        with col_k1:
-            st.info("🟡 **Kuning**: Menunggu Konsul Dokter")
-        with col_k2:
-            st.info("🔵 **Biru**: Menunggu Hasil Lab & Radiologi")
-        with col_k3:
-            st.warning("🟠 **Orange**: Batas Download SKD")
-        with col_k4:
-            st.success("🟢 **Hijau**: Batas Operan & Daftar Pasien")
-        with col_k5:
-            st.error("🔴 Merah: Batal Berobat")
-
-
-
-        # --- 3. FITUR UNDUH (CSV) ---
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Data (CSV)",
-            data=csv,
-            file_name='data_rekam_medis.csv',
-            mime='text/csv',
-        )
-
-         # --- FITUR EDIT / RENAME NAMA PASIEN ---
-        st.divider()
-        with st.expander("✏️ Edit / Rename Nama Pasien"):
-            with st.form("edit_nama_form"):
-                st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
-                
-                # Pilihan pasien berdasarkan data yang sedang tampil di tabel
-                # Format: ID | Nama (agar unik)
-                opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
-                
-                # Ambil nama lama sebagai default value
-                nama_lama = data_terpilih.split(" | ")[1]
-                id_target_edit = int(data_terpilih.split(" | ")[0])
-                
-                nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
-                
-                btn_rename = st.form_submit_button("Simpan Perubahan Nama")
-                
-                if btn_rename:
-                    if nama_baru.strip() == "":
-                        st.error("Nama tidak boleh kosong!")
-                    else:
-                        try:
-                            with get_connection() as conn:
-                                cur = conn.cursor()
-                                # Update nama di tabel pasien
-                                cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
-                                conn.commit()
-                                
-                            st.success(f"Berhasil! Nama telah diubah dari '{nama_lama}' menjadi '{nama_baru}'")
-                            st.balloons()
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Gagal memperbarui nama: {e}")
-
-
-
-        # --- 4. FORM UPDATE STATUS ---
-        st.divider()
-        with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
-            with st.form("update_status_form"):
-                # Daftar nama di sini akan otomatis ikut terfilter jika Anda mencari nama di atas
-                nama_p = st.selectbox("Pilih Nama Pasien", df['Nama Lengkap'].tolist())
-                status_baru = st.selectbox("Pilih Status Baru", [
-                    "Normal", 
-                    "Menunggu Konsul Dokter", 
-                    "Menunggu Hasil Lab & Radiologi", 
-                    "Batas Download SKD",
-                    "Batas Operan & Daftar Pasien",
-                    "Batal Berobat"
-                ])
-                btn_update = st.form_submit_button("Simpan Perubahan")
-                
-                if btn_update:
-                    cur = conn.cursor()
-                    cur.execute("UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ?", (status_baru, nama_p))
-                    conn.commit()
-                    st.success(f"Status {nama_p} berhasil diubah ke {status_baru}!")
-                    st.rerun()
-
-       
-
-       
-        # --- 5. FORM HAPUS DATA (DIPERBAIKI) ---
-        st.divider()
-        with st.expander("🗑️ Hapus Data Pasien"):
-            with st.form("hapus_pasien_form"):
-                st.warning("Hati-hati! Data yang dihapus tidak dapat dikembalikan.")
-                
-                # Buat list pilihan yang unik (ID - Tanggal - Nama)
-                # Ini agar kita tahu persis mana yang dihapus (misal ada 2 Alhatma di tgl berbeda)
-                pilihan_hapus = df.apply(lambda x: f"{x['id']} | {x['Tgl Daftar']} | {x['Nama Lengkap']}", axis=1).tolist()
-                
-                selected_data = st.selectbox("Pilih Data Spesifik yang akan dihapus", pilihan_hapus)
-                konfirmasi = st.checkbox(f"Saya yakin ingin menghapus data tersebut")
-                
-                btn_hapus = st.form_submit_button("Hapus Data Pasien")
-                
-                if btn_hapus:
-                    if konfirmasi:
-                        try:
-                            # Ambil ID saja dari teks pilihan (angka paling depan)
-                            id_target = int(selected_data.split(" | ")[0])
-                            
-                            with get_connection() as conn:
-                                cur = conn.cursor()
-                                # HAPUS BERDASARKAN ID (Bukan Nama)
-                                cur.execute("DELETE FROM pasien WHERE id = ?", (id_target,))
-                                conn.commit()
-                                
-                            st.success(f"Data dengan ID {id_target} telah berhasil dihapus.")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Gagal menghapus data: {e}")
-                    else:
-                        st.error("Silakan centang kotak konfirmasi sebelum menghapus.")
-
-    
-        # --- 6. FITUR CETAK FORMULIR OTOMATIS (VERSI BARU) ---
-        st.divider()
-        with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
-            st.info("Pilih pasien untuk membuat formulir otomatis dari data rekam medis.")
-            hasil_cetak = None
-    
-            with st.form("cetak_form_pendaftaran"):
-                nama_p_cetak = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist())
-                petugas = st.selectbox("Pilih Petugas", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
-                btn_cetak = st.form_submit_button("Buat Formulir Sekarang")
-        
-                if btn_cetak:
-                    from form_generator import buat_formulir_otomatis
-                    try:
-                        row = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
-                        data_pasien = {
-                           "nama": row['Nama Lengkap'],
-                            "tempat_lahir": row['TTL'].split(',')[0] if ',' in row['TTL'] else row['TTL'],
-                            "tgl_lahir": row['TTL'].split(',')[1] if ',' in row['TTL'] else row['TTL'],
-                            "gender": row.get('Gender', '-'),
-                            "agama": row.get('Agama', '-'),
-                            "no_hp": row.get('WhatsApp', '-'),
-                            "nik": row['NIK/ID'],
-                            "perusahaan": row['Perusahaan'],
-                            "departemen": row['Departemen'],
-                            "jabatan": row['Jabatan'],
-                            "blok_mes": row.get('Blok/Kamar', '-'),
-                            "alergi": row.get('Alergi', '-'),
-                            "lokasi_kerja": row['Area Kerja'],
-                            "gol_darah": row.get('Gol Darah', '-')
-                        }
-                        hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
-                    except Exception as e:
-                        st.error(f"Terjadi kesalahan saat mengambil data: {e}")
-
-            if hasil_cetak:
-                st.success(f"✅ Formulir untuk {nama_p_cetak} siap dicetak!")
-                
-                # Karena hasil_cetak sekarang berisi data PDF (bytes), 
-                # kita gunakan st.download_button dengan mime pdf
-                st.download_button(
-                    label="🖨️ Klik di sini untuk Buka & Cetak PDF",
-                    data=hasil_cetak,
-                    file_name=f"Formulir_{nama_p_cetak.replace(' ', '_')}.pdf",
-                    mime="application/pdf"
-                )
-                
-                # Info tambahan untuk user
-                st.info("💡 Setelah klik tombol di atas, PDF akan terbuka. Gunakan tombol 'Print' di browser atau tekan Ctrl+P.")
-
-         # --- 7. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
-        st.divider()
-        with st.expander("🚨 Hapus Seluruh Database (Admin Only)"):
-            st.error("PERINGATAN: Tindakan ini akan menghapus SELURUH data pasien tanpa kecuali!")
-            
-            # Input sandi admin
-            input_sandi = st.text_input("Masukkan Sandi Admin", type="password", key="sandi_delete_all")
-            
-            # Checkbox konfirmasi tambahan agar tidak sengaja terpencet
-            konfirmasi_total = st.checkbox("Saya benar-benar ingin menghapus SEMUA data di database")
-            
-            btn_hapus_semua = st.button("HAPUS SEMUA DATA SEKARANG", type="primary")
-            
-            if btn_hapus_semua:
-                # Ganti 'admin123' dengan sandi yang Anda inginkan
-                if input_sandi == "admin123": 
-                    if konfirmasi_total:
-                        try:
-                            cur = conn.cursor()
-                            cur.execute("DELETE FROM pasien")
-                            conn.commit()
-                            st.success("Seluruh database berhasil dikosongkan!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Gagal mengosongkan data: {e}")
-                    else:
-                        st.warning("Silakan centang kotak konfirmasi terlebih dahulu.")
-                else:
-                    st.error("Sandi Admin salah! Akses ditolak.")
-
-            else:
-                st.info("Belum ada data pasien / 还没有病人数据。")
-    
-        conn.close()
-
-
+        st.caption(f"Menampilkan {len(df_tampil)} data untuk periode {bulan_selected} {tahun_
 
 # --- MENU SKD ---
 elif menu == "SKD / 医生证明":
