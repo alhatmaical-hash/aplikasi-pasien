@@ -514,7 +514,110 @@ elif menu == "Rekam Medis / 病历":
                 "status_antrian": st.column_config.TextColumn("Status Antrian")
             }
         )
-        st.caption(f"Menampilkan {len(df_tampil)} data untuk periode {bulan_selected} {tahun_
+        st.caption(f"Menampilkan {len(df_tampil)} data untuk periode {bulan_selected} {tahun_selected}.")
+
+        # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
+        st.markdown("### 📋 Keterangan Status")
+        col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
+        with col_k1:
+            st.info("🟡 **Kuning**: Menunggu Konsul Dokter")
+        with col_k2:
+            st.info("🔵 **Biru**: Menunggu Hasil Lab & Radiologi")
+        with col_k3:
+            st.warning("🟠 **Orange**: Batas Download SKD")
+        with col_k4:
+            st.success("🟢 **Hijau**: Batas Operan & Daftar Pasien")
+        with col_k5:
+            st.error("🔴 Merah: Batal Berobat")
+
+        # --- 3. FITUR UNDUH (CSV) ---
+        csv = df_tampil.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Data (CSV)",
+            data=csv,
+            file_name='data_rekam_medis.csv',
+            mime='text/csv',
+        )
+
+        # --- FITUR EDIT / RENAME NAMA PASIEN ---
+        st.divider()
+        with st.expander("✏️ Edit / Rename Nama Pasien"):
+            with st.form("edit_nama_form"):
+                st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
+                opsi_edit = df_tampil.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
+                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
+                nama_lama = data_terpilih.split(" | ")[1]
+                id_target_edit = int(data_terpilih.split(" | ")[0])
+                nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
+                btn_rename = st.form_submit_button("Simpan Perubahan Nama")
+                if btn_rename:
+                    if nama_baru.strip() == "":
+                        st.error("Nama tidak boleh kosong!")
+                    else:
+                        with get_connection() as conn:
+                            conn.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
+                            conn.commit()
+                        st.success(f"Berhasil diubah!")
+                        st.rerun()
+
+        # --- 4. FORM UPDATE STATUS ---
+        st.divider()
+        with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
+            with st.form("update_status_form"):
+                nama_p = st.selectbox("Pilih Nama Pasien", df_tampil['Nama Lengkap'].tolist())
+                status_baru = st.selectbox("Pilih Status Baru", ["Normal", "Menunggu Konsul Dokter", "Menunggu Hasil Lab & Radiologi", "Batas Download SKD", "Batas Operan & Daftar Pasien", "Batal Berobat"])
+                btn_update = st.form_submit_button("Simpan Perubahan")
+                if btn_update:
+                    with get_connection() as conn:
+                        conn.execute("UPDATE pasien SET status_antrian = ? WHERE nama_lengkap = ?", (status_baru, nama_p))
+                        conn.commit()
+                    st.success("Status berhasil diubah!")
+                    st.rerun()
+
+        # --- 5. FORM HAPUS DATA ---
+        st.divider()
+        with st.expander("🗑️ Hapus Data Pasien"):
+            with st.form("hapus_pasien_form"):
+                st.warning("Hati-hati! Data yang dihapus tidak dapat dikembalikan.")
+                pilihan_hapus = df_tampil.apply(lambda x: f"{x['id']} | {x['Tgl Daftar']} | {x['Nama Lengkap']}", axis=1).tolist()
+                selected_data = st.selectbox("Pilih Data Spesifik", pilihan_hapus)
+                konfirmasi = st.checkbox("Saya yakin ingin menghapus")
+                btn_hapus = st.form_submit_button("Hapus Data Pasien")
+                if btn_hapus and konfirmasi:
+                    id_target = int(selected_data.split(" | ")[0])
+                    with get_connection() as conn:
+                        conn.execute("DELETE FROM pasien WHERE id = ?", (id_target,))
+                        conn.commit()
+                    st.success("Dihapus!")
+                    st.rerun()
+
+        # --- 6. FITUR CETAK FORMULIR ---
+        st.divider()
+        with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
+            with st.form("cetak_form_pendaftaran"):
+                nama_p_cetak = st.selectbox("Pilih Pasien", df_tampil['Nama Lengkap'].tolist())
+                petugas = st.selectbox("Pilih Petugas", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
+                btn_cetak = st.form_submit_button("Buat Formulir")
+                if btn_cetak:
+                    from form_generator import buat_formulir_otomatis
+                    row = df_tampil[df_tampil['Nama Lengkap'] == nama_p_cetak].iloc[0]
+                    data_pasien = {"nama": row['Nama Lengkap'], "nik": row['NIK/ID'], "perusahaan": row['Perusahaan'], "departemen": row['Departemen'], "jabatan": row['Jabatan'], "Area Kerja": row['Area Kerja'], "TTL": row['TTL']}
+                    # Asumsi fungsi buat_formulir_otomatis tersedia
+                    st.info("Proses cetak PDF...")
+
+        # --- 7. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
+        st.divider()
+        with st.expander("🚨 Hapus Seluruh Database (Admin Only)"):
+            input_sandi = st.text_input("Masukkan Sandi Admin", type="password")
+            konfirmasi_total = st.checkbox("Hapus SEMUA data")
+            if st.button("HAPUS SEMUA SEKARANG") and input_sandi == "admin123" and konfirmasi_total:
+                with get_connection() as conn:
+                    conn.execute("DELETE FROM pasien")
+                    conn.commit()
+                st.rerun()
+
+    else:
+        st.info("Belum ada data pasien / 还没有病人数据。")
 
 # --- MENU SKD ---
 elif menu == "SKD / 医生证明":
