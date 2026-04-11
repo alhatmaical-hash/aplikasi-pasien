@@ -961,7 +961,7 @@ elif menu == "Dashboard Analitik":
         st.subheader("⏱️ Pilih Waktu Laporan")
         col_shift, col_tgl = st.columns([1, 2])
         with col_shift:
-            shift = st.radio("Pilih Shift:", ["Pagi (07:00 - 18:00)", "Malam (19:00 - 07:00)"], horizontal=False)
+            shift = st.radio("Pilih Shift:", ["Pagi (07:00 - 18:00)", "Malam (18:00 - 07:00)"], horizontal=False)
         with col_tgl:
             tgl_laporan = st.date_input("📅 Tanggal Laporan", datetime.now())
 
@@ -970,7 +970,7 @@ elif menu == "Dashboard Analitik":
             j1, j2 = time(7, 0), time(18, 0)
             t1, t2 = tgl_laporan, tgl_laporan
         else:
-            j1, j2 = time(19, 0), time(7, 0)
+            j1, j2 = time(18, 0), time(7, 0)
             t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1) 
 
         dt_mulai, dt_selesai = f"{t1} {j1}", f"{t2} {j2}"
