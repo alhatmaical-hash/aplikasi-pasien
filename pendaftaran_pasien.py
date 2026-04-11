@@ -542,39 +542,42 @@ elif menu == "Rekam Medis / 病历":
         # --- FITUR EDIT / RENAME NAMA PASIEN ---
         st.divider()
         with st.expander("✏️ Edit / Rename Nama Pasien"):
-            with st.form("edit_nama_form"):
-                st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
-                
-                # Pilihan pasien berdasarkan data yang sedang tampil di tabel
-                # Format: ID | Nama (agar unik)
-                opsi_edit = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-                data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
-                
-                # Ambil nama lama sebagai default value
-                nama_lama = data_terpilih.split(" | ")[1]
-                id_target_edit = int(data_terpilih.split(" | ")[0])
-                
-                nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
-                
-                btn_rename = st.form_submit_button("Simpan Perubahan Nama")
-                
-                if btn_rename:
-                    if nama_baru.strip() == "":
-                        st.error("Nama tidak boleh kosong!")
-                    else:
-                        try:
-                            with get_connection() as conn:
-                                cur = conn.cursor()
-                                # Update nama di tabel pasien
-                                cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru, id_target_edit))
-                                conn.commit()
-                                
-                            st.success(f"Berhasil! Nama telah diubah dari '{nama_lama}' menjadi '{nama_baru}'")
-                            st.balloons()
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Gagal memperbarui nama: {e}")
-
+            # PENTING: Gunakan df_tampil (data hasil filter pencarian) bukan df
+            if not df_tampil.empty:
+                with st.form("edit_nama_form_v2"):
+                    st.info("Gunakan fitur ini untuk memperbaiki kesalahan penulisan nama.")
+                    
+                    # Kita gunakan df_tampil agar pilihannya sama dengan yang ada di tabel atas
+                    opsi_edit = df_tampil.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
+                    data_terpilih = st.selectbox("Pilih Pasien yang akan diperbaiki namanya", opsi_edit)
+                    
+                    # Logika pecah ID dan Nama
+                    id_target_edit = int(data_terpilih.split(" | ")[0])
+                    nama_lama = data_terpilih.split(" | ")[1]
+                    
+                    nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
+                    
+                    btn_rename = st.form_submit_button("Simpan Perubahan Nama")
+                    
+                    if btn_rename:
+                        if not nama_baru.strip():
+                            st.error("Nama tidak boleh kosong!")
+                        else:
+                            try:
+                                with get_connection() as conn:
+                                    cur = conn.cursor()
+                                    # Gunakan .strip() agar tidak ada spasi tidak sengaja di awal/akhir
+                                    cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru.strip(), id_target_edit))
+                                    conn.commit()
+                                    
+                                st.success(f"Berhasil! Nama telah diubah menjadi '{nama_baru}'")
+                                st.balloons()
+                                # Rerun sangat penting agar tabel di atas langsung berubah namanya
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Gagal memperbarui nama: {e}")
+            else:
+                st.warning("Cari nama pasien terlebih dahulu di kolom pencarian di atas agar muncul di sini.")
 
         # --- 4. FORM UPDATE STATUS ---
         st.divider()
