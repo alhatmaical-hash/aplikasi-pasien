@@ -467,7 +467,9 @@ elif menu == "Rekam Medis / 病历":
         df = pd.read_sql(query, conn)
     if not df.empty:
         # Konversi tgl_daftar ke datetime untuk filtering
-        df['Tgl Daftar'] = pd.to_datetime(df['Tgl Daftar'])
+        df['Tgl Daftar'] = pd.to_datetime(df['Tgl Daftar'], errors='coerce')
+        # Hapus baris yang tanggalnya tidak valid agar filter tidak error
+        df = df.dropna(subset=['Tgl Daftar'])
         # Filter Pencarian Nama
         if search_term:
             df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
