@@ -310,27 +310,47 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             
             empty_fields = [k for k, v in required.items() if str(v).strip() in ["", "None", "[]"]]
 
-            # 3. Jalankan simpan HANYA jika kolom lengkap
-            if not empty_fields:
+          if not empty_fields:
                 try:
-                    # --- FITUR BARU: CEK DOUBLE INPUT HARI INI ---
                     tz_wit = pytz.timezone('Asia/Jayapura')
                     waktu_sekarang = datetime.now(tz_wit)
                     tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
+
                     with get_connection() as conn:
-                        # Cek pendaftaran terakhir NIK ini di hari ini
+                        # --- SEMUA KODE DI BAWAH INI HARUS MASUK KE DALAM (INDENTASI) ---
+                        
+                        # A. Cek Double Input
                         check_query = "SELECT is_authorized FROM pasien WHERE nik = ? AND tgl_daftar LIKE ? ORDER BY id DESC LIMIT 1"
                         existing_data = conn.execute(check_query, (nik, f"{tgl_hari_ini}%")).fetchone()
 
-                    if existing_data:
-                        auth_status = existing_data[0]
-                        # Jika sudah ada data dan belum diizinkan admin (0 atau None)
-                        if auth_status == 0 or auth_status is None:
-                            st.error(f"⚠️ NIK {nik} sudah terdaftar hari ini. Silakan lapor ke Loket Pendaftaran untuk verifikasi pendaftaran ulang.")
-                            st.session_state['proses_simpan'] = False
-                            st.stop() 
+                        if existing_data:
+                            auth_status = existing_data[0]
+                            if auth_status == 0 or auth_status is None:
+                                st.error(f"⚠️ NIK {nik} sudah terdaftar...")
+                                st.session_state['proses_simpan'] = False
+                                st.stop()
+                            else:
+                                st.info("ℹ️ Pendaftaran ulang diizinkan oleh Admin.")
+
+                        # B. Hitung Antrian (Round Robin)
+                        query_count = "SELECT COUNT(*) FROM pasien WHERE tgl_daftar LIKE ?"
+                        jml_pasien = conn.execute(query_count, (f"{tgl_hari_ini}%",)).fetchone()[0]
+                        
+                        if dokter_jaga:
+                            idx_dokter = (jml_pasien // 5) % len(dokter_jaga)
+                            dokter_final = dokter_jaga[idx_dokter]
                         else:
-                            st.info("ℹ️ Pendaftaran ulang diizinkan oleh Admin.")
+                            dokter_final = "Belum Ada Dokter"
+
+                        # C. Proses Simpan (INSERT)
+                        cur = conn.cursor()
+                        # ... jalankan cur.execute pendaftaran Anda di sini menggunakan dokter_final ...
+                        conn.commit()
+                        # --- BATAS AKHIR BLOK WITH ---
+
+                    # D. Finishing (Di luar with)
+                    st.success(f"✅ Berhasil! Dokter Anda: {dokter_final}")
+                    st.cache_data.clear()
                     # --- END FITUR BARU ---
 
                     # Persiapan Data
@@ -356,6 +376,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 
                     st.success(f"✅ Pendaftaran Sukses Dikirim! \n\n Silakan ke: **{dokter_terpilih}**")
                     st.balloons()
+                    st.cache_data.clear()
                     
                     # Reset Form
                     for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']:
@@ -444,6 +465,7 @@ elif menu == "Rekam Medis / 病历":
         status_antrian,
         jenis_kunjungan
     FROM pasien
+    ORDER BY id ASC
     """
     df = pd.read_sql(query, conn)
     
