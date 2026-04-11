@@ -956,26 +956,37 @@ elif menu == "Pengaturan Master / 设置":
 elif menu == "Dashboard Analitik":
     st.header("📊 Analisis Data Kunjungan Pasien")
     
-    # --- 1. FILTER PERIODE SHIFT ---
-    with st.container(border=True):
-        st.subheader("⏱️ Pilih Waktu Laporan")
-        col_shift, col_tgl = st.columns([1, 2])
-        with col_shift:
-            shift = st.radio("Pilih Shift:", ["Pagi (07:00 - 18:00)", "Malam (18:00 - 07:00)"], horizontal=False)
-        with col_tgl:
-            tgl_laporan = st.date_input("📅 Tanggal Laporan", datetime.now())
+   # --- 1. FILTER PERIODE SHIFT ---
+with st.container(border=True):
+    st.subheader("⏱️ Pilih Waktu Laporan")
+    col_shift, col_tgl = st.columns([1, 2])
+    
+    with col_shift:
+        # Menambahkan opsi "1/4 Jam Malam"
+        shift = st.radio(
+            "Pilih Shift:", 
+            ["Pagi (07:00 - 18:00)", "Malam (18:00 - 07:00)", "Jam Rawan (18:00 - 22:00)"], 
+            horizontal=False
+        )
+        
+    with col_tgl:
+        tgl_laporan = st.date_input("📅 Tanggal Laporan", datetime.now())
 
-        # Logika Jam Shift (Sesuai kode pendaftaran Anda)
-        if "Pagi" in shift:
-            j1, j2 = time(7, 0), time(18, 0)
-            t1, t2 = tgl_laporan, tgl_laporan
-        else:
-            j1, j2 = time(18, 0), time(7, 0)
-            t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1) 
+    # --- Logika Jam & Rentang Data ---
+    if "Pagi" in shift:
+        j1, j2 = time(7, 0), time(18, 0)
+        t1, t2 = tgl_laporan, tgl_laporan
+    elif "Jam Rawan" in shift:
+        # Logika khusus untuk Jam Rawan (Tetap di hari yang sama)
+        j1, j2 = time(18, 0), time(22, 0)
+        t1, t2 = tgl_laporan, tgl_laporan
+    else:
+        # Logika Shift Malam (Menyeberang ke hari berikutnya)
+        j1, j2 = time(18, 0), time(7, 0)
+        t1, t2 = tgl_laporan, tgl_laporan + timedelta(days=1)
 
-        dt_mulai, dt_selesai = f"{t1} {j1}", f"{t2} {j2}"
-        st.caption(f"🔎 Rentang Data: **{dt_mulai}** s/d **{dt_selesai}**")
-
+    dt_mulai, dt_selesai = f"{t1} {j1}", f"{t2} {j2}"
+    st.caption(f"🔎 Rentang Data: **{dt_mulai}** s/d **{dt_selesai}**")
     # --- 2. AMBIL DATA ---
     with get_connection() as conn:
         df_dash = pd.read_sql("SELECT * FROM pasien WHERE tgl_daftar BETWEEN ? AND ?", conn, params=(dt_mulai, dt_selesai))
