@@ -439,6 +439,28 @@ elif menu == "Rekam Medis / 病历":
                 st.success(f"Berhasil! NIK {nik_izin} sekarang diizinkan mendaftar ulang.")
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
+    # --- BAGIAN  TABEL ANTRIAN DENGAN FILTER PERIODE ---
+    st.write("---")
+    st.subheader("📋 Daftar Antrian Pasien")
+
+    # Filter Waktu (Bulan & Tahun)
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        list_bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+                      "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+        # Default ke bulan berjalan (April = index 3)
+        bulan_idx = datetime.now().month - 1
+        bulan_pilih = st.selectbox("📅 Pilih Bulan", list_bulan, index=bulan_idx)
+        mapping_bulan = {nama: str(i+1).zfill(2) for i, nama in enumerate(list_bulan)}
+        filter_bln = mapping_bulan[bulan_pilih]
+
+    with col_f2:
+        tahun_skrg = datetime.now().year
+        # Daftar tahun dari 2026 sampai 5 tahun ke depan
+        list_tahun = [str(t) for t in range(2026, tahun_skrg + 6)]
+        tahun_pilih = st.selectbox("🗓️ Pilih Tahun", list_tahun)
+
+    search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
 
     # --- BAGIAN 3: TABEL ANTRIAN ---
     st.write("---")
