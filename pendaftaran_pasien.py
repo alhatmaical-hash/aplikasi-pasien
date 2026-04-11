@@ -440,38 +440,69 @@ elif menu == "Rekam Medis / 病历":
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
 
-    # --- BAGIAN 3: TABEL ANTRIAN ---
-    st.write("---")
-    st.subheader("📋 Daftar Antrian Pasien")
-    search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
+   # --- BAGIAN 3: TABEL ANTRIAN ---
+st.write("---")
+st.subheader("📋 Daftar Antrian Pasien")
 
-    with get_connection() as conn:
-        query = """
-        SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
-               nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
-               departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
-               agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender', tgl_lahir AS 'TTL',
-               alergi AS 'Alergi', gol_darah AS 'Gol Darah', blok_mes AS 'Blok/Kamar',
-               lokasi_kerja AS 'Area Kerja', lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
-        FROM pasien ORDER BY id ASC
-        """
-        df = pd.read_sql(query, conn)
+# --- TAMBAHAN FILTER BULAN & TAHUN ---
+col_f1, col_f2, col_f3 = st.columns([1, 1, 2])
 
-    if not df.empty:
-        # Filter Pencarian
-        if search_term:
-            df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+with col_f1:
+    list_bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+                  "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+    # Default ke bulan sekarang
+    bulan_idx = datetime.now().month - 1
+    bulan_pilih = st.selectbox("📅 Bulan", list_bulan, index=bulan_idx, key="filter_bln_rm")
+    mapping_bulan = {nama: str(i+1).zfill(2) for i, nama in enumerate(list_bulan)}
+    filter_bln = mapping_bulan[bulan_pilih]
 
-        # Logika Warna
-        def color_row(row):
-            status = row['status_antrian']
-            if status == "Menunggu Konsul Dokter": return ['background-color: #ffff00; color: black'] * len(row)
-            elif status == "Menunggu Hasil Lab & Radiologi": return ['background-color: #00b0f0; color: white'] * len(row)
-            elif status == "Batas Download SKD": return ['background-color: #ff9900; color: white'] * len(row)
-            elif status == "Batas Operan & Daftar Pasien": return ['background-color: #c8e6c9'] * len(row)
-            elif status == "Batal Berobat": return ['background-color: #ff4b4b; color: white'] * len(row)
-            return [''] * len(row)
+with col_f2:
+    tahun_skrg = datetime.now().year
+    # List tahun dari 2026 sampai 5 tahun ke depan
+    list_tahun = [str(t) for t in range(2026, tahun_skrg + 6)]
+    tahun_pilih = st.selectbox("🗓️ Tahun", list_tahun, key="filter_thn_rm")
 
+with col_f3:
+    search_term = st.text_input("🔍 Cari Nama Pasien", "", key="search_rekam_medis")
+
+# --- UPDATE QUERY DENGAN WHERE CLAUSE ---
+with get_connection() as conn:
+    query = f"""
+    SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
+           nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
+           departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
+           agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender', tgl_lahir AS 'TTL',
+           alergi AS 'Alergi', gol_darah AS 'Gol Darah', blok_mes AS 'Blok/Kamar',
+           lokasi_kerja AS 'Area Kerja', lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
+    FROM pasien 
+    WHERE strftime('%m', tgl_daftar) = '{filter_bln}' 
+      AND strftime('%Y', tgl_daftar) = '{tahun_pilih}'
+    ORDER BY id ASC
+    """
+    df = pd.read_sql(query, conn)
+
+if not df.empty:
+    # Filter Pencarian Nama
+    if search_term:
+        df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+
+    # Logika Warna
+    def color_row(row):
+        status = str(row['status_antrian']) if row['status_antrian'] else ""
+        if "Kuning" in status or "Konsul" in status: 
+            return ['background-color: #ffff00; color: black'] * len(row)
+        elif "Biru" in status or "Lab" in status: 
+            return ['background-color: #00b0f0; color: white'] * len(row)
+        elif "Orange" in status or "SKD" in status: 
+            return ['background-color: #ff9900; color: white'] * len(row)
+        elif "Hijau" in status or "Operan" in status: 
+            return ['background-color: #c8e6c9; color: black'] * len(row)
+        elif "Merah" in status or "Batal" in status: 
+            return ['background-color: #ff4b4b; color: white'] * len(row)
+        return [''] * len(row)
+
+    # Tampilkan Tabel
+    try:
         st.dataframe(
             df.style.apply(color_row, axis=1), 
             use_container_width=True, 
@@ -479,10 +510,10 @@ elif menu == "Rekam Medis / 病历":
             column_config={
                 "id": None, 
                 "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal", format="DD/MM/YY HH:mm"),
-                "status_antrian": st.column_config.TextColumn("Status Antrian") # Saya munculkan agar terlihat di tabel
             }
         )
-
+    except:
+        st.dataframe(df, use_container_width=True, hide_index=True)
 
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
