@@ -440,61 +440,49 @@ elif menu == "Rekam Medis / 病历":
             else:
                 st.warning("Silakan masukkan NIK terlebih dahulu.")
 
-   # --- BAGIAN 3: TABEL ANTRIAN DENGAN FILTER PERIODE ---
+    # --- BAGIAN 3: TABEL ANTRIAN ---
     st.write("---")
     st.subheader("📋 Daftar Antrian Pasien")
+    search_term = st.text_input("🔍 Cari Nama Pasien / 查找病人姓名", "", key="search_rekam_medis")
 
-    # Membuat 3 kolom agar filter sejajar (Bulan, Tahun, Cari Nama)
-    col_f1, col_f2, col_f3 = st.columns([1, 1, 2])
-
-    with col_f1:
-        list_bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
-                      "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
-        bulan_idx = datetime.now().month - 1
-        bulan_pilih = st.selectbox("📅 Bulan", list_bulan, index=bulan_idx, key="filter_bln_rm")
-        mapping_bulan = {nama: str(i+1).zfill(2) for i, nama in enumerate(list_bulan)}
-        filter_bln = mapping_bulan[bulan_pilih]
-
-    with col_f2:
-        tahun_skrg = datetime.now().year
-        list_tahun = [str(t) for t in range(2026, tahun_skrg + 6)]
-        tahun_pilih = st.selectbox("🗓️ Tahun", list_tahun, key="filter_thn_rm")
-
-    with col_f3:
-        # Pindahkan cari nama ke sini agar rapi dan beri KEY UNIK
-        search_term = st.text_input("🔍 Cari Nama Pasien", "", key="cari_nama_pasien_rm")
-
-   # 1. Ambil data dari database
     with get_connection() as conn:
-        query = f"""
+        query = """
         SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
                nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
                departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
                agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender', tgl_lahir AS 'TTL',
                alergi AS 'Alergi', gol_darah AS 'Gol Darah', blok_mes AS 'Blok/Kamar',
                lokasi_kerja AS 'Area Kerja', lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
-        FROM pasien 
-        WHERE strftime('%m', tgl_daftar) = '{filter_bln}' 
-          AND strftime('%Y', tgl_daftar) = '{tahun_pilih}'
-        ORDER BY id ASC
+        FROM pasien ORDER BY id ASC
         """
         df = pd.read_sql(query, conn)
 
-    # 2. Cek apakah data ada
     if not df.empty:
-        # Jalankan filter pencarian nama (jika ada)
+        # Filter Pencarian
         if search_term:
             df = df[df['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
 
-        # 3. BARIS INI WAJIB ADA AGAR TABEL MUNCUL
+        # Logika Warna
+        def color_row(row):
+            status = row['status_antrian']
+            if status == "Menunggu Konsul Dokter": return ['background-color: #ffff00; color: black'] * len(row)
+            elif status == "Menunggu Hasil Lab & Radiologi": return ['background-color: #00b0f0; color: white'] * len(row)
+            elif status == "Batas Download SKD": return ['background-color: #ff9900; color: white'] * len(row)
+            elif status == "Batas Operan & Daftar Pasien": return ['background-color: #c8e6c9'] * len(row)
+            elif status == "Batal Berobat": return ['background-color: #ff4b4b; color: white'] * len(row)
+            return [''] * len(row)
+
         st.dataframe(
             df.style.apply(color_row, axis=1), 
             use_container_width=True, 
-            hide_index=True
+            hide_index=True,
+            column_config={
+                "id": None, 
+                "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal", format="DD/MM/YY HH:mm"),
+                "status_antrian": st.column_config.TextColumn("Status Antrian") # Saya munculkan agar terlihat di tabel
+            }
         )
-    else:
-        # Jika data kosong (karena filter bulan/tahun belum ada isinya)
-        st.info(f"Belum ada data pasien pada periode {bulan_pilih} {tahun_pilih}.")
+
 
         # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
         st.markdown("### 📋 Keterangan Status")
