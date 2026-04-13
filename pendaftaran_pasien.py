@@ -302,12 +302,23 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 st.stop()
             st.session_state['proses_simpan'] = True
 
-            # 2. Definisikan required fields
-            if pernah == "Iya Sudah / 是的": 
-                required = {"Nama": nama_lengkap, "NIK": nik, "Perusahaan": perusahaan, "Dept": dept}
-            else:
-                required = {"Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Perusahaan": perusahaan, "Area": lokasi_kerja}
+            # 2. Definisikan semua kolom yang wajib diisi
+            # Kita gabungkan semua kolom tanpa membedakan Pasien Lama/Baru agar semuanya wajib
+            required = {
+                "Nama Lengkap": nama_lengkap,
+                "NIK": nik,
+                "No HP": no_hp,
+                "Perusahaan": perusahaan,
+                "Departemen": dept,
+                "Jabatan": jabatan,
+                "Tempat Lahir": tmpt_lahir,
+                "Tanggal Lahir": tgl_lahir_val,
+                "Jenis Alergi": alergi,
+                "Lokasi Area Kerja": lokasi_kerja,
+                "Blok Mes": blok_mes
+            }
             
+            # Sistem akan mengecek apakah ada input yang kosong, "None", atau list kosong []
             empty_fields = [k for k, v in required.items() if str(v).strip() in ["", "None", "[]"]]
 
             if not empty_fields:
