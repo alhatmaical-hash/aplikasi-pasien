@@ -297,6 +297,11 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
         
         if submit_btn:
+            # --- PROTEKSI 1: Normalisasi Data ---
+            # Hapus spasi di awal/akhir dan paksa jadi HURUF BESAR
+            nik_clean = str(nik).strip()
+            nama_clean = str(nama_lengkap).strip().upper()
+            
             # 1. Kunci agar tidak double click
             if st.session_state.get('proses_simpan', False):
                 st.stop()
@@ -305,8 +310,8 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             # 2. Definisikan semua kolom yang wajib diisi
             # Kita gabungkan semua kolom tanpa membedakan Pasien Lama/Baru agar semuanya wajib
             required = {
-                "Nama Lengkap": nama_lengkap,
-                "NIK": nik,
+                "Nama Lengkap": nama_clean,
+                "NIK": nik_clean,
                 "No HP": no_hp,
                 "Perusahaan": perusahaan,
                 "Departemen": dept,
@@ -328,28 +333,23 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                     tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
 
                     with get_connection() as conn:
-                        # --- SEMUA KODE DI BAWAH INI HARUS MASUK KE DALAM (INDENTASI) ---
-                        
-                        # A. Cek Double Input
+                        # --- PROTEKSI 2: Query yang lebih Ketat ---
                         check_query = """
-                            SELECT is_authorized, nik, nama_lengkap
-                            FROM pasien
-                            WHERE (nik = ? OR nama_lengkap = ?)
+                            SELECT is_authorized 
+                            FROM pasien 
+                            WHERE (nik = ? OR UPPER(nama_lengkap) = ?)
                             AND tgl_daftar LIKE ?
                             ORDER BY id DESC LIMIT 1
                         """
-                        existing_data = conn.execute(check_query, (nik, nama_lengkap, f"{tgl_hari_ini}%")).fetchone()
-                       
+                        # Gunakan nik_clean dan nama_clean yang sudah dinormalisasi
+                        existing_data = conn.execute(check_query, (nik_clean, nama_clean, f"{tgl_hari_ini}%")).fetchone()
 
                         if existing_data:
                             auth_status = existing_data[0]
-                            if auth_status == 0 or auth_status is None:
-                                # Pesan error yang lebih dinamis
-                                st.error(f"⚠️ NIK atau Nama tersebut sudah terdaftar untuk hari ini. Jangan Kamu daftar Dua Kali Jika Mau Daftar Dua Kali Hub Petugas Pendaftaran.")
+                            if not auth_status: # Jika 0 atau None
+                                st.error(f"⚠️ NIK ({nik_clean}) atau Nama ({nama_clean}) sudah terdaftar hari ini!")
                                 st.session_state['proses_simpan'] = False
                                 st.stop()
-                            else:
-                                st.info("ℹ️ Pendaftaran ulang diizinkan oleh petugas pendaftaran (Otorisasi ditemukan).")
 
                         # B. Hitung Antrian (Round Robin)
                         query_count = "SELECT COUNT(*) FROM pasien WHERE tgl_daftar LIKE ?"
@@ -361,11 +361,15 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                         else:
                             dokter_final = "Belum Ada Dokter"
 
-                        # C. Proses Simpan (INSERT)
+                       # C. Proses Simpan (INSERT)
                         cur = conn.cursor()
-                        # ... jalankan cur.execute pendaftaran Anda di sini menggunakan dokter_final ...
-                        conn.commit()
-                        # --- BATAS AKHIR BLOK WITH ---
+                        cur.execute('''INSERT INTO pasien (
+                                            tgl_daftar, nama_lengkap, nik, ... )
+                                       VALUES (?,?,?, ...)''',
+                                       (waktu_sekarang.strftime("%Y-%m-%d %H:%M:%S"), 
+                                        nama_clean, # Simpan dalam format HURUF BESAR
+                                        nik_clean,  # Simpan NIK tanpa spasi
+                                        ... ))
 
                     # D. Finishing (Di luar with)
                     st.success(f"✅ Berhasil! Dokter Anda: {dokter_final}")
