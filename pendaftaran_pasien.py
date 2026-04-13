@@ -1017,7 +1017,7 @@ elif menu == "Dashboard Analitik":
             shift = st.radio(
                 "Pilih Shift:", 
                 [
-                    "Pagi (07:00 - 18:00)", 
+                    "Pagi (06:00 - 18:00)", 
                     "Jam Malam (1) 18:00 - 22:00", 
                     "Jam Malam (2) 22:00 - 06:00",
                     "Malam Full (18:00 - 07:00)"
@@ -1030,7 +1030,7 @@ elif menu == "Dashboard Analitik":
 
         # --- Logika Jam & Rentang Data ---
         if "Pagi" in shift:
-            j1, j2 = "07:00:00", "18:00:00"
+            j1, j2 = "06:00:00", "18:00:00"
             t1, t2 = tgl_laporan, tgl_laporan
         elif "(1)" in shift:
             j1, j2 = "18:00:00", "22:00:00"
