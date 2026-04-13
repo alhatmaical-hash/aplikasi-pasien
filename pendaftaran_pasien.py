@@ -361,15 +361,53 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                         else:
                             dokter_final = "Belum Ada Dokter"
 
-                       # C. Proses Simpan (INSERT)
+                       
+                        # C. Proses Simpan (INSERT)
                         cur = conn.cursor()
                         cur.execute('''INSERT INTO pasien (
-                                            tgl_daftar, nama_lengkap, nik, ... )
-                                       VALUES (?,?,?, ...)''',
-                                       (waktu_sekarang.strftime("%Y-%m-%d %H:%M:%S"), 
-                                        nama_clean, # Simpan dalam format HURUF BESAR
-                                        nik_clean,  # Simpan NIK tanpa spasi
-                                        ... ))
+                                        tgl_daftar, 
+                                        nama_lengkap, 
+                                        nik, 
+                                        pernah_berobat, 
+                                        perusahaan, 
+                                        departemen, 
+                                        jabatan, 
+                                        no_hp, 
+                                        agama, 
+                                        gender, 
+                                        blok_mes, 
+                                        tgl_lahir, 
+                                        alergi, 
+                                        gol_darah, 
+                                        lokasi_kerja, 
+                                        lokasi_mcu, 
+                                        status_antrian, 
+                                        dokter, 
+                                        is_authorized, 
+                                        jenis_kunjungan
+                                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                                (
+                                        waktu_sekarang.strftime("%Y-%m-%d %H:%M:%S"), 
+                                        nama_clean, 
+                                        nik_clean, 
+                                        pernah, 
+                                        perusahaan, 
+                                        dept, 
+                                        jabatan, 
+                                        no_hp, 
+                                        agama, 
+                                        gender, 
+                                        blok_mes, 
+                                        f"{tmpt_lahir}, {tgl_lahir_val.strftime('%d-%m-%Y') if tgl_lahir_val else ''}", 
+                                        str(alergi), 
+                                        gol_darah, 
+                                        lokasi_kerja, 
+                                        lokasi_mcu, 
+                                        "Normal", 
+                                        dokter_final, 
+                                        0, 
+                                        jenis_kunjungan
+                                ))
 
                     # D. Finishing (Di luar with)
                     st.success(f"✅ Berhasil! Dokter Anda: {dokter_final}")
