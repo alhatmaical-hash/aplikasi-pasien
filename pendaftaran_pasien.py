@@ -345,7 +345,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                             auth_status = existing_data[0]
                             if auth_status == 0 or auth_status is None:
                                 # Pesan error yang lebih dinamis
-                                st.error(f"⚠️ NIK atau Nama tersebut sudah terdaftar untuk hari ini. Silakan tunggu antrian atau hubungi Admin.")
+                                st.error(f"⚠️ NIK atau Nama tersebut sudah terdaftar untuk hari ini. Jangan Kamu daftar Dua Kali Jika Mau Daftar Dua Kali Hub Petugas Pendaftaran.")
                                 st.session_state['proses_simpan'] = False
                                 st.stop()
                             else:
