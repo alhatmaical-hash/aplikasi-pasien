@@ -331,17 +331,25 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                         # --- SEMUA KODE DI BAWAH INI HARUS MASUK KE DALAM (INDENTASI) ---
                         
                         # A. Cek Double Input
-                        check_query = "SELECT is_authorized FROM pasien WHERE nik = ? AND tgl_daftar LIKE ? ORDER BY id DESC LIMIT 1"
-                        existing_data = conn.execute(check_query, (nik, f"{tgl_hari_ini}%")).fetchone()
+                        check_query = """
+                            SELECT is_authorized, nik, nama_lengkap
+                            FROM pasien
+                            WHERE (nik = ? OR nama_lengkap = ?)
+                            AND tgl_daftar LIKE ?
+                            ORDER BY id DESC LIMIT 1
+                        """
+                        existing_data = conn.execute(check_query, (nik, nama_lengkap, f"{tgl_hari_ini}%")).fetchone()
+                       
 
                         if existing_data:
                             auth_status = existing_data[0]
                             if auth_status == 0 or auth_status is None:
-                                st.error(f"⚠️ NIK {nik} sudah terdaftar...")
+                                # Pesan error yang lebih dinamis
+                                st.error(f"⚠️ NIK atau Nama tersebut sudah terdaftar untuk hari ini. Silakan tunggu antrian atau hubungi Admin.")
                                 st.session_state['proses_simpan'] = False
                                 st.stop()
                             else:
-                                st.info("ℹ️ Pendaftaran ulang diizinkan oleh Admin.")
+                                st.info("ℹ️ Pendaftaran ulang diizinkan oleh petugas pendaftaran (Otorisasi ditemukan).")
 
                         # B. Hitung Antrian (Round Robin)
                         query_count = "SELECT COUNT(*) FROM pasien WHERE tgl_daftar LIKE ?"
