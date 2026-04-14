@@ -6,8 +6,8 @@ from supabase import create_client, Client
 
 # --- 1. KONFIGURASI SUPABASE ---
 # Ganti dengan URL dan Key proyek Supabase Anda
-URL = "https://your-project-url.supabase.co"
-KEY = "your-anon-key"
+URL = "https://yfbbkmufyliwznknmpxf.supabase.co"
+KEY = "sb_publishable_E7zuHs4UDqcNCOEFYP20Tw_a9zXLGiK"
 supabase: Client = create_client(URL, KEY)
 
 # --- 2. INISIALISASI SESSION STATE ---
