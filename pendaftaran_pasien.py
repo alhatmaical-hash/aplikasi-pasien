@@ -294,7 +294,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             st.subheader("📋 Informasi Tambahan / 附加信息")
             responses = {field: st.text_input(f"{field.upper()}") for field in custom_fields}
         
-      submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
+        submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
         
         if submit_btn:
             # --- 1. NORMALISASI & LOCK ---
