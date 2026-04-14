@@ -134,12 +134,8 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 }
                 supabase.table("pasien").insert(data_pasien).execute()
                 st.success("✅ Pendaftaran Berhasil!"); st.balloons(); time.sleep(2); st.rerun()
-
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
-    # 1. Pastikan layout lebar agar tabel tidak terpotong (Tambahkan ini di paling atas file jika belum ada)
-    # st.set_page_config(layout="wide") 
-
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=5000, key="datarefresh") # Refresh tiap 5 detik
     
@@ -147,20 +143,24 @@ elif menu == "Rekam Medis / 病历":
 
     # --- BAGIAN 1: ATUR DOKTER JAGA ---
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
-        opts_dr_raw = get_master("Dokter")['nama'].tolist()
-        opts_dr = sorted(list(set(opts_dr_raw)))
-        with get_connection() as conn:
-            try:
-                dr_aktif_db = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)['nama_dokter'].tolist()
-            except:
-                dr_aktif_db = []
+        # PERBAIKAN: get_master sekarang mengembalikan List, tidak perlu ['nama'].tolist()
+        opts_dr = sorted(list(set(get_master("Dokter"))))
+        
+        # Mengambil dokter aktif dari Supabase (Bukan SQLite get_connection)
+        res_dr = supabase.table("dokter_jaga_harian").select("nama_dokter").execute()
+        dr_aktif_db = [d['nama_dokter'] for d in res_dr.data]
+        
         pilihan = st.multiselect("Pilih Dokter yang Bertugas", opts_dr, default=dr_aktif_db, placeholder="Pilih dokter...")
+        
         if st.button("Simpan Jadwal Dokter"):
-            with get_connection() as conn:
-                conn.execute("DELETE FROM dokter_jaga_harian")
-                for dr in pilihan:
-                    conn.execute("INSERT INTO dokter_jaga_harian (nama_dokter) VALUES (?)", (dr,))
-                conn.commit()
+            # Menghapus jadwal lama di Supabase
+            supabase.table("dokter_jaga_harian").delete().neq("nama_dokter", "clear_all").execute()
+            
+            # Memasukkan jadwal baru
+            if pilihan:
+                data_input = [{"nama_dokter": dr} for dr in pilihan]
+                supabase.table("dokter_jaga_harian").insert(data_input).execute()
+            
             st.success("Jadwal Berhasil Disimpan!")
             st.rerun()
 
