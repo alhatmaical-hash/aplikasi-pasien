@@ -294,14 +294,13 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             st.subheader("📋 Informasi Tambahan / 附加信息")
             responses = {field: st.text_input(f"{field.upper()}") for field in custom_fields}
         
-        submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
+      submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
         
         if submit_btn:
             # --- 1. NORMALISASI & LOCK ---
             nik_clean = str(nik).strip()
             nama_clean = str(nama_lengkap).strip().upper()
             
-            # Kunci double click
             if st.session_state.get('proses_simpan', False):
                 st.stop()
             st.session_state['proses_simpan'] = True
@@ -315,17 +314,14 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
             }
             empty_fields = [k for k, v in required.items() if str(v).strip() in ["", "None", "[]"]]
 
-            if empty_fields:
-                st.warning(f"⚠️ Mohon lengkapi: **{', '.join(empty_fields)}**")
-                st.session_state['proses_simpan'] = False
-            else:
+            if not empty_fields:
                 try:
                     tz_wit = pytz.timezone('Asia/Jayapura')
                     waktu_sekarang = datetime.now(tz_wit)
                     tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
 
                     with get_connection() as conn:
-                        # --- 3. CEK DUPLIKAT (HARI INI) ---
+                        # --- 3. CEK DUPLIKAT ---
                         check_query = "SELECT id FROM pasien WHERE (nik = ? OR UPPER(nama_lengkap) = ?) AND tgl_daftar LIKE ? LIMIT 1"
                         existing = conn.execute(check_query, (nik_clean, nama_clean, f"{tgl_hari_ini}%")).fetchone()
 
@@ -358,35 +354,20 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                                      tgl_lahir_gabung, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, 
                                      "Normal", dokter_final, 0, jenis_kunjungan))
                         
-                        # Simpan data tambahan/
-
-                    # Persiapan Data
-                    tgl_str = tgl_lahir_val.strftime("%d-%m-%Y") if tgl_lahir_val else ""
-                    tgl_gabung = f"{tmpt_lahir}, {tgl_str}"
-                    
-                    with get_connection() as conn:
-                        cur = conn.cursor()
-                        # Update INSERT dengan kolom is_authorized (Ada 19 kolom & 19 tanda tanya)
-                        cur.execute('''INSERT INTO pasien (
-                                            tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, 
-                                            departemen, jabatan, no_hp, agama, gender, 
-                                            blok_mes, tgl_lahir, alergi, gol_darah, lokasi_kerja, 
-                                            lokasi_mcu, status_antrian, dokter, is_authorized, jenis_kunjungan)
-                                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                                       (waktu_sekarang.strftime("%Y-%m-%d %H:%M:%S"), nama_lengkap, nik, pernah, perusahaan, dept, jabatan, 
-                                        no_hp, agama, gender, blok_mes, tgl_gabung, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, "Normal", dokter_terpilih, 0, jenis_kunjungan))
-                        
+                        # Simpan data tambahan/custom fields
                         last_id = cur.lastrowid
                         for f_name, f_val in responses.items():
                             cur.execute("INSERT INTO pasien_custom_data (pasien_id, field_name, field_value) VALUES (?,?,?)", (last_id, f_name, f_val))
+                        
                         conn.commit()
 
-                    st.success(f"✅ Pendaftaran Sukses Dikirim! \n\n Silakan ke: **{dokter_terpilih}**")
+                    # --- 6. FINISHING ---
+                    st.success(f"✅ Pendaftaran Sukses! Silakan ke: **{dokter_final}**")
                     st.balloons()
                     st.cache_data.clear()
                     
-                    # Reset Form
-                    for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'tgl_lahir', 'lokasi_kerja']:
+                    # Reset form state
+                    for key in ['nama_lengkap', 'nik', 'no_hp', 'blok_mes', 'lokasi_kerja']:
                         st.session_state[key] = ""
                     
                     import time
@@ -397,8 +378,9 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 except Exception as e:
                     st.session_state['proses_simpan'] = False 
                     st.error(f"Gagal menyimpan: {e}")
+            
             else:
-                # Jika ada kolom kosong
+                # Blok ELSE ini sekarang sejajar dengan 'if not empty_fields'
                 st.session_state['proses_simpan'] = False 
                 kolom_kosong = ", ".join(empty_fields)
                 st.warning(f"⚠️ Mohon lengkapi kolom: **{kolom_kosong}**")
