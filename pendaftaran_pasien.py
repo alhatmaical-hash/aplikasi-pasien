@@ -36,6 +36,15 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def get_master(kategori):
+    if kategori == "Dokter":
+        return [
+            "DR. JOKO", 
+            "DR. DEDEK", 
+            "DR. KARTIKA", 
+            "DR. DOMINICUS", 
+            "DR. ANDIKA", 
+            "DR. RANDY"
+        ]
     # Mengambil data dari tabel master_data
     res = supabase.table("master_data").select("nama").eq("kategori", kategori).execute()
     df = pd.DataFrame(res.data)
@@ -143,27 +152,43 @@ elif menu == "Rekam Medis / 病历":
     st.header("📊 Menu Rekam Medis")
 
     # --- BAGIAN 1: ATUR DOKTER JAGA ---
+    # --- BAGIAN 1: ATUR DOKTER JAGA ---
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
-        # Mengambil master data dokter
-        opts_dr = sorted(list(set(get_master("Dokter"))))
+        # Tambahkan nama-nama dokter baru di sini
+        opts_dr = [
+            "DR. JOKO", 
+            "DR. DEDEK", 
+            "DR. KARTIKA", 
+            "DR. DOMINICUS", 
+            "DR. ANDIKA", 
+            "DR. RANDY"
+        ]
         
-        # Ambil dokter yang sedang aktif di Supabase
+        # Ambil dokter yang sedang aktif di Supabase agar tidak hilang saat refresh
         try:
             res_dr = supabase.table("dokter_jaga_harian").select("nama_dokter").execute()
             dr_aktif_db = [d['nama_dokter'] for d in res_dr.data]
         except:
             dr_aktif_db = []
         
-        pilihan = st.multiselect("Pilih Dokter yang Bertugas", opts_dr, default=dr_aktif_db, placeholder="Pilih dokter...")
+        # Menampilkan multiselect dengan daftar dokter baru
+        pilihan = st.multiselect(
+            "Pilih Dokter yang Bertugas", 
+            opts_dr, 
+            default=[d for d in dr_aktif_db if d in opts_dr], 
+            placeholder="Pilih dokter..."
+        )
         
         if st.button("Simpan Jadwal Dokter"):
-            # Hapus jadwal lama dan masukkan yang baru
+            # Hapus jadwal lama di Supabase
             supabase.table("dokter_jaga_harian").delete().neq("nama_dokter", "clear_all").execute()
+            
+            # Masukkan dokter yang dipilih
             if pilihan:
                 data_input = [{"nama_dokter": dr} for dr in pilihan]
                 supabase.table("dokter_jaga_harian").insert(data_input).execute()
             
-            st.success("Jadwal Berhasil Disimpan!")
+            st.success("Jadwal Dokter Berhasil Diperbarui!")
             st.rerun()
 
     # --- BAGIAN 2: OTORISASI DAFTAR ULANG ---
