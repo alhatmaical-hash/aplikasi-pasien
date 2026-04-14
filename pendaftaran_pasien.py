@@ -68,87 +68,107 @@ else:
 # --- 6. HALAMAN PENDAFTARAN ---
 if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
     st.header("📝 Pendaftaran Pasien / 病人登记")
-    
-    # --- LOGIKA PENENTUAN DOKTER (ROUND ROBIN) ---
-    tz_wit = pytz.timezone('Asia/Jayapura')
-    tgl_hari_ini = datetime.now(tz_wit).strftime("%Y-%m-%d")
-    
-    # Ambil dokter aktif dari Supabase
+  # --- LOGIKA PENENTUAN DOKTER (ROUND ROBIN) ---
+tz_wit = pytz.timezone('Asia/Jayapura')
+waktu_sekarang = datetime.now(tz_wit)
+tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
+
+# 1. Ambil list dokter jaga yang aktif
+try:
     res_dr = supabase.table("dokter_jaga_harian").select("nama_dokter").execute()
-    list_dr_jaga = [d['nama_dokter'] for d in res_dr.data]
-    
-    if not list_dr_jaga:
-        st.error("⚠️ Dokter jaga belum diatur oleh Admin.")
-        st.stop()
+    dokter_jaga = [d['nama_dokter'] for d in res_dr.data]
+except Exception as e:
+    st.error(f"Gagal mengambil data dokter: {e}")
+    dokter_jaga = []
 
-    # Hitung jumlah pasien hari ini untuk menentukan giliran dokter
-    res_count = supabase.table("pasien").select("id", count="exact").like("tgl_daftar", f"{tgl_hari_ini}%").execute()
-    jml_pasien = res_count.count if res_count.count else 0
-    idx_dr = (jml_pasien // 5) % len(list_dr_jaga)
-    dokter_terpilih = list_dr_jaga[idx_dr]
-    
-    st.info(f"Dokter Anda: **{dokter_terpilih}**")
+if not dokter_jaga:
+    st.error("⚠️ Dokter jaga belum diatur. Silakan hubungi Admin.")
+    st.stop()
 
-    # --- FORM PENDAFTARAN ---
-    pernah = st.radio("PERNAH BEROBAT DISINI?", ["Iya Sudah / 是nya", "Belum Pernah / 从未"], horizontal=True)
+# 2. Hitung jumlah pasien hari ini (PERBAIKAN BARIS 85)
+# Kita gunakan rentang waktu dari jam 00:00 sampai 23:59
+tgl_mulai = f"{tgl_hari_ini} 00:00:00"
+tgl_selesai = f"{tgl_hari_ini} 23:59:59"
+
+try:
+    res_count = supabase.table("pasien") \
+        .select("id", count="exact") \
+        .gte("tgl_daftar", tgl_mulai) \
+        .lte("tgl_daftar", tgl_selesai) \
+        .execute()
     
-    with st.form("form_reg_supabase"):
-        col1, col2 = st.columns(2)
-        with col1:
-            jenis_kunjungan = st.selectbox("Jenis Kunjungan", ["Berobat", "Kontrol MCU", "Masuk UGD", "Lainnya"])
-            nama_lengkap = st.text_input("Nama Lengkap *", value=st.session_state.nama_lengkap)
-            nik = st.text_input("NIK / ID Card *", value=st.session_state.nik)
-            no_hp = st.text_input("WhatsApp *", value=st.session_state.no_hp)
-            gender = st.radio("Gender", ["Laki-laki", "Perempuan"], horizontal=True)
+    jml_pasien = res_count.count if res_count.count is not None else 0
+except Exception as e:
+    st.error(f"Gagal menghitung antrian: {e}")
+    jml_pasien = 0
+
+# Tentukan dokter berdasarkan urutan (Round Robin)
+idx_dokter = (jml_pasien // 5) % len(dokter_jaga)
+dokter_terpilih = dokter_jaga[idx_dokter]
+
+st.info(f"Pasien ini akan diarahkan ke: **{dokter_terpilih}**")
+
+# --- FORM PENDAFTARAN ---
+pernah = st.radio("PERNAH BEROBAT DISINI?", ["Iya Sudah / 是的", "Belum Pernah / 从未"], horizontal=True)
+
+with st.form("form_pendaftaran_baru"):
+    col1, col2 = st.columns(2)
+    with col1:
+        # PERBAIKAN BARIS 117: Langsung panggil list, jangan pakai .tolist()
+        perusahaan = st.selectbox("Perusahaan *", [""] + get_master("Perusahaan"))
+        dept = st.selectbox("Departemen *", [""] + get_master("Departemen"))
+        nama_lengkap = st.text_input("Nama Lengkap *", value=st.session_state.nama_lengkap)
+        nik = st.text_input("NIK / ID *", value=st.session_state.nik)
+    
+    with col2:
+        no_hp = st.text_input("WhatsApp *", value=st.session_state.no_hp)
+        tgl_lahir_val = st.date_input("Tanggal Lahir *", value=None, min_value=datetime(1950, 1, 1))
+        jenis_kunjungan = st.selectbox("Jenis Kunjungan", ["Berobat", "Kontrol MCU", "UGD"])
+        lokasi_kerja = st.text_area("Lokasi Kerja *", value=st.session_state.lokasi_kerja)
+
+    # TOMBOL SUBMIT (Wajib di dalam with st.form)
+    submit_btn = st.form_submit_button("KIRIM PENDAFTARAN")
+
+    if submit_btn:
+        if not nama_lengkap or not nik or not perusahaan:
+            st.warning("⚠️ Mohon lengkapi kolom yang berbintang (*)")
+        else:
+            # 3. Cek apakah sudah daftar hari ini (Double Input)
+            res_cek = supabase.table("pasien") \
+                .select("is_authorized") \
+                .eq("nik", nik) \
+                .gte("tgl_daftar", tgl_mulai) \
+                .lte("tgl_daftar", tgl_selesai) \
+                .order("id", desc=True).limit(1).execute()
             
-        with col2:
-            perusahaan = st.selectbox("Perusahaan *", [""] + get_master("Perusahaan"))
-            dept = st.selectbox("Departemen *", [""] + get_master("Departemen"))
-            jabatan = st.selectbox("Jabatan *", [""] + get_master("Jabatan"))
-            tgl_lahir_val = st.date_input("Tanggal Lahir *", value=None, min_value=datetime(1960,1,1))
-            lokasi_kerja = st.text_area("Area Kerja *", value=st.session_state.lokasi_kerja)
-
-        submit_btn = st.form_submit_button("KIRIM PENDAFTARAN")
-        
-        if submit_btn:
-            # Validasi Kolom Kosong
-            required = [nama_lengkap, nik, perusahaan, dept, tgl_lahir_val]
-            if any(v in ["", None] for v in required):
-                st.warning("⚠️ Mohon lengkapi semua kolom bertanda *")
+            if res_cek.data and res_cek.data[0]['is_authorized'] == 0:
+                st.error(f"NIK {nik} sudah terdaftar hari ini!")
             else:
-                # Cek Double Input (NIK sama di hari yang sama)
-                res_cek = supabase.table("pasien").select("is_authorized").eq("nik", nik).like("tgl_daftar", f"{tgl_hari_ini}%").order("id", desc=True).limit(1).execute()
+                # 4. PROSES SIMPAN KE SUPABASE
+                data_baru = {
+                    "tgl_daftar": waktu_sekarang.strftime("%Y-%m-%d %H:%M:%S"),
+                    "nama_lengkap": nama_lengkap.upper(),
+                    "nik": nik,
+                    "perusahaan": perusahaan,
+                    "departemen": dept,
+                    "no_hp": no_hp,
+                    "tgl_lahir": str(tgl_lahir_val),
+                    "lokasi_kerja": lokasi_kerja,
+                    "dokter": dokter_terpilih,
+                    "status_antrian": "Menunggu Konsul Dokter",
+                    "jenis_kunjungan": jenis_kunjungan,
+                    "is_authorized": 0
+                }
                 
-                if res_cek.data and res_cek.data[0]['is_authorized'] == 0:
-                    st.error("⚠️ NIK ini sudah terdaftar hari ini.")
-                else:
-                    # PROSES SIMPAN KE SUPABASE
-                    waktu_skrg = datetime.now(tz_wit).strftime("%Y-%m-%d %H:%M:%S")
-                    data_pasien = {
-                        "tgl_daftar": waktu_skrg,
-                        "nama_lengkap": nama_lengkap.upper(),
-                        "nik": nik,
-                        "perusahaan": perusahaan,
-                        "departemen": dept,
-                        "jabatan": jabatan,
-                        "no_hp": no_hp,
-                        "tgl_lahir": str(tgl_lahir_val),
-                        "lokasi_kerja": lokasi_kerja,
-                        "dokter": dokter_terpilih,
-                        "jenis_kunjungan": jenis_kunjungan,
-                        "status_antrian": "Menunggu Konsul Dokter",
-                        "is_authorized": 0
-                    }
-                    
-                    try:
-                        supabase.table("pasien").insert(data_pasien).execute()
-                        st.success(f"✅ Sukses! Silakan menuju ke {dokter_terpilih}")
-                        st.balloons()
-                        # Reset State
-                        for k in ['nama_lengkap', 'nik', 'no_hp', 'lokasi_kerja']: st.session_state[k] = ""
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Gagal simpan: {e}")
+                try:
+                    supabase.table("pasien").insert(data_baru).execute()
+                    st.success(f"✅ Berhasil! Silakan ke {dokter_terpilih}")
+                    st.balloons()
+                    # Reset Form
+                    for k in ['nama_lengkap', 'nik', 'no_hp', 'lokasi_kerja']: st.session_state[k] = ""
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Gagal menyimpan data: {e}")
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
     from streamlit_autorefresh import st_autorefresh
