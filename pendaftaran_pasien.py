@@ -297,122 +297,68 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
         submit_btn = st.form_submit_button("KIRIM PENDAFTARAN / 提交登记")
         
         if submit_btn:
-            # --- PROTEKSI 1: Normalisasi Data ---
-            # Hapus spasi di awal/akhir dan paksa jadi HURUF BESAR
+            # --- 1. NORMALISASI & LOCK ---
             nik_clean = str(nik).strip()
             nama_clean = str(nama_lengkap).strip().upper()
             
-            # 1. Kunci agar tidak double click
+            # Kunci double click
             if st.session_state.get('proses_simpan', False):
                 st.stop()
             st.session_state['proses_simpan'] = True
 
-            # 2. Definisikan semua kolom yang wajib diisi
-            # Kita gabungkan semua kolom tanpa membedakan Pasien Lama/Baru agar semuanya wajib
+            # --- 2. VALIDASI KOLOM ---
             required = {
-                "Nama Lengkap": nama_clean,
-                "NIK": nik_clean,
-                "No HP": no_hp,
-                "Perusahaan": perusahaan,
-                "Departemen": dept,
-                "Jabatan": jabatan,
-                "Tempat Lahir": tmpt_lahir,
-                "Tanggal Lahir": tgl_lahir_val,
-                "Jenis Alergi": alergi,
-                "Lokasi Area Kerja": lokasi_kerja,
-                "Blok Mes": blok_mes
+                "Nama Lengkap": nama_clean, "NIK": nik_clean, "No HP": no_hp,
+                "Perusahaan": perusahaan, "Departemen": dept, "Jabatan": jabatan,
+                "Tempat Lahir": tmpt_lahir, "Tanggal Lahir": tgl_lahir_val,
+                "Jenis Alergi": alergi, "Lokasi Kerja": lokasi_kerja, "Blok Mes": blok_mes
             }
-            
-            # Sistem akan mengecek apakah ada input yang kosong, "None", atau list kosong []
             empty_fields = [k for k, v in required.items() if str(v).strip() in ["", "None", "[]"]]
 
-            if not empty_fields:
+            if empty_fields:
+                st.warning(f"⚠️ Mohon lengkapi: **{', '.join(empty_fields)}**")
+                st.session_state['proses_simpan'] = False
+            else:
                 try:
                     tz_wit = pytz.timezone('Asia/Jayapura')
                     waktu_sekarang = datetime.now(tz_wit)
                     tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
 
                     with get_connection() as conn:
-                        # --- PROTEKSI 2: Query yang lebih Ketat ---
-                        check_query = """
-                            SELECT is_authorized 
-                            FROM pasien 
-                            WHERE (nik = ? OR UPPER(nama_lengkap) = ?)
-                            AND tgl_daftar LIKE ?
-                            ORDER BY id DESC LIMIT 1
-                        """
-                        # Gunakan nik_clean dan nama_clean yang sudah dinormalisasi
-                        existing_data = conn.execute(check_query, (nik_clean, nama_clean, f"{tgl_hari_ini}%")).fetchone()
+                        # --- 3. CEK DUPLIKAT (HARI INI) ---
+                        check_query = "SELECT id FROM pasien WHERE (nik = ? OR UPPER(nama_lengkap) = ?) AND tgl_daftar LIKE ? LIMIT 1"
+                        existing = conn.execute(check_query, (nik_clean, nama_clean, f"{tgl_hari_ini}%")).fetchone()
 
-                        if existing_data:
-                            auth_status = existing_data[0]
-                            if not auth_status: # Jika 0 atau None
-                                st.error(f"⚠️ NIK ({nik_clean}) atau Nama ({nama_clean}) sudah terdaftar hari ini!")
-                                st.session_state['proses_simpan'] = False
-                                st.stop()
+                        if existing:
+                            st.error(f"⚠️ NIK ({nik_clean}) atau Nama sudah terdaftar hari ini!")
+                            st.session_state['proses_simpan'] = False
+                            st.stop()
 
-                        # B. Hitung Antrian (Round Robin)
-                        query_count = "SELECT COUNT(*) FROM pasien WHERE tgl_daftar LIKE ?"
-                        jml_pasien = conn.execute(query_count, (f"{tgl_hari_ini}%",)).fetchone()[0]
+                        # --- 4. HITUNG ANTRIAN & DOKTER ---
+                        res_count = conn.execute("SELECT COUNT(*) FROM pasien WHERE tgl_daftar LIKE ?", (f"{tgl_hari_ini}%",)).fetchone()
+                        jml_pasien = res_count[0] if res_count else 0
                         
+                        dokter_final = "Belum Ada Dokter"
                         if dokter_jaga:
                             idx_dokter = (jml_pasien // 5) % len(dokter_jaga)
                             dokter_final = dokter_jaga[idx_dokter]
-                        else:
-                            dokter_final = "Belum Ada Dokter"
 
-                       
-                        # C. Proses Simpan (INSERT)
+                        # --- 5. PROSES SIMPAN (HANYA SATU KALI DI SINI) ---
                         cur = conn.cursor()
+                        tgl_lahir_gabung = f"{tmpt_lahir}, {tgl_lahir_val.strftime('%d-%m-%Y') if tgl_lahir_val else ''}"
+                        
                         cur.execute('''INSERT INTO pasien (
-                                        tgl_daftar, 
-                                        nama_lengkap, 
-                                        nik, 
-                                        pernah_berobat, 
-                                        perusahaan, 
-                                        departemen, 
-                                        jabatan, 
-                                        no_hp, 
-                                        agama, 
-                                        gender, 
-                                        blok_mes, 
-                                        tgl_lahir, 
-                                        alergi, 
-                                        gol_darah, 
-                                        lokasi_kerja, 
-                                        lokasi_mcu, 
-                                        status_antrian, 
-                                        dokter, 
-                                        is_authorized, 
-                                        jenis_kunjungan
-                                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                                (
-                                        waktu_sekarang.strftime("%Y-%m-%d %H:%M:%S"), 
-                                        nama_clean, 
-                                        nik_clean, 
-                                        pernah, 
-                                        perusahaan, 
-                                        dept, 
-                                        jabatan, 
-                                        no_hp, 
-                                        agama, 
-                                        gender, 
-                                        blok_mes, 
-                                        f"{tmpt_lahir}, {tgl_lahir_val.strftime('%d-%m-%Y') if tgl_lahir_val else ''}", 
-                                        str(alergi), 
-                                        gol_darah, 
-                                        lokasi_kerja, 
-                                        lokasi_mcu, 
-                                        "Normal", 
-                                        dokter_final, 
-                                        0, 
-                                        jenis_kunjungan
-                                ))
-
-                    # D. Finishing (Di luar with)
-                    st.success(f"✅ Berhasil! Dokter Anda: {dokter_final}")
-                    st.cache_data.clear()
-                    # --- END FITUR BARU ---
+                                        tgl_daftar, nama_lengkap, nik, pernah_berobat, perusahaan, 
+                                        departemen, jabatan, no_hp, agama, gender, blok_mes, 
+                                        tgl_lahir, alergi, gol_darah, lokasi_kerja, lokasi_mcu, 
+                                        status_antrian, dokter, is_authorized, jenis_kunjungan
+                                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                                    (waktu_sekarang.strftime("%Y-%m-%d %H:%M:%S"), nama_clean, nik_clean, pernah, 
+                                     perusahaan, dept, jabatan, no_hp, agama, gender, blok_mes, 
+                                     tgl_lahir_gabung, str(alergi), gol_darah, lokasi_kerja, lokasi_mcu, 
+                                     "Normal", dokter_final, 0, jenis_kunjungan))
+                        
+                        # Simpan data tambahan/
 
                     # Persiapan Data
                     tgl_str = tgl_lahir_val.strftime("%d-%m-%Y") if tgl_lahir_val else ""
