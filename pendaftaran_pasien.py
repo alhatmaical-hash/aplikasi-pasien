@@ -35,10 +35,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. FUNGSI HELPER ---
 def get_master(kategori):
-    res = supabase.table("master_data").select("*").eq("kategori", kategori).execute()
-    return pd.DataFrame(res.data)
+    # Mengambil data dari tabel master_data
+    res = supabase.table("master_data").select("nama").eq("kategori", kategori).execute()
+    df = pd.DataFrame(res.data)
+    if df.empty:
+        return []
+    return df['nama'].tolist() # Mengembalikan list nama untuk selectbox
 
 # --- 4. NAVIGASI ---
 params = st.query_params
