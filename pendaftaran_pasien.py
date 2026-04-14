@@ -19,17 +19,19 @@ for key in keys_to_init:
 # --- 3. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Klinik Apps", page_icon="🏥", layout="wide")
 
-# --- 4. FUNGSI MASTER DATA ---
+# --- 3. FUNGSI MASTER DATA ---
 def get_master(kategori):
-    if kategori == "Dokter":
-        return ["DR. JOKO", "DR. DEDEK", "DR. KARTIKA", "DR. DOMINICUS", "DR. ANDIKA", "DR. RANDY"]
-    elif kategori == "Perusahaan":
-        return ["PT HALMAHERA JAYA FERONIKEL", "PT KARUNIA PERMAI SENTOSA", "PT OBI SINAR TIMUR", "PT CIPTA KEMAKMURAN MITRA"]
-    elif kategori == "Departemen":
-        return ["HC", "GA", "SAFETY", "PRODUCTION", "ENVIRO", "LOGISTIC"]
-    elif kategori == "Jabatan":
-        return ["STAFF", "FOREMAN", "SUPERVISOR", "MANAGER", "HELPER"]
-    return []
+    match kategori:
+        case "Dokter":
+            return ["DR. JOKO", "DR. DEDEK", "DR. KARTIKA", "DR. DOMINICUS", "DR. ANDIKA", "DR. RANDY"]
+        case "Perusahaan":
+            return ["PT HALMAHERA JAYA FERONIKEL", "PT KARUNIA PERMAI SENTOSA", "PT OBI SINAR TIMUR", "PT CIPTA KEMAKMURAN MITRA"]
+        case "Departemen":
+            return ["HC", "GA", "SAFETY", "PRODUCTION", "ENVIRO", "LOGISTIC", "EXTERNAL"]
+        case "Jabatan":
+            return ["STAFF", "FOREMAN", "SUPERVISOR", "MANAGER", "HELPER", "OPERATOR"]
+        case _:
+            return []
 
 # --- 5. LOGIKA NAVIGASI ---
 params = st.query_params
