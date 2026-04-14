@@ -212,71 +212,83 @@ elif menu == "Rekam Medis / 病历":
         idx_tahun = list_tahun.index(tahun_sekarang) if tahun_sekarang in list_tahun else 0
         tahun_selected = st.selectbox("Pilih Tahun", list_tahun, index=idx_tahun)
 
-    # 3. AMBIL DATA
-    with get_connection() as conn:
-        query = """
-        SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
-               nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
-               departemen AS 'Departemen', jabatan AS 'Jabatan', pernah_berobat AS 'Status',
-               agama AS 'Agama', dokter AS 'Dokter', gender AS 'Gender', tgl_lahir AS 'TTL',
-               alergi AS 'Alergi', gol_darah AS 'Gol Darah', blok_mes AS 'Blok/Kamar',
-               lokasi_kerja AS 'Area Kerja', lokasi_mcu AS 'Lokasi Mcu Pertama Kali', status_antrian
-        FROM pasien ORDER BY id DESC
-        """
-        df = pd.read_sql(query, conn)
+   # --- 3. AMBIL DATA DARI SUPABASE ---
+try:
+    # Mengambil data dari tabel pasien di Supabase
+    res = supabase.table("pasien").select("*").order("id", desc=True).execute()
+    df = pd.DataFrame(res.data)
+except Exception as e:
+    st.error(f"Gagal mengambil data dari Cloud: {e}")
+    df = pd.DataFrame()
 
-    if not df.empty:
-        # 4. KONVERSI TANGGAL UNTUK FILTER
-        df['tgl_dt'] = pd.to_datetime(df['Tgl Daftar'], errors='coerce')
-        df_tampil = df.copy()
+if not df.empty:
+    # Rename kolom agar sesuai dengan tampilan yang Anda inginkan
+    df = df.rename(columns={
+        "tgl_daftar": "Tgl Daftar",
+        "nama_lengkap": "Nama Lengkap",
+        "nik": "NIK/ID",
+        "no_hp": "WhatsApp",
+        "perusahaan": "Perusahaan",
+        "departemen": "Departemen",
+        "jabatan": "Jabatan",
+        "pernah_berobat": "Status",
+        "agama": "Agama",
+        "dokter": "Dokter",
+        "gender": "Gender",
+        "tgl_lahir": "TTL",
+        "alergi": "Alergi",
+        "gol_darah": "Gol Darah",
+        "blok_mes": "Blok/Kamar",
+        "lokasi_kerja": "Area Kerja",
+        "lokasi_mcu": "Lokasi Mcu Pertama Kali"
+    })
 
-        # 5. EKSEKUSI FILTER
-        if search_term:
-            df_tampil = df_tampil[df_tampil['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+    # 4. KONVERSI TANGGAL UNTUK FILTER
+    df['tgl_dt'] = pd.to_datetime(df['Tgl Daftar'], errors='coerce')
+    df_tampil = df.copy()
+
+    # 5. EKSEKUSI FILTER
+    if search_term:
+        df_tampil = df_tampil[df_tampil['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
+    
+    if bulan_selected != "Semua":
+        idx_bulan = list_bulan.index(bulan_selected)
+        df_tampil = df_tampil[df_tampil['tgl_dt'].dt.month == idx_bulan]
         
-        if bulan_selected != "Semua":
-            idx_bulan = list_bulan.index(bulan_selected)
-            df_tampil = df_tampil[df_tampil['tgl_dt'].dt.month == idx_bulan]
-            
-        if tahun_selected != "Semua":
-            df_tampil = df_tampil[df_tampil['tgl_dt'].dt.year == int(tahun_selected)]
+    if tahun_selected != "Semua":
+        df_tampil = df_tampil[df_tampil['tgl_dt'].dt.year == int(tahun_selected)]
 
-        # 6. TAMPILKAN TABEL
-        st.dataframe(
-            df_tampil.style.apply(color_row, axis=1), 
-            use_container_width=True, 
-            hide_index=True,
-            column_config={
-                "id": None, 
-                "tgl_dt": None,
-                "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal", format="DD/MM/YY HH:mm"),
-                "status_antrian": st.column_config.TextColumn("Status Antrian")
-            }
-        )
-        st.caption(f"Menampilkan {len(df_tampil)} data untuk periode {bulan_selected} {tahun_selected}.")
+    # 6. TAMPILKAN TABEL DENGAN KODE WARNA
+    st.dataframe(
+        df_tampil.style.apply(color_row, axis=1), 
+        use_container_width=True, 
+        hide_index=True,
+        column_config={
+            "id": None, 
+            "tgl_dt": None,
+            "Tgl Daftar": st.column_config.DatetimeColumn("Tanggal", format="DD/MM/YY HH:mm"),
+            "status_antrian": st.column_config.TextColumn("Status Antrian")
+        }
+    )
+    st.caption(f"Menampilkan {len(df_tampil)} data untuk periode {bulan_selected} {tahun_selected}.")
 
-        # --- 2. KOTAK KETERANGAN WARNA (LEGEND) ---
-        st.markdown("### 📋 Keterangan Status")
-        col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
-        with col_k1:
-            st.info("🟡 **Kuning**: Menunggu Konsul Dokter")
-        with col_k2:
-            st.info("🔵 **Biru**: Menunggu Hasil Lab & Radiologi")
-        with col_k3:
-            st.warning("🟠 **Orange**: Batas Download SKD")
-        with col_k4:
-            st.success("🟢 **Hijau**: Batas Operan & Daftar Pasien")
-        with col_k5:
-            st.error("🔴 Merah: Batal Berobat")
+    # --- KOTAK KETERANGAN WARNA (LEGEND) ---
+    st.markdown("### 📋 Keterangan Status")
+    col_k1, col_k2, col_k3, col_k4, col_k5 = st.columns(5)
+    with col_k1: st.info("🟡 **Kuning**: Menunggu Konsul")
+    with col_k2: st.info("🔵 **Biru**: Lab & Radiologi")
+    with col_k3: st.warning("🟠 **Orange**: Download SKD")
+    with col_k4: st.success("🟢 **Hijau**: Operan & Daftar")
+    with col_k5: st.error("🔴 **Merah**: Batal Berobat")
 
-        # --- 3. FITUR UNDUH (CSV) ---
-        csv = df_tampil.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Data (CSV)",
-            data=csv,
-            file_name='data_rekam_medis.csv',
-            mime='text/csv',
-        )
+    # --- FITUR UNDUH (CSV) ---
+    csv = df_tampil.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📥 Download Data (CSV)",
+        data=csv,
+        file_name='data_rekam_medis.csv',
+        mime='text/csv',
+    )
 
         # --- FITUR EDIT / RENAME NAMA PASIEN ---
         st.divider()
