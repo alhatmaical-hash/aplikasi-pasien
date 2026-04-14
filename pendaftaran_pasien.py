@@ -137,37 +137,46 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 # --- MENU REKAM MEDIS ---
 elif menu == "Rekam Medis / 病历":
     from streamlit_autorefresh import st_autorefresh
+    # Refresh otomatis agar data dari pasien yang mendaftar di HP langsung muncul
     st_autorefresh(interval=5000, key="datarefresh") 
     
     st.header("📊 Menu Rekam Medis")
 
     # --- BAGIAN 1: ATUR DOKTER JAGA ---
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
+        # Mengambil master data dokter
         opts_dr = sorted(list(set(get_master("Dokter"))))
-        res_dr = supabase.table("dokter_jaga_harian").select("nama_dokter").execute()
-        dr_aktif_db = [d['nama_dokter'] for d in res_dr.data]
         
-        pilihan = st.multiselect("Pilih Dokter yang Bertugas", opts_dr, default=dr_aktif_db)
+        # Ambil dokter yang sedang aktif di Supabase
+        try:
+            res_dr = supabase.table("dokter_jaga_harian").select("nama_dokter").execute()
+            dr_aktif_db = [d['nama_dokter'] for d in res_dr.data]
+        except:
+            dr_aktif_db = []
+        
+        pilihan = st.multiselect("Pilih Dokter yang Bertugas", opts_dr, default=dr_aktif_db, placeholder="Pilih dokter...")
         
         if st.button("Simpan Jadwal Dokter"):
+            # Hapus jadwal lama dan masukkan yang baru
             supabase.table("dokter_jaga_harian").delete().neq("nama_dokter", "clear_all").execute()
             if pilihan:
                 data_input = [{"nama_dokter": dr} for dr in pilihan]
                 supabase.table("dokter_jaga_harian").insert(data_input).execute()
+            
             st.success("Jadwal Berhasil Disimpan!")
             st.rerun()
 
     # --- BAGIAN 2: OTORISASI DAFTAR ULANG ---
     with st.expander("🔐 Otorisasi Daftar Ulang"):
-        st.info("Memberi izin pendaftaran ulang untuk NIK yang sudah terdaftar hari ini.")
+        st.info("Gunakan fitur ini untuk memberi izin NIK yang sudah terdaftar hari ini agar bisa daftar kembali.")
         nik_izin = st.text_input("Masukkan NIK Pasien")
         if st.button("Berikan Izin Akses"):
             if nik_izin:
                 tz_wit = pytz.timezone('Asia/Jayapura')
                 tgl_skrg = datetime.now(tz_wit).strftime("%Y-%m-%d")
-                # Update menggunakan Supabase
+                # Update status izin di Supabase
                 supabase.table("pasien").update({"is_authorized": 1}).eq("nik", nik_izin).like("tgl_daftar", f"{tgl_skrg}%").execute()
-                st.success(f"Berhasil! NIK {nik_izin} diizinkan mendaftar ulang.")
+                st.success(f"Berhasil! NIK {nik_izin} sekarang diizinkan.")
             else:
                 st.warning("Silakan masukkan NIK.")
 
@@ -175,13 +184,22 @@ elif menu == "Rekam Medis / 病历":
     st.write("---")
     st.subheader("📋 Daftar Antrian Pasien")
     
+    # 1. FUNGSI WARNA BARIS
     def color_row(row):
         status = row.get('status_antrian', '')
-        if status == "Menunggu Konsul Dokter": return ['background-color: #ffff00; color: black'] * len(row)
-        elif status == "Menunggu Hasil Lab & Radiologi": return ['background-color: #00b0f0; color: white'] * len(row)
-        elif status == "Batal Berobat": return ['background-color: #ff4b4b; color: white'] * len(row)
+        if status == "Menunggu Konsul Dokter": 
+            return ['background-color: #ffff00; color: black'] * len(row)
+        elif status == "Menunggu Hasil Lab & Radiologi": 
+            return ['background-color: #00b0f0; color: white'] * len(row)
+        elif status == "Batas Download SKD": 
+            return ['background-color: #ff9900; color: white'] * len(row)
+        elif status == "Batas Operan & Daftar Pasien": 
+            return ['background-color: #c8e6c9; color: black'] * len(row)
+        elif status == "Batal Berobat": 
+            return ['background-color: #ff4b4b; color: white'] * len(row)
         return [''] * len(row)
 
+    # 2. FILTER LAYOUT
     col_f1, col_f2, col_f3 = st.columns([2, 1, 1], gap="small")
     with col_f1:
         search_term = st.text_input("🔍 Cari Nama Pasien", "", key="search_rekam_medis")
@@ -192,51 +210,81 @@ elif menu == "Rekam Medis / 病历":
         list_tahun = ["Semua"] + [str(t) for t in range(2025, 2035)]
         tahun_selected = st.selectbox("Pilih Tahun", list_tahun, index=1)
 
-    # --- AMBIL DATA ---
+    # 3. AMBIL DATA DARI CLOUD
     try:
         res = supabase.table("pasien").select("*").order("id", desc=True).execute()
         df = pd.DataFrame(res.data)
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Gagal koneksi ke Cloud: {e}")
         df = pd.DataFrame()
 
     if not df.empty:
-        # Proses rename dan filter (Pastikan indentasi tetap masuk ke dalam 'if not df.empty')
-        df = df.rename(columns={"tgl_daftar": "Tgl Daftar", "nama_lengkap": "Nama Lengkap", "nik": "NIK/ID"})
+        # Rename kolom untuk tampilan
+        df = df.rename(columns={
+            "tgl_daftar": "Tgl Daftar", "nama_lengkap": "Nama Lengkap", "nik": "NIK/ID",
+            "no_hp": "WhatsApp", "perusahaan": "Perusahaan", "departemen": "Departemen"
+        })
         df['tgl_dt'] = pd.to_datetime(df['Tgl Daftar'], errors='coerce')
         df_tampil = df.copy()
 
+        # Eksekusi Filter
         if search_term:
             df_tampil = df_tampil[df_tampil['Nama Lengkap'].str.contains(search_term, case=False, na=False)]
-        
-        st.dataframe(df_tampil.style.apply(color_row, axis=1), use_container_width=True, hide_index=True)
+        if bulan_selected != "Semua":
+            df_tampil = df_tampil[df_tampil['tgl_dt'].dt.month == list_bulan.index(bulan_selected)]
+        if tahun_selected != "Semua":
+            df_tampil = df_tampil[df_tampil['tgl_dt'].dt.year == int(tahun_selected)]
 
-        # --- FITUR EDIT / RENAME (Harus menjorok ke dalam agar masuk blok menu) ---
+        # Tampilkan Tabel
+        st.dataframe(
+            df_tampil.style.apply(color_row, axis=1), 
+            use_container_width=True, hide_index=True,
+            column_config={"id": None, "tgl_dt": None}
+        )
+
+        # --- FITUR DOWNLOAD CSV ---
+        csv = df_tampil.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Download CSV", csv, "data_rekam_medis.csv", "text/csv")
+
+        # --- FITUR EDIT / RENAME ---
         st.divider()
         with st.expander("✏️ Edit / Rename Nama Pasien"):
             opsi_edit = df_tampil.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-            data_terpilih = st.selectbox("Pilih Pasien", opsi_edit)
+            data_terpilih = st.selectbox("Pilih Pasien untuk diperbaiki", opsi_edit)
             id_target = data_terpilih.split(" | ")[0]
-            nama_baru = st.text_input("Input Nama yang Benar")
+            nama_lama = data_terpilih.split(" | ")[1]
+            nama_baru = st.text_input("Input Nama yang Benar", value=nama_lama)
+            
             if st.button("Simpan Perubahan Nama"):
-                supabase.table("pasien").update({"nama_lengkap": nama_baru.strip().upper()}).eq("id", id_target).execute()
-                st.success("Nama diperbarui!")
+                if nama_baru:
+                    supabase.table("pasien").update({"nama_lengkap": nama_baru.strip().upper()}).eq("id", id_target).execute()
+                    st.success("Nama Berhasil Diperbarui!")
+                    st.rerun()
+
+        # --- FITUR UPDATE STATUS (WARNA) ---
+        st.divider()
+        with st.expander("🔄 Ganti Status Pasien (Ubah Warna)"):
+            nama_p = st.selectbox("Pilih Nama Pasien", df['Nama Lengkap'].tolist(), key="sb_status")
+            status_list = ["Normal", "Menunggu Konsul Dokter", "Menunggu Hasil Lab & Radiologi", "Batal Berobat"]
+            status_baru = st.selectbox("Pilih Status Baru", status_list)
+            if st.button("Simpan Status"):
+                supabase.table("pasien").update({"status_antrian": status_baru}).eq("nama_lengkap", nama_p).execute()
+                st.success("Status Diperbarui!")
                 st.rerun()
 
-        # --- FORM HAPUS DATA ---
+        # --- FITUR HAPUS ---
         st.divider()
         with st.expander("🗑️ Hapus Data Pasien"):
             pilihan_hapus = df.apply(lambda x: f"{x['id']} | {x['Nama Lengkap']}", axis=1).tolist()
-            selected_del = st.selectbox("Pilih Data yang Dihapus", pilihan_hapus)
-            if st.button("Hapus Pasien Terpilih"):
-                id_del = selected_del.split(" | ")[0]
-                supabase.table("pasien").delete().eq("id", id_del).execute()
-                st.warning("Data dihapus.")
+            sel_hapus = st.selectbox("Pilih Data yang akan dihapus", pilihan_hapus)
+            if st.button("Hapus Data Sekarang", type="primary"):
+                id_hapus = sel_hapus.split(" | ")[0]
+                supabase.table("pasien").delete().eq("id", id_hapus).execute()
+                st.warning("Data Berhasil Dihapus!")
                 st.rerun()
 
     else:
-        st.info("Belum ada data pasien.")
-
+        st.info("Belum ada data pasien di database Cloud.")
 
             
 # --- MENU SKD ---
