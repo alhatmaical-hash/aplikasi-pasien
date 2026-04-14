@@ -7,8 +7,8 @@ from supabase import create_client, Client
 
 # --- 1. KONEKSI SUPABASE (PERMANEN) ---
 try:
-    URL = st.secrets["SUPABASE_URL"]
-    KEY = st.secrets["SUPABASE_KEY"]
+    URL = st.secrets["https://yfbbkmufyliwznknmpxf.supabase.co"]
+    KEY = st.secrets["sb_publishable_E7zuHs4UDqcNCOEFYP20Tw_a9zXLGiK"]
     supabase: Client = create_client(URL, KEY)
 except:
     st.error("⚠️ Koneksi Supabase belum siap. Pastikan Secrets sudah diisi di Streamlit Cloud.")
