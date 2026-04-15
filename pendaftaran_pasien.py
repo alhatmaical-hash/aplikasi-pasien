@@ -893,115 +893,121 @@ elif menu == "SKD / 医生证明":
                     st.rerun()
         else:
             st.info("Tidak ada file ditemukan.")
-# --- MENU PENGATURAN ---
+# --- MENU PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
     
-    t1, t2, t3 = st.tabs(["Master List", "Fitur Pendaftaran", "Manajemen Akun"])
+    t1, t2, t3 = st.tabs(["🏢 Master List", "🛠 Fitur Pendaftaran", "👥 Manajemen Akun"])
     
+    # --- TAB 1: MASTER LIST (Perusahaan, Dept, Jabatan) ---
     with t1:
-        kat = st.selectbox("Kategori Master", ["Perusahaan", "Departemen", "Jabatan"])
+        st.subheader("Data Master")
+        kat = st.selectbox("Pilih Kategori", ["Perusahaan", "Departemen", "Jabatan"])
         c_i, c_l = st.columns([1, 2])
         
         with c_i:
-            n = st.text_input(f"Tambah Ke {kat}")
-            if st.button("Tambah Data", key="btn_add_master"):
+            n = st.text_input(f"Tambah {kat} Baru")
+            if st.button("Simpan Data", key="btn_add_master"):
                 if n:
+                    n_clean = n.strip().upper()
                     try:
-                        # PERBAIKAN: Definisikan conn di sini menggunakan context manager
                         with get_connection() as conn:
-                            conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", (kat, n.strip().upper()))
-                            conn.commit()
-                        
-                        st.success(f"✅ {n.upper()} berhasil ditambahkan!")
-                        st.cache_data.clear() # Hapus cache agar dropdown di form update
-                        st.rerun()
+                            # Proteksi Anti-Duplikat
+                            cek = conn.execute("SELECT 1 FROM master_data WHERE kategori=? AND nama=?", (kat, n_clean)).fetchone()
+                            if cek:
+                                st.warning(f"⚠️ {n_clean} sudah ada di daftar!")
+                            else:
+                                conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", (kat, n_clean))
+                                conn.commit()
+                                st.success("✅ Berhasil disimpan")
+                                st.cache_data.clear()
+                                st.rerun()
                     except Exception as e:
-                        st.error(f"Gagal menyimpan: {e}")
+                        st.error(f"Gagal simpan: {e}")
                 else:
-                    st.warning("Silakan isi nama terlebih dahulu!")
+                    st.warning("Nama tidak boleh kosong")
 
         with c_l:
-            # Bagian menampilkan data
+            st.write(f"**Daftar {kat} Aktif:**")
             df_master = get_master(kat)
             if not df_master.empty:
                 for i, r in df_master.iterrows():
-                    ca, cb = st.columns([3, 1])
-                    ca.text(r['nama'])
+                    ca, cb = st.columns([4, 1])
+                    ca.text(f"📍 {r['nama']}")
                     if cb.button("Hapus", key=f"m_del_{r['id']}"):
                         with get_connection() as conn:
                             conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],))
                             conn.commit()
                         st.cache_data.clear()
                         st.rerun()
+            else:
+                st.info("Belum ada data.")
+
+    # --- TAB 2: FITUR PENDAFTARAN ---
     with t2:
-        st.subheader("🛠 Custom Kolom Form Pendaftaran")
-        st.info("Ketik nama kolom baru (misal: 'No WhatsApp' atau 'Nama Ayah') untuk ditambahkan ke form.")
+        st.subheader("Kustomisasi Form Pendaftaran")
+        st.info("Tambahkan kolom input tambahan (misal: Suku, Agama, No. HP) yang akan muncul di form pendaftaran.")
         c_i2, c_l2 = st.columns([1, 2])
         with c_i2:
-            f_baru = st.text_input("Nama Fitur Baru")
+            f_baru = st.text_input("Nama Kolom Baru")
             if st.button("Simpan Fitur", key="btn_add_fitur"):
                 if f_baru:
-                    conn = get_connection(); conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Fitur Pendaftaran", f_baru)); conn.commit(); conn.close(); st.rerun()
+                    f_clean = f_baru.strip().upper()
+                    with get_connection() as conn:
+                        cek_f = conn.execute("SELECT 1 FROM master_data WHERE kategori='Fitur Pendaftaran' AND nama=?", (f_clean,)).fetchone()
+                        if not cek_f:
+                            conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Fitur Pendaftaran", f_clean))
+                            conn.commit()
+                            st.success("✅ Kolom ditambahkan")
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.warning("Fitur sudah ada!")
         with c_l2:
             df_f = get_master("Fitur Pendaftaran")
             for i, r in df_f.iterrows():
-                ca, cb = st.columns([3, 1])
-                ca.text(r['nama'])
+                ca, cb = st.columns([4, 1])
+                ca.text(f"⚙️ {r['nama']}")
                 if cb.button("Hapus", key=f"fit_del_{r['id']}"):
                     with get_connection() as conn:
                         conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],))
                         conn.commit()
+                    st.cache_data.clear()
                     st.rerun()
 
+    # --- TAB 3: MANAJEMEN AKUN ---
     with t3:
-        st.subheader("👥 Manajemen Akun Tim")
+        st.subheader("Manajemen Akser User")
         with st.form("tambah_user_form"):
-            un = st.text_input("Username Baru")
-            up = st.text_input("Password Baru", type="password")
-            # Menambahkan pilihan Role
+            un = st.text_input("Username")
+            up = st.text_input("Password", type="password")
             ur = st.selectbox("Role", ["Admin", "Staff"])
-            
-            submit_user = st.form_submit_button("Tambah User")
-            
-            if submit_user:
+            if st.form_submit_button("Daftarkan Akun"):
                 if un and up:
                     try:
                         with get_connection() as conn:
                             conn.execute("INSERT INTO users (username, password, role) VALUES (?,?,?)", (un, up, ur))
                             conn.commit()
-                        st.success(f"User {un} berhasil ditambahkan!")
+                        st.success(f"Akun {un} berhasil dibuat!")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Gagal menambah user: {e}")
+                        st.error(f"Gagal: {un} mungkin sudah terdaftar.")
                 else:
-                    st.warning("Mohon isi username dan password.")
+                    st.warning("Lengkapi data!")
 
-        # Menampilkan daftar user yang ada
-        st.write("---")
-        st.write("### Daftar User Aktif")
+        st.divider()
+        st.write("### Daftar Akun Tim")
         with get_connection() as conn:
-            df_users = pd.read_sql("SELECT username, role FROM users", conn)
-            st.table(df_users)
-        
-        st.write("Daftar Akun:")
-        conn = get_connection()
-        # Ambil username dan role untuk ditampilkan
-        u_df = pd.read_sql("SELECT username, role FROM users", conn)
-        conn.close()
+            u_df = pd.read_sql("SELECT username, role FROM users", conn)
         
         for i, row in u_df.iterrows():
-            # Jangan hapus admin utama
-            if row['username'] != 'admin':
-                cx, cy = st.columns([3, 1])
-                # Menampilkan username dan role-nya
+            if row['username'] != 'admin': # Admin utama tidak bisa dihapus
+                cx, cy = st.columns([4, 1])
                 cx.text(f"👤 {row['username']} ({row['role']})")
-                if cy.button("Hapus Akun", key=f"u_del_{row['username']}"):
-                    conn = get_connection()
-                    conn.execute("DELETE FROM users WHERE username=?", (row['username'],))
-                    conn.commit()
-                    conn.close()
+                if cy.button("Hapus", key=f"u_del_{row['username']}"):
+                    with get_connection() as conn:
+                        conn.execute("DELETE FROM users WHERE username=?", (row['username'],))
+                        conn.commit()
                     st.rerun()
-        # update files check 09-04-2026
 elif menu == "Dashboard Analitik":
     st.header("📊 Analisis Data Kunjungan Pasien")
     
