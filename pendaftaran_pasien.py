@@ -36,15 +36,8 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def get_connection():
-    # Mengarah langsung ke folder "aplikasi pasien" yang ada di Drive D
-    direktori_data = r"D:\aplikasi pasien"
-    
-    # Memastikan folder tersebut terbaca oleh sistem
-    if not os.path.exists(direktori_data):
-        os.makedirs(direktori_data)
-    
-    # Nama file database Anda akan disimpan di dalam folder tersebut
-    path_database = os.path.join(direktori_data, "klinik_data.db")
+    # Pastikan alamat ini sama persis dengan lokasi file yang Anda buat tadi
+    path_database = r"D:\aplikasi pasien\klinik_data.db"
     
     # Hubungkan ke database
     return sqlite3.connect(path_database, check_same_thread=False)
