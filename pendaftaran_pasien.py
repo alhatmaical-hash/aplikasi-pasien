@@ -35,7 +35,18 @@ st.markdown("""
 
 # --- 2. DATABASE SETUP ---
 def get_connection():
-    return sqlite3.connect('klinik_data.db', check_same_thread=False)
+    # Tentukan folder khusus di Drive D agar rapi
+    direktori_data = r"D:\App_Klinik_Data"
+    
+    # Perintah ini akan otomatis membuat folder jika belum ada di Drive D
+    if not os.path.exists(direktori_data):
+        os.makedirs(direktori_data)
+    
+    # Gabungkan folder dengan nama file database
+    path_database = os.path.join(direktori_data, "klinik_data.db")
+    
+    # Hubungkan ke database di Drive D
+    return sqlite3.connect(path_database, check_same_thread=False)
 
 def init_db():
     # Menggunakan 'with' agar koneksi otomatis tertutup jika terjadi error
