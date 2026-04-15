@@ -905,7 +905,10 @@ elif menu == "Pengaturan Master / 设置":
             n = st.text_input(f"Tambah Ke {kat}")
             if st.button("Tambah Data", key="btn_add_master"):
                 if n:
-                    conn = get_connection(); conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", (kat, n)); conn.commit(); conn.close(); st.rerun()
+                    conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", (kat, n.upper()))
+                    conn.commit()
+                st.cache_data.clear()
+                st.rerun()
         with c_l:
             df_master = get_master(kat)
             for i, r in df_master.iterrows():
