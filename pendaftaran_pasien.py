@@ -901,25 +901,38 @@ elif menu == "Pengaturan Master / 设置":
     with t1:
         kat = st.selectbox("Kategori Master", ["Perusahaan", "Departemen", "Jabatan"])
         c_i, c_l = st.columns([1, 2])
+        
         with c_i:
             n = st.text_input(f"Tambah Ke {kat}")
             if st.button("Tambah Data", key="btn_add_master"):
                 if n:
-                    conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", (kat, n.upper()))
-                    conn.commit()
-                st.cache_data.clear()
-                st.rerun()
-        with c_l:
-            df_master = get_master(kat)
-            for i, r in df_master.iterrows():
-                ca, cb = st.columns([3, 1])
-                ca.text(r['nama'])
-                if cb.button("Hapus", key=f"m_del_{r['id']}"):
-                    with get_connection() as conn:
-                        conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],))
-                        conn.commit()
-                    st.rerun()
+                    try:
+                        # PERBAIKAN: Definisikan conn di sini menggunakan context manager
+                        with get_connection() as conn:
+                            conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", (kat, n.strip().upper()))
+                            conn.commit()
+                        
+                        st.success(f"✅ {n.upper()} berhasil ditambahkan!")
+                        st.cache_data.clear() # Hapus cache agar dropdown di form update
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Gagal menyimpan: {e}")
+                else:
+                    st.warning("Silakan isi nama terlebih dahulu!")
 
+        with c_l:
+            # Bagian menampilkan data
+            df_master = get_master(kat)
+            if not df_master.empty:
+                for i, r in df_master.iterrows():
+                    ca, cb = st.columns([3, 1])
+                    ca.text(r['nama'])
+                    if cb.button("Hapus", key=f"m_del_{r['id']}"):
+                        with get_connection() as conn:
+                            conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],))
+                            conn.commit()
+                        st.cache_data.clear()
+                        st.rerun()
     with t2:
         st.subheader("🛠 Custom Kolom Form Pendaftaran")
         st.info("Ketik nama kolom baru (misal: 'No WhatsApp' atau 'Nama Ayah') untuk ditambahkan ke form.")
