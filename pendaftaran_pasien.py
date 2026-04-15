@@ -36,8 +36,8 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def get_connection():
-    # Pastikan alamat ini sama persis dengan lokasi file yang Anda buat tadi
-    path_database = r"D:\aplikasi pasien\klinik_data.db"
+    # Ini akan menyimpan database di folder yang sama dengan file kodingan Anda (Drive C)
+    path_database = "klinik_data.db"
     
     # Hubungkan ke database
     return sqlite3.connect(path_database, check_same_thread=False)
