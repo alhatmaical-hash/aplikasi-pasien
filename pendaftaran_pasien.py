@@ -5,7 +5,16 @@ import pandas as pd
 from datetime import datetime
 import io
 import pytz
+import base64
 from datetime import datetime, time, timedelta
+
+
+# --- TEMPEL DI SINI ---
+def tampilkan_pdf_base64(file_data):
+    """Fungsi untuk menampilkan PDF tanpa menyebabkan MediaFileStorageError"""
+    base64_pdf = base64.b64encode(file_data).decode('utf-8')
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
+    st.markdown(pdf_display, unsafe_allow_html=True)
 
 
 
@@ -35,89 +44,75 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+@st.cache_resource
 def get_connection():
-    # Ini akan menyimpan database di folder yang sama dengan file kodingan Anda (Drive C)
+    # Ini akan menyimpan database di folder yang sama dengan file kodingan Anda
     path_database = "klinik_data.db"
-    
-    # Hubungkan ke database
-    return sqlite3.connect(path_database, check_same_thread=False)
+    # check_same_thread=False wajib untuk Streamlit
+    conn = sqlite3.connect(path_database, check_same_thread=False)
+    # Aktifkan WAL mode untuk performa lebih baik
+    conn.execute('PRAGMA journal_mode=WAL;')
+    return conn
+
 def init_db():
-    # Menggunakan 'with' agar koneksi otomatis tertutup jika terjadi error
-    with get_connection() as conn:
-        conn.execute('PRAGMA journal_mode=WAL;')
-        c = conn.cursor()
-        
-        # 1. Tabel User
-        c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-        
-        # 2. Tabel Master
-        c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
-        
-        # 3. Tabel Pasien Utama
-        c.execute('''CREATE TABLE IF NOT EXISTS pasien (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        tgl_daftar TIMESTAMP,
-                        status_antrian TEXT,
-                        nama_lengkap TEXT, 
-                        nik TEXT, 
-                        pernah_berobat TEXT, 
-                        perusahaan TEXT, 
-                        departemen TEXT, 
-                        jabatan TEXT)''')
-        
-        c.execute('CREATE TABLE IF NOT EXISTS dokter_jaga_harian (id INTEGER PRIMARY KEY, nama_dokter TEXT)')
+    conn = get_connection() # Ambil koneksi dari cache
+    c = conn.cursor()
+    
+    # 1. Tabel User
+    c.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
+    
+    # 2. Tabel Master
+    c.execute('CREATE TABLE IF NOT EXISTS master_data (id INTEGER PRIMARY KEY, kategori TEXT, nama TEXT)')
+    
+    # 3. Tabel Pasien Utama
+    c.execute('''CREATE TABLE IF NOT EXISTS pasien (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tgl_daftar TIMESTAMP,
+                    status_antrian TEXT,
+                    nama_lengkap TEXT, 
+                    nik TEXT, 
+                    pernah_berobat TEXT, 
+                    perusahaan TEXT, 
+                    departemen TEXT, 
+                    jabatan TEXT)''')
+    
+    c.execute('CREATE TABLE IF NOT EXISTS dokter_jaga_harian (id INTEGER PRIMARY KEY, nama_dokter TEXT)')
 
-        # --- Update Schema (Kolom Baru) ---
-        kolom_tambahan = [
-            ("no_hp", "TEXT"), ("agama", "TEXT"), ("dokter", "TEXT"),
-            ("gender", "TEXT"), ("blok_mes", "TEXT"), ("tgl_lahir", "TEXT"),
-            ("alergi", "TEXT"), ("gol_darah", "TEXT"), ("lokasi_kerja", "TEXT"),
-            ("lokasi_mcu", "TEXT"), ("is_authorized", "INTEGER DEFAULT 0"),
-            ("jenis_kunjungan", "TEXT")
-        ]
-        
-        for kolom, tipe in kolom_tambahan:
-            try:
-                c.execute(f"ALTER TABLE pasien ADD COLUMN {kolom} {tipe}")
-            except:
-                pass 
+    # --- Update Schema (Kolom Baru) ---
+    kolom_tambahan = [
+        ("no_hp", "TEXT"), ("agama", "TEXT"), ("dokter", "TEXT"),
+        ("gender", "TEXT"), ("blok_mes", "TEXT"), ("tgl_lahir", "TEXT"),
+        ("alergi", "TEXT"), ("gol_darah", "TEXT"), ("lokasi_kerja", "TEXT"),
+        ("lokasi_mcu", "TEXT"), ("is_authorized", "INTEGER DEFAULT 0"),
+        ("jenis_kunjungan", "TEXT")
+    ]
+    
+    for kolom, tipe in kolom_tambahan:
+        try:
+            c.execute(f"ALTER TABLE pasien ADD COLUMN {kolom} {tipe}")
+        except:
 
-        # --- Isi Data Master Dokter ---
-        daftar_dokter = ["DR. JOKO", "DR. DEDEK", "DR. KARTIKA", "DR. DOMINICUS", "DR. ANDIKA", "DR. RANDY"]
-        for nama_dr in daftar_dokter:
-            c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES (?,?)", ("Dokter", nama_dr))
-        
-        # 4. Tabel Data Dinamis
-        c.execute('''CREATE TABLE IF NOT EXISTS pasien_custom_data (
-                        pasien_id INTEGER, field_name TEXT, field_value TEXT)''')
-        
-        # 5. Tabel SKD
-        c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        nama_pasien TEXT, departemen TEXT, nama_file TEXT,
-                        file_data BLOB, tgl_upload TIMESTAMP, bulan_skd INTEGER, tahun_skd INTEGER)''')
-        
-        # Tambah Admin Default
-        c.execute("INSERT OR IGNORE INTO users VALUES (?,?,?)", ('admin', 'admin123', 'Admin'))
-        
-        conn.commit()
+            pass 
 
-# Jalankan inisialisasi database SEKALI SAJA
-init_db()
-
-# --- 3. FUNGSI DATA (DENGAN CACHE) ---
-@st.cache_data
-def get_master(kategori):
-    with get_connection() as conn:
-        query = "SELECT id, nama FROM master_data WHERE kategori = ?"
-        return pd.read_sql(query, conn, params=(kategori,))
-# --- 4. MANAJEMEN LOGIN & DETEKSI BARCODE ---
-params = st.query_params
-is_pasien_mode = params.get("mode") == "pasien"
-
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
-
+    # --- Isi Data Master Dokter ---
+    daftar_dokter = ["DR. JOKO", "DR. DEDEK", "DR. KARTIKA", "DR. DOMINICUS", "DR. ANDIKA", "DR. RANDY"]
+    for nama_dr in daftar_dokter:
+        c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES (?,?)", ("Dokter", nama_dr))
+    
+    # 4. Tabel Data Dinamis
+    c.execute('''CREATE TABLE IF NOT EXISTS pasien_custom_data (
+                    pasien_id INTEGER, field_name TEXT, field_value TEXT)''')
+    
+    # 5. Tabel SKD
+    c.execute('''CREATE TABLE IF NOT EXISTS skd_files (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nama_pasien TEXT, departemen TEXT, nama_file TEXT,
+                    file_data BLOB, tgl_upload TIMESTAMP, bulan_skd INTEGER, tahun_skd INTEGER)''')
+    
+    # Tambah Admin Default
+    c.execute("INSERT OR IGNORE INTO users VALUES (?,?,?)", ('admin', 'admin123', 'Admin'))
+    
+    conn.commit() # Simpan semua perubahan di akhir
 # --- LOGIKA NAVIGASI ---
 
 # 1. JIKA MODE PASIEN (DARI BARCODE) -> LANGSUNG ATUR MENU
@@ -154,44 +149,40 @@ elif st.session_state['logged_in']:
 
 # 3. JIKA BELUM LOGIN & BUKAN MODE PASIEN
 else:
-    st.sidebar.title("🏥 Klinik Apps")
-    # Pasien yang tidak lewat barcode masih bisa memilih form pendaftaran di sidebar
-    page_mode = st.sidebar.radio("Navigasi", ["Login Staff", "Form Pendaftaran"])
-    
-    if page_mode == "Form Pendaftaran":
-        menu = "Pendaftaran / 登记"
-    else:
-        st.markdown("<h2 style='text-align: center;'>🔐 Login Klinik Apps</h2>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns([1,2,1])
-        with c2:
-            user = st.text_input("Username")
-            pw = st.text_input("Password", type="password")
-            if st.button("Login", use_container_width=True):
-                with get_connection() as conn:
+        st.sidebar.title("🏥 Klinik Apps")
+        page_mode = st.sidebar.radio("Navigasi", ["Login Staff", "Form Pendaftaran"])
+
+        if page_mode == "Form Pendaftaran":
+            menu = "Pendaftaran / 登记"
+        else:
+            st.markdown("<h2 style='text-align: center;'>🔐 Login Klinik Apps</h2>", unsafe_allow_html=True)
+            c1, c2, c3 = st.columns([1,2,1])
+            with c2:
+                user = st.text_input("Username")
+                pw = st.text_input("Password", type="password")
+                if st.button("Login"):
+                    conn = get_connection()
                     res = conn.execute("SELECT username, role FROM users WHERE username=? AND password=?", (user, pw)).fetchone()
-                if res:
-                    st.session_state['logged_in'] = True
-                    st.session_state['username'] = res[0]
-                    st.session_state['role'] = res[1]
-                    st.rerun()
-                else:
-                    st.error("Username atau Password salah")
-        
-        # PENTING: st.stop() hanya dijalankan jika user memilih "Login Staff" 
-        # dan belum berhasil login. Jika memilih "Form Pendaftaran", stop dilewati.
-        st.stop()
+                    if res:
+                        st.session_state['logged_in'] = True
+                        st.session_state['username'] = res[0]
+                        st.session_state['role'] = res[1]
+                        st.rerun()
+                    else:
+                        st.error("Username atau Password salah")
+            st.stop()
 # --- 5. LOGIKA HALAMAN ---
 
 # --- MENU PENDAFTARAN (Admin & Publik) ---
 if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
-    st.header("📝 Pendaftaran Pasien / 病人登记")
+    st.header("📝 PENDAFTARAN PASIEN CUKUP SATU KALI DAFTAR TIDAK USAH BERKALI2")
     
     # --- TEMPEL DI SINI ---
     # Ambil data dokter dari session_state yang diisi di menu Rekam Medis
     dokter_jaga = st.session_state.get('dokter_jaga_aktif', [])
 
     dokter_terpilih = "Belum Ditentukan"
-    with get_connection() as conn:
+    conn = get_connection()
         try:
             df_dr = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)
             dokter_jaga = df_dr['nama_dokter'].tolist()
@@ -200,7 +191,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
 
     dokter_terpilih = "Belum Ditentukan"
     if dokter_jaga:
-        with get_connection() as conn:
+        conn = get_connection()
             tz_wit = pytz.timezone('Asia/Jayapura')
             waktu_sekarang = datetime.now(tz_wit)
             tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
@@ -240,7 +231,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 jenis_kunjungan = st.selectbox("Jenis Kunjungan", ["Berobat", "Kontrol MCU", "Masuk UGD", "Kontrol Post Rujuk", "Kontrol Rawat Luka"])
                 nama_lengkap = st.text_input("Nama Lengkap / 全名 *", value=st.session_state.nama_lengkap)
                 no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码 *", value=st.session_state.no_hp)
-                nik = st.text_input("NIK / ID Card / 身份证号 *", value=st.session_state.nik)
+                nik = st.text_input("NIK ID Card Perusahaan / 身份证号 *", value=st.session_state.nik)
                 agama = st.selectbox("Agama / 宗教", ["Islam / 伊斯兰教", "Kristen / 基督教", "Hindu / 印度教", "Buddha / 佛教", "Katolik / 天主教", "Tidak Diketahui / 未知"])
                 gender = st.radio("Jenis Kelamin / 性别", ["Laki-laki / 男", "Perempuan / 女"], horizontal=True)
             
@@ -273,7 +264,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 jenis_kunjungan = st.selectbox("Jenis Kunjungan", ["Berobat", "Kontrol MCU", "Masuk UGD", "Kontrol Post Rujuk", "Kontrol Rawat Luka"])
                 nama_lengkap = st.text_input("Nama Lengkap / 全名 *", value=st.session_state.nama_lengkap)
                 no_hp = st.text_input("No HP Aktif (WhatsApp) / 手机号码 *", value=st.session_state.no_hp)
-                nik = st.text_input("NIK / ID Card / 身份证号 *", value=st.session_state.nik)
+                nik = st.text_input("NIK ID Card Perusahaan / 身份证号 *", value=st.session_state.nik)
                 agama = st.selectbox("Agama / 宗教", ["Islam / 伊斯兰教", "Kristen / 基督教", "Hindu / 印度教", "Buddha / 佛教", "Katolik / 天主教", "Tidak Diketahui / 未知"])
                 gender = st.radio("Jenis Kelamin / 性别", ["Laki-laki / 男", "Perempuan / 女"], horizontal=True)
 
@@ -306,22 +297,58 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                 st.stop()
             st.session_state['proses_simpan'] = True
 
-            # 2. Definisikan required fields
+            # 2. Definisikan required fields (DITAMBAHKAN SEMUA YANG BERTANDA *)
+            # Kita buat daftar kolom wajib agar blok_mes dll tidak bisa dikosongkan
             if pernah == "Iya Sudah / 是的": 
-                required = {"Nama": nama_lengkap, "NIK": nik, "Perusahaan": perusahaan, "Dept": dept}
+                required = {
+                    "Nama": nama_lengkap, 
+                    "NIK": nik, 
+                    "No HP": no_hp,
+		    "Agama": agama,
+		    "Jenis Kelamin": gender,
+                    "Blok Mes": blok_mes, 
+                    "Tempat Lahir": tmpt_lahir,
+                    "Tanggal Lahir": tgl_lahir_val,
+                    "Perusahaan": perusahaan, 
+                    "Dept": dept,
+                    "Jabatan": jabatan,
+                    "Alergi": alergi,
+                    "Area Kerja": lokasi_kerja
+                }
             else:
-                required = {"Nama": nama_lengkap, "NIK": nik, "No HP": no_hp, "Perusahaan": perusahaan, "Area": lokasi_kerja}
+                required = {
+                    "Nama": nama_lengkap, 
+                    "NIK": nik, 
+                    "No HP": no_hp, 
+		    "Agama": agama,
+		    "Jenis Kelamin": gender,
+                    "Blok Mes": blok_mes,
+                    "Tempat Lahir": tmpt_lahir,
+                    "Tanggal Lahir": tgl_lahir_val,
+                    "Perusahaan": perusahaan, 
+                    "Dept": dept,
+                    "Jabatan": jabatan,
+                    "Alergi": alergi,
+                    "Area Kerja": lokasi_kerja
+                }
             
-            empty_fields = [k for k, v in required.items() if str(v).strip() in ["", "None", "[]"]]
+            # Cek apakah ada yang kosong (termasuk None untuk tanggal dan [] untuk multiselect)
+            empty_fields = [k for k, v in required.items() if str(v).strip() in ["", "None", "[]"] or v is None]
 
+            if empty_fields:
+                st.error(f"⚠️ Gagal! Kolom berikut wajib diisi: {', '.join(empty_fields)}")
+                st.session_state['proses_simpan'] = False
+                st.stop() # Berhenti di sini jika ada yang kosong
+
+            # 3. Jika TIDAK ADA yang kosong, baru lanjut ke proses database
             if not empty_fields:
                 try:
                     tz_wit = pytz.timezone('Asia/Jayapura')
                     waktu_sekarang = datetime.now(tz_wit)
                     tgl_hari_ini = waktu_sekarang.strftime("%Y-%m-%d")
 
-                    with get_connection() as conn:
-                        # --- SEMUA KODE DI BAWAH INI HARUS MASUK KE DALAM (INDENTASI) ---
+                    conn = get_connection()
+                        # --- LANJUTKAN KODE DATABASE ANDA DI SINI ---
                         
                         # A. Cek Double Input
                         check_query = "SELECT is_authorized FROM pasien WHERE nik = ? AND tgl_daftar LIKE ? ORDER BY id DESC LIMIT 1"
@@ -361,7 +388,7 @@ if menu in ["Pendaftaran Pasien", "Pendaftaran / 登记"]:
                     tgl_str = tgl_lahir_val.strftime("%d-%m-%Y") if tgl_lahir_val else ""
                     tgl_gabung = f"{tmpt_lahir}, {tgl_str}"
                     
-                    with get_connection() as conn:
+                    conn = get_connection()
                         cur = conn.cursor()
                         # Update INSERT dengan kolom is_authorized (Ada 19 kolom & 19 tanda tanya)
                         cur.execute('''INSERT INTO pasien (
@@ -414,14 +441,14 @@ elif menu == "Rekam Medis / 病历":
     with st.expander("👨‍⚕️ Atur Dokter Jaga Hari Ini", expanded=False):
         opts_dr_raw = get_master("Dokter")['nama'].tolist()
         opts_dr = sorted(list(set(opts_dr_raw)))
-        with get_connection() as conn:
+        conn = get_connection()
             try:
                 dr_aktif_db = pd.read_sql("SELECT nama_dokter FROM dokter_jaga_harian", conn)['nama_dokter'].tolist()
             except:
                 dr_aktif_db = []
         pilihan = st.multiselect("Pilih Dokter yang Bertugas", opts_dr, default=dr_aktif_db, placeholder="Pilih dokter...")
         if st.button("Simpan Jadwal Dokter"):
-            with get_connection() as conn:
+            conn = get_connection()
                 conn.execute("DELETE FROM dokter_jaga_harian")
                 for dr in pilihan:
                     conn.execute("INSERT INTO dokter_jaga_harian (nama_dokter) VALUES (?)", (dr,))
@@ -435,7 +462,7 @@ elif menu == "Rekam Medis / 病历":
         nik_izin = st.text_input("Masukkan NIK Pasien yang ingin diberi izin")
         if st.button("Berikan Izin Akses"):
             if nik_izin:
-                with get_connection() as conn:
+                conn = get_connection()
                     tz_wit = pytz.timezone('Asia/Jayapura')
                     tgl_skrg = datetime.now(tz_wit).strftime("%Y-%m-%d")
                     conn.execute("UPDATE pasien SET is_authorized = 1 WHERE nik = ? AND tgl_daftar LIKE ?", (nik_izin, f"{tgl_skrg}%"))
@@ -478,7 +505,7 @@ elif menu == "Rekam Medis / 病历":
         tahun_selected = st.selectbox("Pilih Tahun", list_tahun, index=idx_tahun)
 
     # 3. AMBIL DATA
-    with get_connection() as conn:
+    conn = get_connection()
         query = """
         SELECT id, tgl_daftar AS 'Tgl Daftar', jenis_kunjungan, nama_lengkap AS 'Nama Lengkap', 
                nik AS 'NIK/ID', no_hp AS 'WhatsApp', perusahaan AS 'Perusahaan', 
@@ -509,7 +536,7 @@ elif menu == "Rekam Medis / 病历":
         # 6. TAMPILKAN TABEL
         st.dataframe(
             df_tampil.style.apply(color_row, axis=1), 
-            use_container_width=True, 
+            width="stretch", 
             hide_index=True,
             column_config={
                 "id": None, 
@@ -568,7 +595,7 @@ elif menu == "Rekam Medis / 病历":
                             st.error("Nama tidak boleh kosong!")
                         else:
                             try:
-                                with get_connection() as conn:
+                                conn = get_connection()
                                     cur = conn.cursor()
                                     # Gunakan .strip() agar tidak ada spasi tidak sengaja di awal/akhir
                                     cur.execute("UPDATE pasien SET nama_lengkap = ? WHERE id = ?", (nama_baru.strip(), id_target_edit))
@@ -628,7 +655,7 @@ elif menu == "Rekam Medis / 病历":
                             # Ambil ID saja dari teks pilihan (angka paling depan)
                             id_target = int(selected_data.split(" | ")[0])
                             
-                            with get_connection() as conn:
+                            conn = get_connection()
                                 cur = conn.cursor()
                                 # HAPUS BERDASARKAN ID (Bukan Nama)
                                 cur.execute("DELETE FROM pasien WHERE id = ?", (id_target,))
@@ -642,23 +669,23 @@ elif menu == "Rekam Medis / 病历":
                         st.error("Silakan centang kotak konfirmasi sebelum menghapus.")
 
 
-        # --- 6. FITUR CETAK FORMULIR OTOMATIS (VERSI BARU) ---
+       	# --- 6. FITUR CETAK FORMULIR OTOMATIS (VERSI PERBAIKAN BASE64) ---
         st.divider()
         with st.expander("🖨️ Cetak Formulir Pendaftaran Pasien"):
             st.info("Pilih pasien untuk membuat formulir otomatis dari data rekam medis.")
-            hasil_cetak = None
-    
+            
+            # Gunakan st.form agar input lebih rapi
             with st.form("cetak_form_pendaftaran"):
                 nama_p_cetak = st.selectbox("Pilih Pasien", df['Nama Lengkap'].tolist())
                 petugas = st.selectbox("Pilih Petugas", ["TAUFIK", "WAWAN", "ALHATMA", "DELI"])
                 btn_cetak = st.form_submit_button("Buat Formulir Sekarang")
-        
+                
                 if btn_cetak:
                     from form_generator import buat_formulir_otomatis
                     try:
                         row = df[df['Nama Lengkap'] == nama_p_cetak].iloc[0]
                         data_pasien = {
-                           "nama": row['Nama Lengkap'],
+                            "nama": row['Nama Lengkap'],
                             "tempat_lahir": row['TTL'].split(',')[0] if ',' in row['TTL'] else row['TTL'],
                             "tgl_lahir": row['TTL'].split(',')[1] if ',' in row['TTL'] else row['TTL'],
                             "gender": row.get('Gender', '-'),
@@ -673,25 +700,31 @@ elif menu == "Rekam Medis / 病历":
                             "lokasi_kerja": row['Area Kerja'],
                             "gol_darah": row.get('Gol Darah', '-')
                         }
-                        hasil_cetak = buat_formulir_otomatis(data_pasien, petugas)
+                        # Simpan hasil ke session_state agar tahan refresh
+                        st.session_state['pdf_cetak_aktif'] = buat_formulir_otomatis(data_pasien, petugas)
+                        st.session_state['nama_p_aktif'] = nama_p_cetak
                     except Exception as e:
                         st.error(f"Terjadi kesalahan saat mengambil data: {e}")
 
-            if hasil_cetak:
-                st.success(f"✅ Formulir untuk {nama_p_cetak} siap dicetak!")
-                
-                # Karena hasil_cetak sekarang berisi data PDF (bytes), 
-                # kita gunakan st.download_button dengan mime pdf
+        # TAMPILKAN PDF (Diletakkan di luar expander/form agar muncul di layar)
+        if 'pdf_cetak_aktif' in st.session_state:
+            st.success(f"✅ Formulir untuk {st.session_state['nama_p_aktif']} siap!")
+            
+            c1, c2 = st.columns([1, 4])
+            with c1:
                 st.download_button(
-                    label="🖨️ Klik di sini untuk Buka & Cetak PDF",
-                    data=hasil_cetak,
-                    file_name=f"Formulir_{nama_p_cetak.replace(' ', '_')}.pdf",
+                    label="📥 Download PDF",
+                    data=st.session_state['pdf_cetak_aktif'],
+                    file_name=f"Formulir_{st.session_state['nama_p_aktif'].replace(' ', '_')}.pdf",
                     mime="application/pdf"
                 )
-                
-                # Info tambahan untuk user
-                st.info("💡 Setelah klik tombol di atas, PDF akan terbuka. Gunakan tombol 'Print' di browser atau tekan Ctrl+P.")
+            with c2:
+                if st.button("❌ Tutup Tampilan"):
+                    del st.session_state['pdf_cetak_aktif']
+                    st.rerun()
 
+            # PANGGIL FUNGSI BASE64 UNTUK TAMPIL DI LAYAR
+            tampilkan_pdf_base64(st.session_state['pdf_cetak_aktif'])
 
 
         # --- 7. FORM HAPUS SEMUA DATA (HANYA ADMIN) ---
@@ -749,7 +782,7 @@ elif menu == "SKD / 医生证明":
             if pwd_tambah_dept == "admin123": # Sesuaikan dengan password Anda
                 if new_f:
                     try:
-                        with get_connection() as conn:
+                        conn = get_connection()
                             # Pastikan tabel 'master_data' memiliki kolom 'kategori' dan 'nama'
                             conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", 
                                        ("Departemen", new_f))
@@ -800,7 +833,7 @@ elif menu == "SKD / 医生证明":
         if st.button("KONFIRMASI HAPUS SEMUA DATA", type="primary"):
             if pwd_admin == "admin123": # Ganti password sesuai keinginan
                 try:
-                    with get_connection() as conn:
+                    conn = get_connection()
                         conn.execute("DELETE FROM skd_files WHERE bulan_skd=? AND tahun_skd=?", (f_bulan, f_tahun))
                         conn.commit()
                     st.success(f"Berhasil! Data periode {f_nama_bulan} {f_tahun} telah dibersihkan.")
@@ -813,7 +846,7 @@ elif menu == "SKD / 医生证明":
     # 3. Ambil Daftar Departemen (Folder)
     try:
         # Gunakan f_bulan dan f_tahun di bawah ini jika ingin memfilter daftar folder berdasarkan data yang ada
-        with get_connection() as conn:
+        conn = get_connection()
             df_dept = pd.read_sql_query("SELECT DISTINCT nama FROM master_data WHERE kategori='Departemen'", conn)
             daftar_folder = df_dept['nama'].tolist()
     except:
@@ -821,7 +854,7 @@ elif menu == "SKD / 医生证明":
 
     # 3. Ambil Daftar Departemen (Folder)
     try:
-        with get_connection() as conn:
+        conn = get_connection()
             df_dept = pd.read_sql_query("SELECT DISTINCT nama FROM master_data WHERE kategori='Departemen'", conn)
             daftar_folder = df_dept['nama'].tolist()
     except:
@@ -829,8 +862,17 @@ elif menu == "SKD / 医生证明":
 
     st.write("### Pilih Departemen:")
     cols = st.columns(4)
+    
+    # Ambil daftar folder (pastikan daftar_folder sudah ada di script Anda)
     for idx, d in enumerate(daftar_folder):
-        if cols[idx % 4].button(f"📂 {d}", use_container_width=True, key=f"fldr_{d}_{idx}"):
+        # Tambahan: Ambil jumlah file per departemen untuk periode aktif
+        conn = get_connection()
+            cnt_query = "SELECT COUNT(*) FROM skd_files WHERE departemen=? AND bulan_skd=? AND tahun_skd=?"
+            res = conn.execute(cnt_query, (d, f_bulan, f_tahun)).fetchone()
+            jml = res[0] if res else 0
+        
+        # Tombol dengan label yang sudah termasuk jumlah (misal: 📂 PRODUCTION (5))
+        if cols[idx % 4].button(f"📂 {d} ({jml})", width="stretch", key=f"fldr_{d}_{idx}"):
             st.session_state['sel_dept'] = d
             st.rerun()
 
@@ -841,7 +883,7 @@ elif menu == "SKD / 医生证明":
         target = st.session_state['sel_dept']
         st.subheader(f"Folder: {target} ({f_bulan}/{f_tahun})")
     
-        # Form Upload (juga harus menjorok)
+       # Form Upload (Bagian yang sudah ditambahkan saringan double upload)
         with st.expander("➕ Upload PDF Baru"):
             with st.form("upload_skd_form", clear_on_submit=True):
                 u_files = st.file_uploader("Pilih PDF", type=['pdf'], accept_multiple_files=True)
@@ -849,102 +891,145 @@ elif menu == "SKD / 医生证明":
                 if st.form_submit_button("Simpan Ke Folder"):
                     if u_files:
                         try:
-                            with get_connection() as conn:
+                            files_saved = 0
+                            files_skipped = []
+                            
+                            conn = get_connection()
                                 for u_f in u_files:
+                                    # --- PROSES SARINGAN ---
+                                    # Cek apakah file dengan nama yang sama sudah ada di departemen & periode ini
+                                    check_q = """
+                                        SELECT COUNT(*) FROM skd_files 
+                                        WHERE nama_file = ? AND departemen = ? AND bulan_skd = ? AND tahun_skd = ?
+                                    """
+                                    exists = conn.execute(check_q, (u_f.name, target, f_bulan, f_tahun)).fetchone()[0]
+                                    
+                                    if exists > 0:
+                                        files_skipped.append(u_f.name)
+                                        continue # Skip file ini, lanjut ke file berikutnya
+                                    
+                                    # Jika lolos saringan, baru simpan
                                     file_content = u_f.read()
                                     conn.execute("""
                                         INSERT INTO skd_files 
                                         (nama_pasien, departemen, nama_file, file_data, tgl_upload, bulan_skd, tahun_skd) 
                                         VALUES (?,?,?,?,?,?,?)""", 
-                                        (u_f.name, target, u_f.name, file_content, datetime.now(), f_bulan, f_tahun))
+                                        (u_f.name, target, u_f.name, file_content, 
+                                         datetime.now(pytz.timezone('Asia/Jayapura')).strftime("%Y-%m-%d %H:%M:%S"), 
+                                         f_bulan, f_tahun))
+                                    files_saved += 1
+                                
                                 conn.commit()
-                            st.success(f"Berhasil menyimpan {len(u_files)} file!")
-                            st.rerun()
+
+                            # Pesan feedback untuk user
+                            if files_saved > 0:
+                                st.success(f"Berhasil menyimpan {files_saved} file baru!")
+                            
+                            if files_skipped:
+                                st.warning(f"Saringan: {len(files_skipped)} file tidak diupload karena sudah ada: {', '.join(files_skipped)}")
+                            
+                            if files_saved > 0:
+                                st.rerun()
+                                
                         except Exception as e:
                             st.error(f"Error: {e}")
-
-                else:
+                    else:
                         st.warning("Silakan pilih file terlebih dahulu.")
 
-        # --- BAGIAN PENCARIAN & DAFTAR (HANYA SATU KALI) ---
+        # --- BAGIAN PENCARIAN & DAFTAR ---
         st.write("### Daftar File:")
         search_q = st.text_input("🔍 Cari Nama Pasien...", placeholder="Ketik nama untuk mencari...", key="search_skd_final")
 
-        with get_connection() as conn:
-            query = f"SELECT * FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun}"
+        conn = get_connection()
+            query = f"SELECT * FROM skd_files WHERE departemen='{target}' AND bulan_skd={f_bulan} AND tahun_skd={f_tahun} ORDER BY nama_file ASC"
             files = pd.read_sql(query, conn)
             
             if search_q:
                 files = files[files['nama_pasien'].str.contains(search_q, case=False, na=False)]
 
-        if not files.empty:
-            for i, r in files.iterrows():
-                c_n, c_v, c_d, c_x = st.columns([4, 1.2, 1.2, 0.8])
-                c_n.text(f"📄 {r['nama_file']}") 
-                
-                # Tombol Lihat
-                if c_v.button("👁️ Lihat", key=f"v_btn_{r['id']}_{i}"):
-                    st.download_button("Klik untuk Buka", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"dl_v_{i}")
-                
-                # Tombol Unduh
-                c_d.download_button("📥 Unduh", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"dl_d_{i}")
+            if not files.empty:
+                for i, r in files.iterrows():
+                    # Baris Utama
+                    c_n, c_v, c_d, c_x = st.columns([4, 1.2, 1.2, 0.8])
+                    c_n.text(f"📄 {r['nama_file']}") 
+                    
+                    # Logika Tombol Lihat (Toggle)
+                    if c_v.button("👁️ Lihat", key=f"v_btn_{r['id']}_{i}"):
+                        if st.session_state.get('view_id') == r['id']:
+                            st.session_state['view_id'] = None # Tutup jika diklik lagi
+                        else:
+                            st.session_state['view_id'] = r['id'] # Buka
+                        st.rerun()
+                    
+                    c_d.download_button("📥 Unduh", data=r['file_data'], file_name=r['nama_file'], mime='application/pdf', key=f"dl_d_{i}")
 
-                # Tombol Hapus
-                if c_x.button("🗑️", key=f"del_btn_{i}"):
-                    with get_connection() as conn:
-                        conn.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
+                    if c_x.button("🗑️", key=f"del_btn_{i}"):
+                        cur = conn.cursor()
+                        cur.execute("DELETE FROM skd_files WHERE id=?", (r['id'],))
                         conn.commit()
-                    st.rerun()
-        else:
-            st.info("Tidak ada file ditemukan.")
+                        st.rerun()
+
+                    # --- PRATINJAU TEPAT DI BAWAH BARIS ---
+                    if st.session_state.get('view_id') == r['id']:
+                        with st.container():
+                            st.info(f"Melihat SKD: {r['nama_file']}")
+                            tampilkan_pdf_base64(r['file_data'])
+                            if st.button("❌ Tutup Pratinjau", key=f"close_{i}"):
+                                st.session_state['view_id'] = None
+                                st.rerun()
+                        st.markdown("---") 
+            else:
+                st.info("Tidak ada file ditemukan.")
 # --- MENU PENGATURAN MASTER ---
 elif menu == "Pengaturan Master / 设置":
     
     t1, t2, t3 = st.tabs(["🏢 Master List", "🛠 Fitur Pendaftaran", "👥 Manajemen Akun"])
     
-    # --- TAB 1: MASTER LIST (Perusahaan, Dept, Jabatan) ---
+  # --- TAB 1: MASTER LIST (REVISI FINAL) ---
     with t1:
         st.subheader("Data Master")
-        kat = st.selectbox("Pilih Kategori", ["Perusahaan", "Departemen", "Jabatan"])
-        c_i, c_l = st.columns([1, 2])
+        # Kita beri key unik agar tidak tertukar cache
+        kat_pilihan = st.selectbox("Pilih Kategori", ["Perusahaan", "Departemen", "Jabatan"], key="kat_master_box")
         
-        with c_i:
-            n = st.text_input(f"Tambah {kat} Baru")
-            if st.button("Simpan Data", key="btn_add_master"):
-                if n:
-                    n_clean = n.strip().upper()
-                    try:
-                        with get_connection() as conn:
-                            # Proteksi Anti-Duplikat
-                            cek = conn.execute("SELECT 1 FROM master_data WHERE kategori=? AND nama=?", (kat, n_clean)).fetchone()
-                            if cek:
-                                st.warning(f"⚠️ {n_clean} sudah ada di daftar!")
-                            else:
-                                conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", (kat, n_clean))
-                                conn.commit()
-                                st.success("✅ Berhasil disimpan")
-                                st.cache_data.clear()
-                                st.rerun()
-                    except Exception as e:
-                        st.error(f"Gagal simpan: {e}")
-                else:
-                    st.warning("Nama tidak boleh kosong")
-
-        with c_l:
-            st.write(f"**Daftar {kat} Aktif:**")
-            df_master = get_master(kat)
-            if not df_master.empty:
-                for i, r in df_master.iterrows():
-                    ca, cb = st.columns([4, 1])
-                    ca.text(f"📍 {r['nama']}")
-                    if cb.button("Hapus", key=f"m_del_{r['id']}"):
-                        with get_connection() as conn:
-                            conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],))
+        c_input, c_list = st.columns([1, 2])
+        
+        with c_input:
+            nama_baru = st.text_input(f"Tambah {kat_pilihan} Baru", key="input_nama_master")
+            if st.button("Simpan Data", key="simpan_btn"):
+                if nama_baru:
+                    bersih = nama_baru.strip().upper()
+                    conn = get_connection()
+                        # CEK: Apakah nama ini sudah ada di kategori manapun?
+                        cek_data = conn.execute("SELECT kategori FROM master_data WHERE nama = ?", (bersih,)).fetchone()
+                        
+                        if cek_data:
+                            # Ini akan memberi tahu Anda jika data ternyata masuk ke kategori lain
+                            st.warning(f"⚠️ {bersih} sudah ada di kategori: {cek_data[0]}!")
+                        else:
+                            conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", (kat_pilihan, bersih))
                             conn.commit()
-                        st.cache_data.clear()
+                            st.success(f"✅ {bersih} berhasil disimpan!")
+                            st.rerun()
+                else:
+                    st.warning("Silakan isi nama terlebih dahulu.")
+
+        with c_list:
+            st.write(f"**Daftar {kat_pilihan} Aktif:**")
+            # AMBIL DATA LANGSUNG (Tanpa Fungsi get_master agar tidak kena cache)
+            conn = get_connection()
+                df_res = pd.read_sql("SELECT id, nama FROM master_data WHERE kategori = ?", conn, params=(kat_pilihan,))
+            
+            if not df_res.empty:
+                for idx, row in df_res.iterrows():
+                    ca, cb = st.columns([4, 1])
+                    ca.info(f"📍 {row['nama']}")
+                    if cb.button("Hapus", key=f"del_master_{row['id']}"):
+                        conn = get_connection()
+                            conn.execute("DELETE FROM master_data WHERE id = ?", (row['id'],))
+                            conn.commit()
                         st.rerun()
             else:
-                st.info("Belum ada data.")
+                st.info(f"Belum ada data untuk {kat_pilihan}.")
 
     # --- TAB 2: FITUR PENDAFTARAN ---
     with t2:
@@ -956,7 +1041,7 @@ elif menu == "Pengaturan Master / 设置":
             if st.button("Simpan Fitur", key="btn_add_fitur"):
                 if f_baru:
                     f_clean = f_baru.strip().upper()
-                    with get_connection() as conn:
+                    conn = get_connection()
                         cek_f = conn.execute("SELECT 1 FROM master_data WHERE kategori='Fitur Pendaftaran' AND nama=?", (f_clean,)).fetchone()
                         if not cek_f:
                             conn.execute("INSERT INTO master_data (kategori, nama) VALUES (?,?)", ("Fitur Pendaftaran", f_clean))
@@ -972,7 +1057,7 @@ elif menu == "Pengaturan Master / 设置":
                 ca, cb = st.columns([4, 1])
                 ca.text(f"⚙️ {r['nama']}")
                 if cb.button("Hapus", key=f"fit_del_{r['id']}"):
-                    with get_connection() as conn:
+                    conn = get_connection()
                         conn.execute("DELETE FROM master_data WHERE id=?", (r['id'],))
                         conn.commit()
                     st.cache_data.clear()
@@ -988,7 +1073,7 @@ elif menu == "Pengaturan Master / 设置":
             if st.form_submit_button("Daftarkan Akun"):
                 if un and up:
                     try:
-                        with get_connection() as conn:
+                        conn = get_connection()
                             conn.execute("INSERT INTO users (username, password, role) VALUES (?,?,?)", (un, up, ur))
                             conn.commit()
                         st.success(f"Akun {un} berhasil dibuat!")
@@ -1000,7 +1085,7 @@ elif menu == "Pengaturan Master / 设置":
 
         st.divider()
         st.write("### Daftar Akun Tim")
-        with get_connection() as conn:
+        conn = get_connection()
             u_df = pd.read_sql("SELECT username, role FROM users", conn)
         
         for i, row in u_df.iterrows():
@@ -1008,7 +1093,7 @@ elif menu == "Pengaturan Master / 设置":
                 cx, cy = st.columns([4, 1])
                 cx.text(f"👤 {row['username']} ({row['role']})")
                 if cy.button("Hapus", key=f"u_del_{row['username']}"):
-                    with get_connection() as conn:
+                    conn = get_connection()
                         conn.execute("DELETE FROM users WHERE username=?", (row['username'],))
                         conn.commit()
                     st.rerun()
@@ -1053,7 +1138,7 @@ elif menu == "Dashboard Analitik":
         st.caption(f"🔎 Rentang Data: **{dt_mulai}** s/d **{dt_selesai}**")
 
     # --- 2. AMBIL DATA ---
-    with get_connection() as conn:
+    conn = get_connection()
         df_dash = pd.read_sql("SELECT * FROM pasien WHERE tgl_daftar BETWEEN ? AND ?", conn, params=(dt_mulai, dt_selesai))
 
     if not df_dash.empty:
@@ -1086,7 +1171,7 @@ elif menu == "Dashboard Analitik":
             'Baru': 'sum', 'Lama': 'sum', 'Berobat': 'sum', 'Pasien Kontrol': 'sum', 'UGD': 'sum'
         }).reset_index()
         summary['Total'] = summary[['Berobat', 'Pasien Kontrol', 'UGD']].sum(axis=1)
-        st.dataframe(summary.sort_values('Total', ascending=False), use_container_width=True, hide_index=True)
+        st.dataframe(summary.sort_values('Total', ascending=False), width="stretch", hide_index=True)
 
         # --- 6. GRAFIK ---
         c1, c2 = st.columns(2)
@@ -1101,4 +1186,26 @@ elif menu == "Dashboard Analitik":
     else:
         st.warning(f"⚠️ Tidak ada data pendaftaran untuk shift ini.")
 
-
+# --- HAK CIPTA ESTETIK DI SIDEBAR ---
+st.sidebar.markdown("---")
+st.sidebar.markdown(
+    """
+    <div style="
+        background-color: #f8f9fa; 
+        padding: 15px; 
+        border-radius: 10px; 
+        border-left: 5px solid #00b38f; 
+        border: 1px solid #e0e0e0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    ">
+        <p style="margin: 0; font-size: 12px; color: #444;">© 2026 Copyright:</p>
+        <p style="margin: 5px 0; font-size: 14px; font-weight: bold; color: #008f73;">
+            👨‍⚕️ Di Buat Oleh Alhatma, A.Md. RMIK
+        </p>
+        <p style="margin: 0; font-size: 11px; line-height: 1.4; color: #555; font-style: italic;">
+            "Aplikasi ini dibuat secara khusus. Dilarang keras menyalahgunakan sistem ini."
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
