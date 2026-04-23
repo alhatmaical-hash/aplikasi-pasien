@@ -514,11 +514,29 @@ elif menu == "Laporan Analisis Kunjungan":
 elif menu == "Laporan Data Sick":
     st.markdown("<h1>📋 REKAPITULASI TOTAL DATA SICK</h1>", unsafe_allow_html=True)
     
-    # 1. Filter Tanggal (Cukup Sekali dengan Key Unik)
-    t_awal, t_akhir = get_date_range()
-    t1, t2 = st.columns(2)
-    start = t1.date_input("Mulai", value=t_awal, key="sick_start") 
-    end = t2.date_input("Sampai", value=t_akhir, key="sick_end")
+    # 1. Filter Bulan & Tahun (Ganti dari date_input)
+    import calendar # Pastikan ini diimpor di atas file Anda
+    
+    col_a, col_b = st.columns(2)
+    tahun_pilih = col_a.selectbox("Pilih Tahun", [2024, 2025, 2026], index=2, key="sick_year")
+    bulan_pilih = col_b.selectbox("Pilih Bulan", [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ], key="sick_month")
+    
+    # Mapping nama bulan ke angka
+    bulan_map = {
+        "Januari": 1, "Februari": 2, "Maret": 3, "April": 4,
+        "Mei": 5, "Juni": 6, "Juli": 7, "Agustus": 8,
+        "September": 9, "Oktober": 10, "November": 11, "Desember": 12
+    }
+    
+    bulan_idx = bulan_map[bulan_pilih]
+    
+    # Membuat variabel start (tanggal 1) dan end (tanggal terakhir bulan tersebut)
+    start = date(tahun_pilih, bulan_idx, 1)
+    last_day = calendar.monthrange(tahun_pilih, bulan_idx)[1]
+    end = date(tahun_pilih, bulan_idx, last_day)
 
     # 2. Ambil Data dari Database
     conn = sqlite3.connect(DB_PATH)
