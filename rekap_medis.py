@@ -306,9 +306,19 @@ elif menu == "Laporan 10 Penyakit":
         st.write("### Tabel Data")
         st.dataframe(df_top.reset_index(), use_container_width=True, hide_index=True)
         
-        # 2. Menampilkan Grafik Batang (Gunakan x dan y agar urutan tetap sesuai DataFrame)
+        # 2. Menampilkan Grafik Batang (Menggunakan Altair agar urutan konsisten)
+        import altair as alt
+        
         st.write("### Visualisasi Grafik")
-        st.bar_chart(df_top, x='diagnosa', y='jumlah')
+        
+        # Membuat chart dengan altair, sort=None akan menjaga urutan data
+        chart = alt.Chart(df_top).mark_bar().encode(
+            x=alt.X('diagnosa', sort=None), 
+            y='jumlah',
+            tooltip=['diagnosa', 'jumlah'] # Menambah interaksi saat mouse diarahkan
+        ).properties(height=400)
+        
+        st.altair_chart(chart, use_container_width=True)
         
         # --- MODUL DOWNLOAD DATA (CSV & EXCEL) ---
         st.markdown("---")
