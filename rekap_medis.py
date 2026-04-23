@@ -5,12 +5,35 @@ from datetime import date
 import io
 import hashlib
 import xlsxwriter
+import calendar
 
-# Inisialisasi session state global untuk filter
-if 'global_month' not in st.session_state:
-    st.session_state.global_month = "Januari" # Default awal
-if 'global_year' not in st.session_state:
-    st.session_state.global_year = 2026       # Default awal
+bulan_map = {
+        "Januari": 1, "Februari": 2, "Maret": 3, "April": 4,
+        "Mei": 5, "Juni": 6, "Juli": 7, "Agustus": 8,
+        "September": 9, "Oktober": 10, "November": 11, "Desember": 12
+    }
+    
+    tahun = st.session_state.global_year
+    bulan_idx = bulan_map[st.session_state.global_month]
+    
+    # Mendefinisikan variabel 'start' dan 'end' yang dicari oleh SQL
+    start = date(tahun, bulan_idx, 1)
+    last_day = calendar.monthrange(tahun, bulan_idx)[1]
+    end = date(tahun, bulan_idx, last_day)
+
+    # 2. SEKARANG baru jalankan query (Sekarang 'start' dan 'end' sudah ada)
+    conn = sqlite3.connect(DB_PATH)
+    # Gunakan ? (parameter) agar lebih aman dan tidak error
+    query = """
+        SELECT diagnosa, COUNT(*) as jumlah 
+        FROM rekap_penyakit 
+        WHERE visit_time BETWEEN ? AND ? 
+        GROUP BY diagnosa 
+        ORDER BY jumlah DESC 
+        LIMIT 10
+    """
+    df_top = pd.read_sql_query(query, conn, params=[start, end])
+    conn.close()
 
 def unduh_rekap_sick_per_grup(df_raw, list_hjf, list_kps, list_ost, list_ckm):
     output = io.BytesIO()
