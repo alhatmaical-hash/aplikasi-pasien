@@ -421,7 +421,16 @@ elif menu == "Laporan Analisis Kunjungan":
             
             with col2:
                 if not df_dept_final.empty:
-                    st.bar_chart(df_dept_final.set_index('Nama Departemen')['Total Kunjungan'])
+                    import altair as alt
+                    
+                    # Membuat grafik dengan Altair agar urutan mengikuti DataFrame
+                    chart = alt.Chart(df_dept_final).mark_bar().encode(
+                        x=alt.X('Nama Departemen', sort=None),
+                        y='Total Kunjungan',
+                        tooltip=['Nama Departemen', 'Total Kunjungan']
+                    ).properties(height=400)
+                    
+                    st.altair_chart(chart, use_container_width=True)
                 else:
                     st.warning("⚠️ Pilih minimal satu departemen.")
 
@@ -471,7 +480,16 @@ elif menu == "Laporan Analisis Kunjungan":
             
             with p2:
                 if not df_corp_final.empty:
-                    st.bar_chart(df_corp_final.set_index('Nama Perusahaan')['Total Kunjungan'])
+                    import altair as alt
+                    
+                    # Grafik diurutkan sesuai urutan DataFrame (tidak diacak secara alfabetis)
+                    chart = alt.Chart(df_corp_final).mark_bar().encode(
+                        x=alt.X('Nama Perusahaan', sort=None),
+                        y='Total Kunjungan',
+                        tooltip=['Nama Perusahaan', 'Total Kunjungan']
+                    ).properties(height=400)
+                    
+                    st.altair_chart(chart, use_container_width=True)
                 else:
                     st.warning("⚠️ Pilih minimal satu perusahaan.")
 
