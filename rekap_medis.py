@@ -284,23 +284,10 @@ if menu == "Upload Data CSV":
 elif menu == "Laporan 10 Penyakit":
     st.markdown("<h1 style='text-align: center;'>📊 10 PENYAKIT TERBESAR</h1>", unsafe_allow_html=True)
     
-    # --- LOGIKA KONVERSI FILTER GLOBAL ---
-    import calendar
-    bulan_map = {
-        "Januari": "01", "Februari": "02", "Maret": "03", "April": "04",
-        "Mei": "05", "Juni": "06", "Juli": "07", "Agustus": "08",
-        "September": "09", "Oktober": "10", "November": "11", "Desember": "12"
-    }
-    
-    tahun = st.session_state.global_year
-    bulan_idx = bulan_map[st.session_state.global_month]
-    
-    # Hitung tanggal awal dan akhir bulan tersebut
-    last_day = calendar.monthrange(tahun, int(bulan_idx))[1]
-    start_date = f"{tahun}-{bulan_idx}-01"
-    end_date = f"{tahun}-{bulan_idx}-{last_day}"
-    
-    st.info(f"Periode Data: {st.session_state.global_month} {tahun}")
+    # --- FILTER TANGGAL ---
+    t1, t2 = st.columns(2)
+    start = t1.date_input("Mulai", value=get_date_range()[0])
+    end = t2.date_input("Sampai", value=get_date_range()[1])
     
     # --- AMBIL DATA DARI DATABASE ---
     conn = sqlite3.connect(DB_PATH)
@@ -381,25 +368,12 @@ elif menu == "Laporan 10 Penyakit":
 elif menu == "Laporan Analisis Kunjungan":
     st.title("📊 Analisis Kunjungan Pasien")
     
-    # 1. SETUP TANGGAL (Mengikuti Filter Sidebar Global)
-    import calendar
-    bulan_map = {
-        "Januari": 1, "Februari": 2, "Maret": 3, "April": 4,
-        "Mei": 5, "Juni": 6, "Juli": 7, "Agustus": 8,
-        "September": 9, "Oktober": 10, "November": 11, "Desember": 12
-    }
-    
-    tahun = st.session_state.global_year
-    bulan_idx = bulan_map[st.session_state.global_month]
-    
-    # Menentukan awal dan akhir bulan secara otomatis
-    start = date(tahun, bulan_idx, 1)
-    last_day = calendar.monthrange(tahun, bulan_idx)[1]
-    end = date(tahun, bulan_idx, last_day)
-    
+    # 1. SETUP TANGGAL (Penting agar variabel t1/t2 tersedia untuk nama file)
+    t_awal, t_akhir = get_date_range()
+    c1, c2 = st.columns(2)
+    start = c1.date_input("Mulai", value=t_awal, key="visit_start")
+    end = c2.date_input("Sampai", value=t_akhir, key="visit_end")
     t1_str = start.strftime('%d%m%Y') # Untuk penamaan file download
-    
-    st.info(f"Periode yang ditampilkan: **{st.session_state.global_month} {tahun}**")
 
     # 2. TARIK DATA DARI DATABASE (Solusi Utama agar tidak Blank)
     conn = sqlite3.connect(DB_PATH)
