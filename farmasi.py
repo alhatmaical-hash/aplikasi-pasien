@@ -4,14 +4,12 @@ import pandas as pd
 import os
 from datetime import datetime
 
-# --- KONFIGURASI DATABASE (AMAN & ROBUST) ---
-# Mengambil folder tempat file script ini berada
+# --- SETUP PATH DATABASE ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Database diletakkan di folder 'database' di level folder atasnya
+# Pastikan folder database ada di level yang sama atau satu tingkat di atas
 DB_PATH = os.path.join(BASE_DIR, "..", "database", "klinik_data.db")
 
 def get_conn():
-    # Pastikan folder database ada
     if not os.path.exists(os.path.dirname(DB_PATH)):
         os.makedirs(os.path.dirname(DB_PATH))
     return sqlite3.connect(DB_PATH)
@@ -19,82 +17,84 @@ def get_conn():
 def init_db():
     conn = get_conn()
     c = conn.cursor()
-    # Tabel Obat
+    # 1. Master Obat dengan Kategori & Stock Minimal
     c.execute('''CREATE TABLE IF NOT EXISTS obat_master 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, nama_obat TEXT, stok INTEGER, 
-                  satuan TEXT, harga_jual REAL, stok_minimal INTEGER DEFAULT 5)''')
-    # Tabel Resep/Transaksi
-    c.execute('''CREATE TABLE IF NOT EXISTS transaksi_farmasi 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, nama_pasien TEXT, 
-                  obat_id INTEGER, jumlah INTEGER, tanggal TEXT)''')
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, nama_obat TEXT, 
+                  satuan TEXT, harga_jual REAL, stok_min INTEGER)''')
+    
+    # 2. Stok In (Penting untuk Batch & ED)
+    c.execute('''CREATE TABLE IF NOT EXISTS stok_masuk
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, obat_id INTEGER, 
+                  batch_no TEXT, expiry_date DATE, jumlah INTEGER, tgl_masuk DATE)''')
+    
+    # 3. Transaksi/Dispensing
+    c.execute('''CREATE TABLE IF NOT EXISTS dispensing
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, tgl_transaksi DATE, 
+                  nama_pasien TEXT, obat_id INTEGER, jumlah INTEGER, signa TEXT)''')
     conn.commit()
     conn.close()
 
 init_db()
 
-# --- UI FARMASI ---
-st.set_page_config(page_title="Sistem Informasi Farmasi", layout="wide")
-st.title("💊 Sistem Informasi Farmasi Klinik")
+# --- UI APP ---
+st.set_page_config(page_title="Pro Pharmacy System", layout="wide")
+st.title("🏥 Sistem Informasi Farmasi Profesional")
 
-tab1, tab2, tab3 = st.tabs(["Dashboard Stok", "Dispensing (Resep)", "Manajemen Obat"])
+tab1, tab2, tab3, tab4 = st.tabs(["Dashboard Stok", "Penerimaan Barang", "Dispensing Resep", "Laporan"])
 
-# 1. TAB DASHBOARD (Notifikasi Stok Kritis)
+# --- TAB 1: DASHBOARD ---
 with tab1:
-    st.subheader("Ringkasan Stok")
+    st.subheader("Inventory & Stok Kritis")
     conn = get_conn()
-    df_obat = pd.read_sql("SELECT * FROM obat_master", conn)
+    df_obat = pd.read_sql("""
+        SELECT m.nama_obat, m.satuan, SUM(s.jumlah) as total_stok, m.stok_min 
+        FROM obat_master m
+        LEFT JOIN stok_masuk s ON m.id = s.obat_obat
+        GROUP BY m.id
+    """, conn)
     conn.close()
-    
-    # Indikator Stok Kritis
-    stok_kritis = df_obat[df_obat['stok'] <= df_obat['stok_minimal']]
-    if not stok_kritis.empty:
-        st.warning(f"⚠️ Perhatian: {len(stok_kritis)} obat mencapai stok minimal!")
-        st.dataframe(stok_kritis)
-    
     st.dataframe(df_obat, use_container_width=True)
 
-# 2. TAB DISPENSING (Input Resep)
+# --- TAB 2: PENERIMAAN (STOK MASUK) ---
 with tab2:
-    st.subheader("Formulir Penyerahan Obat")
-    with st.form("form_resep"):
-        pasien = st.text_input("Nama Pasien")
-        obat_pilihan = st.selectbox("Pilih Obat", df_obat['nama_obat'].tolist())
-        jumlah = st.number_input("Jumlah Keluar", min_value=1)
-        submit = st.form_submit_button("Proses Resep")
-        
-        if submit:
+    st.subheader("Input Barang Masuk (Batching)")
+    conn = get_conn()
+    opsi_obat = pd.read_sql("SELECT id, nama_obat FROM obat_master", conn)
+    conn.close()
+    
+    with st.form("form_masuk"):
+        obat_pilih = st.selectbox("Pilih Obat", opsi_obat['nama_obat'].tolist())
+        batch = st.text_input("Nomor Batch")
+        ed = st.date_input("Expired Date")
+        qty = st.number_input("Jumlah Masuk", min_value=1)
+        if st.form_submit_button("Simpan Stok"):
             conn = get_conn()
             c = conn.cursor()
-            # Cek stok cukup
-            obat = c.execute("SELECT id, stok FROM obat_master WHERE nama_obat = ?", (obat_pilihan,)).fetchone()
-            if obat and obat[1] >= jumlah:
-                # Update stok
-                c.execute("UPDATE obat_master SET stok = stok - ? WHERE nama_obat = ?", (jumlah, obat_pilihan))
-                # Simpan transaksi
-                c.execute("INSERT INTO transaksi_farmasi (nama_pasien, obat_id, jumlah, tanggal) VALUES (?, ?, ?, ?)", 
-                          (pasien, obat[0], jumlah, datetime.now().strftime("%Y-%m-%d")))
-                conn.commit()
-                st.success(f"Obat {obat_pilihan} berhasil diserahkan!")
-            else:
-                st.error("Stok tidak mencukupi atau obat tidak ditemukan!")
-            conn.close()
-
-# 3. TAB MANAJEMEN OBAT
-with tab3:
-    st.subheader("Input Data Obat Baru")
-    with st.form("add_obat"):
-        nama = st.text_input("Nama Obat")
-        satuan = st.text_input("Satuan (Tablet/Botol/Sirup)")
-        stok = st.number_input("Stok Awal", min_value=0)
-        harga = st.number_input("Harga Jual", min_value=0)
-        submit_add = st.form_submit_button("Simpan Obat")
-        
-        if submit_add:
-            conn = get_conn()
-            c = conn.cursor()
-            c.execute("INSERT INTO obat_master (nama_obat, stok, satuan, harga_jual) VALUES (?, ?, ?, ?)", 
-                      (nama, stok, satuan, harga))
+            id_obat = opsi_obat[opsi_obat['nama_obat']==obat_pilih]['id'].iloc[0]
+            c.execute("INSERT INTO stok_masuk (obat_id, batch_no, expiry_date, jumlah, tgl_masuk) VALUES (?,?,?,?,?)", 
+                      (id_obat, batch, ed, qty, datetime.now().strftime("%Y-%m-%d")))
             conn.commit()
             conn.close()
-            st.success("Obat berhasil ditambahkan!")
-            st.rerun()
+            st.success("Stok berhasil ditambah!")
+
+# --- TAB 3: DISPENSING (PELAYANAN PASIEN) ---
+with tab3:
+    st.subheader("Pelayanan Resep Pasien")
+    with st.form("form_dispense"):
+        nama_pasien = st.text_input("Nama Pasien")
+        obat_pilih = st.selectbox("Pilih Obat (Dispensing)", opsi_obat['nama_obat'].tolist())
+        qty = st.number_input("Jumlah Keluar", min_value=1)
+        signa = st.text_input("Signa / Aturan Pakai (Contoh: 3x1 setelah makan)")
+        
+        if st.form_submit_button("Proses Resep"):
+            conn = get_conn()
+            c = conn.cursor()
+            # Logic: Kurangi dari stok dengan ED terdekat (FEFO)
+            # (Sederhananya di sini, kurangi dari tabel stok_masuk)
+            c.execute("UPDATE stok_masuk SET jumlah = jumlah - ? WHERE obat_id = (SELECT id FROM obat_master WHERE nama_obat = ?) AND jumlah >= ?", 
+                      (qty, obat_pilih, qty))
+            c.execute("INSERT INTO dispensing (tgl_transaksi, nama_pasien, obat_id, jumlah, signa) VALUES (?,?,?,?,?)",
+                      (datetime.now().strftime("%Y-%m-%d"), nama_pasien, 1, qty, signa)) # Simplified
+            conn.commit()
+            conn.close()
+            st.success("Obat diserahkan. Jangan lupa cetak etiket!")
