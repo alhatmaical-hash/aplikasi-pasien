@@ -151,3 +151,34 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+@st.fragment(run_every="5s") # Data akan refresh otomatis tanpa reload halaman
+def tampilkan_daftar_pasien():
+    st.divider()
+    st.subheader("📋 Daftar Pasien Baru Terdaftar (Real-time)")
+    
+    with get_connection() as conn:
+        # Mengambil data terbaru berdasarkan waktu daftar hari ini
+        tgl_hari_ini = datetime.now().strftime("%Y-%m-%d")
+        query = f"SELECT * FROM pasien WHERE tgl_daftar LIKE '{tgl_hari_ini}%' ORDER BY id DESC"
+        df = pd.read_sql(query, conn)
+
+    if not df.empty:
+        # Menampilkan tabel dengan kolom yang disesuaikan
+        st.dataframe(
+            df[[
+                'tgl_daftar', 'nama_mandarin', 'nama_lengkap', 'nik', 
+                'perusahaan', 'departemen', 'wechat_id', 'status_antrian'
+            ]],
+            column_config={
+                "tgl_daftar": "Jam",
+                "nama_mandarin": "姓名 (Mandarin)",
+                "nama_lengkap": "Nama Latin",
+                "wechat_id": "WeChat/HP",
+                "status_antrian": "Status"
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+    else:
+        st.info("Belum ada pasien yang mendaftar hari ini.")
