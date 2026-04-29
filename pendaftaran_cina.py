@@ -5,8 +5,12 @@ from datetime import datetime
 import pytz
 import io
 
-# --- KONFIGURASI ---
-st.set_page_config(page_title="Klinik Apps - China Patient", layout="wide")
+# --- KONFIGURASI HALAMAN ---
+st.set_page_config(
+    page_title="Klinik Apps", 
+    layout="centered", 
+    initial_sidebar_state="collapsed" # Menu disembunyikan agar pasien fokus ke form
+)
 
 def get_connection():
     return sqlite3.connect("klinik_data.db", check_same_thread=False)
@@ -31,7 +35,7 @@ def init_db():
                         agama TEXT,
                         tempat_lahir TEXT,
                         tgl_lahir TEXT,
-                        status_antrian TEXT DEFAULT 'Menunggu')''')
+                        status_antrian TEXT DEFAULT 'Normal')''')
         
         c.execute('CREATE TABLE IF NOT EXISTS master_pt (nama TEXT UNIQUE)')
         c.execute('CREATE TABLE IF NOT EXISTS master_dept (nama TEXT UNIQUE)')
@@ -45,37 +49,21 @@ def get_master(table):
     with get_connection() as conn:
         return [r[0] for r in conn.execute(f"SELECT nama FROM {table} ORDER BY nama ASC").fetchall()]
 
-def simpan_data(data):
-    tz_wit = pytz.timezone('Asia/Jayapura')
-    waktu_sekarang = datetime.now(tz_wit).strftime("%Y-%m-%d %H:%M:%S")
-    with get_connection() as conn:
-        c = conn.cursor()
-        c.execute('''INSERT INTO pasien (
-            tgl_daftar, nama_mandarin, nama_lengkap, nik, gender, 
-            wechat_id, gol_darah, perusahaan, departemen, jabatan, 
-            blok_mes, agama, tempat_lahir, tgl_lahir
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', (
-            waktu_sekarang, data['mandarin'], data['nama'], data['nik'], data['gender'],
-            data['wechat'], data['darah'], data['pt'], data['dept'], data['jab'],
-            data['mes'], data['agama'], data['tmpt'], data['tgl']
-        ))
-        conn.commit()
+# --- MENU NAVIGASI ---
+st.sidebar.title("🔐 Akses Internal")
+pilihan = st.sidebar.radio("Pilih Halaman:", ["📝 Pendaftaran Pasien", "📋 Data Petugas (Admin)"])
 
-# --- NAVIGATION ---
-st.sidebar.title("🏥 Menu Navigasi")
-pilihan = st.sidebar.radio("Pilih Tampilan:", [
-    "📝 Pendaftaran (Pasien)", 
-    "📋 Data Terdaftar (Petugas)",
-    "⚙️ Pengaturan Master"
-])
-
-# --- HALAMAN 1: FORMULIR PENDAFTARAN ---
-if pilihan == "📝 Pendaftaran (Pasien)":
+# --- HALAMAN 1: PENDAFTARAN (UNTUK PASIEN CINA) ---
+if pilihan == "📝 Pendaftaran Pasien":
     st.markdown("<h2 style='text-align: center;'>CN 挂号表 / Formulir Pendaftaran</h2>", unsafe_allow_html=True)
+    
     list_pt = get_master("master_pt")
     list_dept = get_master("master_dept")
     list_jabatan = get_master("master_jabatan")
 
+    if not list_pt:
+        st.warning("⚠️ Data Master belum diisi oleh petugas. Silakan hubungi admin.")
+    
     with st.form("form_pendaftaran", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -83,133 +71,62 @@ if pilihan == "📝 Pendaftaran (Pasien)":
             nama_l = st.text_input("英文姓名 / Nama Sesuai Paspor (Latin) *").upper()
             nik = st.text_input("证件号码 / NIK atau No. Paspor *")
             gender = st.radio("性别 / Jenis Kelamin", ["男 (Laki-laki)", "女 (Perempuan)"], horizontal=True)
-            wechat = st.text_input("微信 ID 或 手机号 / ID WeChat atau No. HP *")
-            darah = st.selectbox("血型 / Golongan Darah", ["A", "B", "AB", "O", "不清楚 (Tidak Tahu)"])
+            wechat = st.text_input("微信 ID / ID WeChat atau No. HP *")
         
         with col2:
-            pt = st.selectbox("公司 / Perusahaan *", list_pt if list_pt else ["Isi Master di Pengaturan"])
-            dept = st.selectbox("部门 / Departemen *", list_dept if list_dept else ["Isi Master di Pengaturan"])
-            jab = st.selectbox("职位 / Jabatan *", list_jabatan if list_jabatan else ["Isi Master di Pengaturan"])
+            pt = st.selectbox("公司 / Perusahaan *", list_pt)
+            dept = st.selectbox("部门 / Departemen *", list_dept)
+            jab = st.selectbox("职位 / Jabatan *", list_jabatan)
             mes = st.text_input("宿舍号 / Blok & No. Kamar Mes *").upper()
-            opsi_agama = ["伊斯兰教 (Islam)", "基督教 (Kristen)", "天主教 (Katolik)", "印度教 (Hindu)", "佛教 (Buddha)", "儒教 (Konghucu)", "无宗教/不详 (Tidak Diketahui)"]
-            agama = st.selectbox("宗教 / Agama", opsi_agama)
-            
+            agama = st.selectbox("宗教 / Agama", ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu", "Lainnya"])
+
         st.write("📅 **出生信息 / Informasi Kelahiran**")
         c3, c4 = st.columns(2)
         tmpt = c3.text_input("出生地点 / Tempat Lahir")
-        tgl = c4.date_input("出生日期 / Tanggal Lahir", value=datetime(2026, 4, 29))
+        tgl = c4.date_input("出生日期 / Tanggal Lahir", value=datetime(1995, 1, 1))
 
         if st.form_submit_button("提交 / KIRIM PENDAFTARAN", use_container_width=True):
-            if not nama_l or not nik or not wechat or not list_pt:
-                st.error("❌ Pastikan kolom wajib terisi dan data Master PT tersedia")
+            if not nama_l or not nik or not wechat:
+                st.error("❌ Mohon lengkapi kolom bertanda *")
             else:
-                simpan_data({'mandarin': nama_m, 'nama': nama_l, 'nik': nik, 'gender': gender, 'wechat': wechat, 'darah': darah, 'pt': pt, 'dept': dept, 'jab': jab, 'mes': mes, 'agama': agama, 'tmpt': tmpt, 'tgl': str(tgl)})
-                st.success("✅ Berhasil terdaftar! / 提交成功！")
+                tz_wit = pytz.timezone('Asia/Jayapura')
+                waktu = datetime.now(tz_wit).strftime("%Y-%m-%d %H:%M:%S")
+                with get_connection() as conn:
+                    conn.execute("INSERT INTO pasien (tgl_daftar, nama_mandarin, nama_lengkap, nik, gender, wechat_id, perusahaan, departemen, jabatan, blok_mes, agama, tempat_lahir, tgl_lahir) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", 
+                                 (waktu, nama_m, nama_l, nik, gender, wechat, pt, dept, jab, mes, agama, tmpt, str(tgl)))
+                    conn.commit()
+                st.success("✅ Berhasil! / 提交成功！")
 
-# --- HALAMAN 2: MONITORING PETUGAS (DENGAN DELETE & DOWNLOAD) ---
-elif pilihan == "📋 Data Terdaftar (Petugas)":
-    st.header("📋 Daftar Lengkap Pasien Terdaftar")
+# --- HALAMAN 2: PETUGAS (DENGAN PASSWORD) ---
+elif pilihan == "📋 Data Petugas (Admin)":
+    st.header("🔑 Verifikasi Petugas")
+    password = st.text_input("Masukkan Password Admin", type="password")
     
-    with get_connection() as conn:
-        df = pd.read_sql("SELECT * FROM pasien ORDER BY id DESC", conn)
-    
-    if not df.empty:
-        # 1. Menampilkan Tabel
-        st.dataframe(
-            df, 
-            column_config={
-                "id": "ID", "tgl_daftar": "Waktu Daftar", "nama_mandarin": "姓名 (Mandarin)",
-                "nama_lengkap": "Nama Latin", "nik": "NIK/Paspor", "gender": "L/P",
-                "wechat_id": "WeChat/HP", "gol_darah": "Gol. Darah", "perusahaan": "Perusahaan",
-                "departemen": "Departemen", "jabatan": "Jabatan", "blok_mes": "Mes",
-                "agama": "Agama", "tempat_lahir": "Tempat Lahir", "tgl_lahir": "Tgl Lahir",
-                "status_antrian": "Status"
-            },
-            hide_index=True, use_container_width=True
-        )
+    # Ganti 'admin123' dengan password yang Anda inginkan
+    if password == "admin123": 
+        st.success("Akses Diterima")
         
-        st.divider()
+        with get_connection() as conn:
+            df = pd.read_sql("SELECT * FROM pasien ORDER BY id DESC", conn)
         
-        # 2. Fitur Download & Delete di bawah tabel
-        col_down, col_del = st.columns([2, 1])
-        
-        with col_down:
-            st.write("📂 **Ekspor Data**")
-            # Konversi DF ke Excel menggunakan buffer
+        if not df.empty:
+            st.subheader("📋 Data Pasien Terdaftar")
+            st.dataframe(df, hide_index=True, use_container_width=True)
+            
+            # DOWNLOAD EXCEL
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                df.to_excel(writer, index=False, sheet_name='DataPasien')
+                df.to_excel(writer, index=False)
+            st.download_button("📥 Download Excel", data=buffer.getvalue(), file_name="data_pasien.xlsx", mime="application/vnd.ms-excel")
             
-            st.download_button(
-                label="📥 Download Data ke Excel",
-                data=buffer.getvalue(),
-                file_name=f"Data_Pasien_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-
-        with col_del:
-            st.write("🗑️ **Hapus Baris**")
-            id_hapus = st.selectbox("Pilih ID Pasien untuk dihapus", ["-- Pilih ID --"] + df['id'].tolist())
-            if st.button("Hapus Data Pasien", type="primary", use_container_width=True):
-                if id_hapus != "-- Pilih ID --":
+            # HAPUS DATA
+            st.divider()
+            id_hapus = st.selectbox("Pilih ID untuk dihapus", ["-- Pilih --"] + df['id'].tolist())
+            if st.button("Hapus Data"):
+                if id_hapus != "-- Pilih --":
                     with get_connection() as conn:
                         conn.execute("DELETE FROM pasien WHERE id = ?", (id_hapus,))
                         conn.commit()
-                    st.success(f"Data ID {id_hapus} berhasil dihapus!")
                     st.rerun()
-    else:
-        st.info("Belum ada data pasien.")
-
-# --- HALAMAN 3: PENGATURAN MASTER ---
-elif pilihan == "⚙️ Pengaturan Master":
-    st.header("⚙️ Pengaturan List Dropdown")
-    col_a, col_b, col_c = st.columns(3)
-    
-    with col_a:
-        st.subheader("🏢 Perusahaan")
-        baru_pt = st.text_input("Nama PT Baru", key="add_pt")
-        if st.button("Simpan PT", use_container_width=True):
-            if baru_pt:
-                with get_connection() as conn:
-                    conn.execute("INSERT OR IGNORE INTO master_pt VALUES (?)", (baru_pt.upper(),))
-                st.rerun()
-        pt_list = get_master("master_pt")
-        hapus_pt = st.selectbox("Pilih PT untuk dihapus", ["-- Pilih --"] + pt_list)
-        if st.button("Hapus PT", type="secondary", use_container_width=True):
-            if hapus_pt != "-- Pilih --":
-                with get_connection() as conn:
-                    conn.execute("DELETE FROM master_pt WHERE nama = ?", (hapus_pt,))
-                st.rerun()
-
-    with col_b:
-        st.subheader("📁 Departemen")
-        baru_dept = st.text_input("Nama Dept Baru", key="add_dept")
-        if st.button("Simpan Dept", use_container_width=True):
-            if baru_dept:
-                with get_connection() as conn:
-                    conn.execute("INSERT OR IGNORE INTO master_dept VALUES (?)", (baru_dept.upper(),))
-                st.rerun()
-        dept_list = get_master("master_dept")
-        hapus_dept = st.selectbox("Pilih Dept untuk dihapus", ["-- Pilih --"] + dept_list)
-        if st.button("Hapus Dept", type="secondary", use_container_width=True):
-            if hapus_dept != "-- Pilih --":
-                with get_connection() as conn:
-                    conn.execute("DELETE FROM master_dept WHERE nama = ?", (hapus_dept,))
-                st.rerun()
-
-    with col_c:
-        st.subheader("💼 Jabatan")
-        baru_jabatan = st.text_input("Nama Jabatan Baru", key="add_jab")
-        if st.button("Simpan Jabatan", use_container_width=True):
-            if baru_jabatan:
-                with get_connection() as conn:
-                    conn.execute("INSERT OR IGNORE INTO master_jabatan VALUES (?)", (baru_jabatan.upper(),))
-                st.rerun()
-        jab_list = get_master("master_jabatan")
-        hapus_jab = st.selectbox("Pilih Jabatan untuk dihapus", ["-- Pilih --"] + jab_list)
-        if st.button("Hapus Jabatan", type="secondary", use_container_width=True):
-            if hapus_jab != "-- Pilih --":
-                with get_connection() as conn:
-                    conn.execute("DELETE FROM master_jabatan WHERE nama = ?", (hapus_jab,))
-                st.rerun()
+    elif password != "":
+        st.error("❌ Password Salah!")
