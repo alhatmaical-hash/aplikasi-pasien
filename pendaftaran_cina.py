@@ -138,7 +138,7 @@ elif pilihan == "📋 Data Pasien (Admin)":
     else:
         st.info("Belum ada data pasien.")
 
-# --- HALAMAN 3: PENGATURAN MASTER (HANYA JIKA LOGIN) ---
+# --- UPDATE PADA HALAMAN 3: PENGATURAN MASTER ---
 elif pilihan == "⚙️ Pengaturan Master":
     st.header("⚙️ Kelola List Perusahaan, Dept & Jabatan")
     
@@ -152,7 +152,16 @@ elif pilihan == "⚙️ Pengaturan Master":
                 with get_connection() as conn:
                     conn.execute("INSERT OR IGNORE INTO master_pt VALUES (?)", (pt_input.upper(),))
                 st.rerun()
-        st.write(get_master("master_pt"))
+        
+        # --- TAMBAHAN TOMBOL HAPUS PT ---
+        list_pt_hapus = get_master("master_pt")
+        pt_hapus = st.selectbox("Pilih PT untuk dihapus", ["-- Pilih --"] + list_pt_hapus)
+        if st.button("Hapus PT", type="secondary"):
+            if pt_hapus != "-- Pilih --":
+                with get_connection() as conn:
+                    conn.execute("DELETE FROM master_pt WHERE nama = ?", (pt_hapus,))
+                    conn.commit()
+                st.rerun()
 
     with col_b:
         st.subheader("📁 Departemen")
@@ -162,7 +171,16 @@ elif pilihan == "⚙️ Pengaturan Master":
                 with get_connection() as conn:
                     conn.execute("INSERT OR IGNORE INTO master_dept VALUES (?)", (dept_input.upper(),))
                 st.rerun()
-        st.write(get_master("master_dept"))
+        
+        # --- TAMBAHAN TOMBOL HAPUS DEPT ---
+        list_dept_hapus = get_master("master_dept")
+        dept_hapus = st.selectbox("Pilih Dept untuk dihapus", ["-- Pilih --"] + list_dept_hapus)
+        if st.button("Hapus Dept", type="secondary"):
+            if dept_hapus != "-- Pilih --":
+                with get_connection() as conn:
+                    conn.execute("DELETE FROM master_dept WHERE nama = ?", (dept_hapus,))
+                    conn.commit()
+                st.rerun()
 
     with col_c:
         st.subheader("💼 Jabatan")
@@ -172,4 +190,13 @@ elif pilihan == "⚙️ Pengaturan Master":
                 with get_connection() as conn:
                     conn.execute("INSERT OR IGNORE INTO master_jabatan VALUES (?)", (jab_input.upper(),))
                 st.rerun()
-        st.write(get_master("master_jabatan"))
+        
+        # --- TAMBAHAN TOMBOL HAPUS JABATAN ---
+        list_jab_hapus = get_master("master_jabatan")
+        jab_hapus = st.selectbox("Pilih Jabatan untuk dihapus", ["-- Pilih --"] + list_jab_hapus)
+        if st.button("Hapus Jabatan", type="secondary"):
+            if jab_hapus != "-- Pilih --":
+                with get_connection() as conn:
+                    conn.execute("DELETE FROM master_jabatan WHERE nama = ?", (jab_hapus,))
+                    conn.commit()
+                st.rerun()
