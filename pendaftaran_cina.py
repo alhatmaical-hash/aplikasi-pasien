@@ -3,6 +3,7 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import pytz
+import io
 
 # --- KONFIGURASI ---
 st.set_page_config(page_title="Klinik Apps - China Patient", layout="wide")
@@ -39,6 +40,7 @@ def init_db():
 
 init_db()
 
+# --- FUNGSI HELPER ---
 def get_master(table):
     with get_connection() as conn:
         return [r[0] for r in conn.execute(f"SELECT nama FROM {table} ORDER BY nama ASC").fetchall()]
@@ -104,46 +106,60 @@ if pilihan == "📝 Pendaftaran (Pasien)":
                 simpan_data({'mandarin': nama_m, 'nama': nama_l, 'nik': nik, 'gender': gender, 'wechat': wechat, 'darah': darah, 'pt': pt, 'dept': dept, 'jab': jab, 'mes': mes, 'agama': agama, 'tmpt': tmpt, 'tgl': str(tgl)})
                 st.success("✅ Berhasil terdaftar! / 提交成功！")
 
-# --- HALAMAN 2: MONITORING PETUGAS (SUDAH DIPERBARUI) ---
+# --- HALAMAN 2: MONITORING PETUGAS (DENGAN DELETE & DOWNLOAD) ---
 elif pilihan == "📋 Data Terdaftar (Petugas)":
     st.header("📋 Daftar Lengkap Pasien Terdaftar")
     
-    @st.fragment(run_every="5s")
-    def refresh_data():
-        with get_connection() as conn:
-            # Mengambil seluruh kolom dari database
-            df = pd.read_sql("SELECT * FROM pasien ORDER BY id DESC", conn)
+    with get_connection() as conn:
+        df = pd.read_sql("SELECT * FROM pasien ORDER BY id DESC", conn)
+    
+    if not df.empty:
+        # 1. Menampilkan Tabel
+        st.dataframe(
+            df, 
+            column_config={
+                "id": "ID", "tgl_daftar": "Waktu Daftar", "nama_mandarin": "姓名 (Mandarin)",
+                "nama_lengkap": "Nama Latin", "nik": "NIK/Paspor", "gender": "L/P",
+                "wechat_id": "WeChat/HP", "gol_darah": "Gol. Darah", "perusahaan": "Perusahaan",
+                "departemen": "Departemen", "jabatan": "Jabatan", "blok_mes": "Mes",
+                "agama": "Agama", "tempat_lahir": "Tempat Lahir", "tgl_lahir": "Tgl Lahir",
+                "status_antrian": "Status"
+            },
+            hide_index=True, use_container_width=True
+        )
         
-        if not df.empty:
-            # Konfigurasi nama kolom agar lebih informatif
-            st.dataframe(
-                df, 
-                column_config={
-                    "id": "ID",
-                    "tgl_daftar": "Waktu Daftar",
-                    "nama_mandarin": "姓名 (Mandarin)",
-                    "nama_lengkap": "Nama Latin",
-                    "nik": "NIK/Paspor",
-                    "gender": "L/P",
-                    "wechat_id": "WeChat/HP",
-                    "gol_darah": "Gol. Darah",
-                    "perusahaan": "Perusahaan",
-                    "departemen": "Departemen",
-                    "jabatan": "Jabatan",
-                    "blok_mes": "Mes",
-                    "agama": "Agama",
-                    "tempat_lahir": "Tempat Lahir",
-                    "tgl_lahir": "Tgl Lahir",
-                    "status_antrian": "Status"
-                },
-                hide_index=True, 
+        st.divider()
+        
+        # 2. Fitur Download & Delete di bawah tabel
+        col_down, col_del = st.columns([2, 1])
+        
+        with col_down:
+            st.write("📂 **Ekspor Data**")
+            # Konversi DF ke Excel menggunakan buffer
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='DataPasien')
+            
+            st.download_button(
+                label="📥 Download Data ke Excel",
+                data=buffer.getvalue(),
+                file_name=f"Data_Pasien_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True
             )
-            st.caption(f"Update otomatis setiap 5 detik. Terakhir: {datetime.now().strftime('%H:%M:%S')}")
-        else:
-            st.info("Bel_um ada data pasien yang terdaftar.")
-            
-    refresh_data()
+
+        with col_del:
+            st.write("🗑️ **Hapus Baris**")
+            id_hapus = st.selectbox("Pilih ID Pasien untuk dihapus", ["-- Pilih ID --"] + df['id'].tolist())
+            if st.button("Hapus Data Pasien", type="primary", use_container_width=True):
+                if id_hapus != "-- Pilih ID --":
+                    with get_connection() as conn:
+                        conn.execute("DELETE FROM pasien WHERE id = ?", (id_hapus,))
+                        conn.commit()
+                    st.success(f"Data ID {id_hapus} berhasil dihapus!")
+                    st.rerun()
+    else:
+        st.info("Belum ada data pasien.")
 
 # --- HALAMAN 3: PENGATURAN MASTER ---
 elif pilihan == "⚙️ Pengaturan Master":
