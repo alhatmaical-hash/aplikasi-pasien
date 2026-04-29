@@ -104,25 +104,52 @@ if pilihan == "📝 Pendaftaran (Pasien)":
                 simpan_data({'mandarin': nama_m, 'nama': nama_l, 'nik': nik, 'gender': gender, 'wechat': wechat, 'darah': darah, 'pt': pt, 'dept': dept, 'jab': jab, 'mes': mes, 'agama': agama, 'tmpt': tmpt, 'tgl': str(tgl)})
                 st.success("✅ Berhasil terdaftar! / 提交成功！")
 
-# --- HALAMAN 2: MONITORING PETUGAS ---
+# --- HALAMAN 2: MONITORING PETUGAS (SUDAH DIPERBARUI) ---
 elif pilihan == "📋 Data Terdaftar (Petugas)":
-    st.header("📋 Daftar Pasien Terdaftar")
+    st.header("📋 Daftar Lengkap Pasien Terdaftar")
+    
     @st.fragment(run_every="5s")
     def refresh_data():
         with get_connection() as conn:
+            # Mengambil seluruh kolom dari database
             df = pd.read_sql("SELECT * FROM pasien ORDER BY id DESC", conn)
+        
         if not df.empty:
-            st.dataframe(df[['tgl_daftar', 'nama_mandarin', 'nama_lengkap', 'perusahaan', 'wechat_id', 'status_antrian']], use_container_width=True, hide_index=True)
+            # Konfigurasi nama kolom agar lebih informatif
+            st.dataframe(
+                df, 
+                column_config={
+                    "id": "ID",
+                    "tgl_daftar": "Waktu Daftar",
+                    "nama_mandarin": "姓名 (Mandarin)",
+                    "nama_lengkap": "Nama Latin",
+                    "nik": "NIK/Paspor",
+                    "gender": "L/P",
+                    "wechat_id": "WeChat/HP",
+                    "gol_darah": "Gol. Darah",
+                    "perusahaan": "Perusahaan",
+                    "departemen": "Departemen",
+                    "jabatan": "Jabatan",
+                    "blok_mes": "Mes",
+                    "agama": "Agama",
+                    "tempat_lahir": "Tempat Lahir",
+                    "tgl_lahir": "Tgl Lahir",
+                    "status_antrian": "Status"
+                },
+                hide_index=True, 
+                use_container_width=True
+            )
+            st.caption(f"Update otomatis setiap 5 detik. Terakhir: {datetime.now().strftime('%H:%M:%S')}")
+        else:
+            st.info("Bel_um ada data pasien yang terdaftar.")
+            
     refresh_data()
 
-# --- HALAMAN 3: PENGATURAN MASTER (DENGAN TOMBOL HAPUS) ---
+# --- HALAMAN 3: PENGATURAN MASTER ---
 elif pilihan == "⚙️ Pengaturan Master":
     st.header("⚙️ Pengaturan List Dropdown")
-    st.info("Tambahkan atau hapus data agar pilihan di formulir pendaftaran diperbarui.")
-    
     col_a, col_b, col_c = st.columns(3)
     
-    # MASTER PERUSAHAAN
     with col_a:
         st.subheader("🏢 Perusahaan")
         baru_pt = st.text_input("Nama PT Baru", key="add_pt")
@@ -131,8 +158,6 @@ elif pilihan == "⚙️ Pengaturan Master":
                 with get_connection() as conn:
                     conn.execute("INSERT OR IGNORE INTO master_pt VALUES (?)", (baru_pt.upper(),))
                 st.rerun()
-        
-        st.divider()
         pt_list = get_master("master_pt")
         hapus_pt = st.selectbox("Pilih PT untuk dihapus", ["-- Pilih --"] + pt_list)
         if st.button("Hapus PT", type="secondary", use_container_width=True):
@@ -140,9 +165,7 @@ elif pilihan == "⚙️ Pengaturan Master":
                 with get_connection() as conn:
                     conn.execute("DELETE FROM master_pt WHERE nama = ?", (hapus_pt,))
                 st.rerun()
-        st.table(pt_list)
 
-    # MASTER DEPARTEMEN
     with col_b:
         st.subheader("📁 Departemen")
         baru_dept = st.text_input("Nama Dept Baru", key="add_dept")
@@ -151,8 +174,6 @@ elif pilihan == "⚙️ Pengaturan Master":
                 with get_connection() as conn:
                     conn.execute("INSERT OR IGNORE INTO master_dept VALUES (?)", (baru_dept.upper(),))
                 st.rerun()
-        
-        st.divider()
         dept_list = get_master("master_dept")
         hapus_dept = st.selectbox("Pilih Dept untuk dihapus", ["-- Pilih --"] + dept_list)
         if st.button("Hapus Dept", type="secondary", use_container_width=True):
@@ -160,9 +181,7 @@ elif pilihan == "⚙️ Pengaturan Master":
                 with get_connection() as conn:
                     conn.execute("DELETE FROM master_dept WHERE nama = ?", (hapus_dept,))
                 st.rerun()
-        st.table(dept_list)
 
-    # MASTER JABATAN
     with col_c:
         st.subheader("💼 Jabatan")
         baru_jabatan = st.text_input("Nama Jabatan Baru", key="add_jab")
@@ -171,8 +190,6 @@ elif pilihan == "⚙️ Pengaturan Master":
                 with get_connection() as conn:
                     conn.execute("INSERT OR IGNORE INTO master_jabatan VALUES (?)", (baru_jabatan.upper(),))
                 st.rerun()
-        
-        st.divider()
         jab_list = get_master("master_jabatan")
         hapus_jab = st.selectbox("Pilih Jabatan untuk dihapus", ["-- Pilih --"] + jab_list)
         if st.button("Hapus Jabatan", type="secondary", use_container_width=True):
@@ -180,4 +197,3 @@ elif pilihan == "⚙️ Pengaturan Master":
                 with get_connection() as conn:
                     conn.execute("DELETE FROM master_jabatan WHERE nama = ?", (hapus_jab,))
                 st.rerun()
-        st.table(jab_list)
