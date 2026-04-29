@@ -10,11 +10,11 @@ st.set_page_config(page_title="Klinik Apps - China Patient", layout="wide")
 def get_connection():
     return sqlite3.connect("klinik_data.db", check_same_thread=False)
 
-# 1. INISIALISASI DATABASE (UPDATE: Tambah Tabel Master)
+# 1. INISIALISASI DATABASE
 def init_db():
     with get_connection() as conn:
         c = conn.cursor()
-        # Tabel Pasien
+        # Tabel Pasien[cite: 1]
         c.execute('''CREATE TABLE IF NOT EXISTS pasien (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         tgl_daftar TIMESTAMP,
@@ -33,13 +33,10 @@ def init_db():
                         tgl_lahir TEXT,
                         status_antrian TEXT DEFAULT 'Menunggu')''')
         
-        # Tabel Master Perusahaan, Dept, Jabatan
+        # Tabel Master (Dibuat kosong agar Anda bisa isi sendiri)[cite: 1]
         c.execute('CREATE TABLE IF NOT EXISTS master_pt (nama TEXT UNIQUE)')
         c.execute('CREATE TABLE IF NOT EXISTS master_dept (nama TEXT UNIQUE)')
         c.execute('CREATE TABLE IF NOT EXISTS master_jabatan (nama TEXT UNIQUE)')
-        
-        # Isi data awal jika kosong
-        c.execute("INSERT OR IGNORE INTO master_pt VALUES ('HPAL'), ('HJF'), ('HNC'), ('TBP')")
         conn.commit()
 
 init_db()
@@ -47,6 +44,7 @@ init_db()
 # --- FUNGSI AMBIL DATA MASTER ---
 def get_master(table):
     with get_connection() as conn:
+        # Mengambil list nama dari tabel master terkait[cite: 1]
         return [r[0] for r in conn.execute(f"SELECT nama FROM {table} ORDER BY nama ASC").fetchall()]
 
 # --- FUNGSI SIMPAN DATA PASIEN ---
@@ -78,7 +76,7 @@ pilihan = st.sidebar.radio("Pilih Tampilan:", [
 if pilihan == "📝 Pendaftaran (Pasien)":
     st.markdown("<h2 style='text-align: center;'>CN 挂号表 / Formulir Pendaftaran</h2>", unsafe_allow_html=True)
     
-    # Ambil list dari database master
+    # Ambil list dinamis dari database[cite: 1]
     list_pt = get_master("master_pt")
     list_dept = get_master("master_dept")
     list_jabatan = get_master("master_jabatan")
@@ -94,8 +92,9 @@ if pilihan == "📝 Pendaftaran (Pasien)":
             darah = st.selectbox("血型 / Golongan Darah", ["A", "B", "AB", "O", "不清楚 (Tidak Tahu)"])
         
         with col2:
-            pt = st.selectbox("公司 / Perusahaan *", list_pt)
-            dept = st.selectbox("部门 / Departemen *", list_dept) if list_dept else st.text_input("部门 / Departemen *").upper()
+            # Jika master kosong, tampilkan petunjuk untuk mengisi di menu pengaturan[cite: 1]
+            pt = st.selectbox("公司 / Perusahaan *", list_pt if list_pt else ["Silahkan isi Master PT di Pengaturan"])
+            dept = st.selectbox("部门 / Departemen *", list_dept if list_dept else ["Silahkan isi Master Dept di Pengaturan"])
             jab = st.selectbox("职位 / Jabatan *", list_jabatan) if list_jabatan else st.text_input("职位 / Jabatan *").upper()
             mes = st.text_input("宿舍号 / Blok & No. Kamar Mes *").upper()
             
@@ -108,8 +107,8 @@ if pilihan == "📝 Pendaftaran (Pasien)":
         tgl = c4.date_input("出生日期 / Tanggal Lahir", value=datetime(2026, 4, 29))
 
         if st.form_submit_button("提交 / KIRIM PENDAFTARAN", use_container_width=True):
-            if not nama_l or not nik or not wechat:
-                st.error("❌ Mohon isi kolom wajib (*)")
+            if not nama_l or not nik or not wechat or not list_pt:
+                st.error("❌ Mohon isi kolom wajib (*) dan pastikan data Master sudah diisi")
             else:
                 simpan_data({'mandarin': nama_m, 'nama': nama_l, 'nik': nik, 'gender': gender, 'wechat': wechat, 'darah': darah, 'pt': pt, 'dept': dept, 'jab': jab, 'mes': mes, 'agama': agama, 'tmpt': tmpt, 'tgl': str(tgl)})
                 st.success("✅ Berhasil terdaftar! / 提交成功！")
@@ -125,38 +124,39 @@ elif pilihan == "📋 Data Terdaftar (Petugas)":
             st.dataframe(df[['tgl_daftar', 'nama_mandarin', 'nama_lengkap', 'perusahaan', 'wechat_id', 'status_antrian']], use_container_width=True, hide_index=True)
     refresh_data()
 
-# --- HALAMAN 3: PENGATURAN MASTER (BARU) ---
+# --- HALAMAN 3: PENGATURAN MASTER ---
 elif pilihan == "⚙️ Pengaturan Master":
     st.header("⚙️ Pengaturan List Dropdown")
+    st.info("Tambahkan data di sini agar muncul di pilihan pendaftaran pasien.")
     
     col_a, col_b, col_c = st.columns(3)
     
     with col_a:
         st.subheader("🏢 Perusahaan")
-        baru_pt = st.text_input("Tambah Perusahaan")
-        if st.button("Tambah PT"):
+        baru_pt = st.text_input("Nama PT Baru")
+        if st.button("Simpan PT"):
             if baru_pt:
                 with get_connection() as conn:
                     conn.execute("INSERT OR IGNORE INTO master_pt VALUES (?)", (baru_pt.upper(),))
                 st.rerun()
-        st.write(get_master("master_pt"))
+        st.table(get_master("master_pt")) # Menampilkan list dalam tabel sederhana[cite: 1]
 
     with col_b:
         st.subheader("📁 Departemen")
-        baru_dept = st.text_input("Tambah Departemen")
-        if st.button("Tambah Dept"):
+        baru_dept = st.text_input("Nama Dept Baru")
+        if st.button("Simpan Dept"):
             if baru_dept:
                 with get_connection() as conn:
                     conn.execute("INSERT OR IGNORE INTO master_dept VALUES (?)", (baru_dept.upper(),))
                 st.rerun()
-        st.write(get_master("master_dept"))
+        st.table(get_master("master_dept"))
 
     with col_c:
         st.subheader("💼 Jabatan")
-        baru_jabatan = st.text_input("Tambah Jabatan")
-        if st.button("Tambah Jabatan"):
+        baru_jabatan = st.text_input("Nama Jabatan Baru")
+        if st.button("Simpan Jabatan"):
             if baru_jabatan:
                 with get_connection() as conn:
                     conn.execute("INSERT OR IGNORE INTO master_jabatan VALUES (?)", (baru_jabatan.upper(),))
                 st.rerun()
-        st.write(get_master("master_jabatan"))
+        st.table(get_master("master_jabatan"))
