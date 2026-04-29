@@ -89,10 +89,10 @@ if pilihan == "📝 Pendaftaran Pasien":
             
             # --- PENAMBAHAN GOLONGAN DARAH ---
             darah = st.selectbox("血型 / Golongan Darah", [
-                "A", 
-                "B", 
-                "AB", 
-                "O", 
+                "A 型", 
+                "B 型", 
+                "AB 型", 
+                "O 型", 
                 "不清楚 (Tidak Diketahui)"
             ])
         
