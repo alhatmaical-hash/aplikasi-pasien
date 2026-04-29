@@ -86,6 +86,15 @@ if pilihan == "📝 Pendaftaran Pasien":
             nik = st.text_input("证件号码 / NIK atau No. Paspor *")
             gender = st.radio("性别 / Jenis Kelamin", ["男 (Laki-laki)", "女 (Perempuan)"], horizontal=True)
             wechat = st.text_input("微信 ID / ID WeChat atau No. HP *")
+            
+            # --- PENAMBAHAN GOLONGAN DARAH ---
+            darah = st.selectbox("血型 / Golongan Darah", [
+                "A", 
+                "B", 
+                "AB", 
+                "O", 
+                "不清楚 (Tidak Diketahui)"
+            ])
         
         with col2:
             pt = st.selectbox("公司 / Perusahaan *", list_pt if list_pt else ["-"])
@@ -106,8 +115,14 @@ if pilihan == "📝 Pendaftaran Pasien":
                 tz_wit = pytz.timezone('Asia/Jayapura')
                 waktu = datetime.now(tz_wit).strftime("%Y-%m-%d %H:%M:%S")
                 with get_connection() as conn:
-                    conn.execute("INSERT INTO pasien (tgl_daftar, nama_mandarin, nama_lengkap, nik, gender, wechat_id, perusahaan, departemen, jabatan, blok_mes, agama, tempat_lahir, tgl_lahir) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", 
-                                 (waktu, nama_m, nama_l, nik, gender, wechat, pt, dept, jab, mes, agama, tmpt, str(tgl)))
+                    # Menambahkan 'gol_darah' di kolom dan VALUES
+                    conn.execute("""
+                        INSERT INTO pasien (
+                            tgl_daftar, nama_mandarin, nama_lengkap, nik, gender, 
+                            wechat_id, gol_darah, perusahaan, departemen, jabatan, 
+                            blok_mes, agama, tempat_lahir, tgl_lahir
+                        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", 
+                        (waktu, nama_m, nama_l, nik, gender, wechat, darah, pt, dept, jab, mes, agama, tmpt, str(tgl)))
                     conn.commit()
                 st.success("✅ Berhasil! Data Anda telah tersimpan. / 提交成功！")
 
