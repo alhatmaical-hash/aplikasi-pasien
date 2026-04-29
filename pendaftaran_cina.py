@@ -29,7 +29,8 @@ def init_db():
                         blok_mes TEXT,
                         agama TEXT,
                         tempat_lahir TEXT,
-                        tgl_lahir TEXT)''')
+                        tgl_lahir TEXT,
+                        status_antrian TEXT DEFAULT 'Menunggu')''') # Tambahkan default status[cite: 1]
         conn.commit()
 
 init_db()
@@ -52,7 +53,6 @@ def simpan_data(data):
         conn.commit()
 
 # --- NAVIGATION ---
-# Gunakan Sidebar untuk berpindah antara Form Pasien dan Tabel Petugas
 st.sidebar.title("Menu Navigasi")
 pilihan = st.sidebar.radio("Pilih Tampilan:", ["Pendaftaran (Pasien)", "Data Terdaftar (Petugas)"])
 
@@ -68,14 +68,25 @@ if pilihan == "Pendaftaran (Pasien)":
             nik = st.text_input("证件号码 / NIK atau No. Paspor *")
             gender = st.radio("性别 / Jenis Kelamin", ["男 (Laki-laki)", "女 (Perempuan)"], horizontal=True)
             wechat = st.text_input("微信 ID 或 手机号 / ID WeChat atau No. HP *")
-            darah = st.selectbox("血型 / Golongan Darah", ["A", "B", "AB", "O", "不清楚"])
+            darah = st.selectbox("血型 / Golongan Darah", ["A", "B", "AB", "O", "不清楚 (Tidak Tahu)"])
         
         with col2:
             pt = st.selectbox("公司 / Perusahaan *", ["HPAL", "HJF", "HNC", "TBP"])
             dept = st.text_input("部门 / Departemen *").upper()
             jab = st.text_input("职位 / Jabatan *").upper()
             mes = st.text_input("宿舍号 / Blok & No. Kamar Mes *").upper()
-            agama = st.text_input("宗教 / Agama (Jika ada)")
+            
+            # UPDATE: Opsi Agama Bilingual[cite: 1]
+            opsi_agama = [
+                "伊斯兰教 (Islam)", 
+                "基督教 (Kristen)", 
+                "天主教 (Katolik)", 
+                "印度教 (Hindu)", 
+                "佛教 (Buddha)", 
+                "儒教 (Konghucu)", 
+                "无宗教/不详 (Tidak Diketahui)"
+            ]
+            agama = st.selectbox("宗教 / Agama", opsi_agama)
             
         st.write("📅 **出生信息 / Informasi Kelahiran**")
         c3, c4 = st.columns(2)
@@ -98,8 +109,7 @@ if pilihan == "Pendaftaran (Pasien)":
 elif pilihan == "Data Terdaftar (Petugas)":
     st.header("📋 Daftar Pasien Terdaftar")
     
-    # Fragment untuk auto-refresh data setiap 5 detik
-    @st.fragment(run_every="5s")
+    @st.fragment(run_every="5s") # Auto-refresh setiap 5 detik[cite: 1]
     def refresh_data():
         with get_connection() as conn:
             df = pd.read_sql("SELECT * FROM pasien ORDER BY id DESC", conn)
