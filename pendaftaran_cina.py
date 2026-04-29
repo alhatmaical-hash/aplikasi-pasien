@@ -78,44 +78,50 @@ if pilihan == "📝 Pendaftaran Pasien":
     if not list_pt:
         st.warning("⚠️ Data Master Perusahaan belum diisi. Silakan hubungi admin.")
     
+   # --- CARI BAGIAN INI DI KODE ANDA ---
+
     with st.form("form_pendaftaran", clear_on_submit=True):
         col1, col2 = st.columns(2)
+        
+        # Ambil data master dan tambahkan opsi kosong di awal
+        # Kita gunakan list comprehension untuk menggabungkan opsi "Pilih..." dengan data dari database
+        options_pt = ["-- 请选择 / Pilih Perusahaan --"] + get_master("master_pt")
+        options_dept = ["-- 请选择 / Pilih Departemen --"] + get_master("master_dept")
+        options_jabatan = ["-- 请选择 / Pilih Jabatan --"] + get_master("master_jabatan")
+    
         with col1:
             nama_m = st.text_input("中文姓名 / Nama Mandarin", placeholder="例: 王小明")
             nama_l = st.text_input("英文姓名 / Nama Sesuai Paspor (Latin) *").upper()
             nik = st.text_input("证件号码 / NIK atau No. Paspor *")
             gender = st.radio("性别 / Jenis Kelamin", ["男 (Laki-laki)", "女 (Perempuan)"], horizontal=True)
             wechat = st.text_input("微信 ID / ID WeChat atau No. HP *")
-            
-            # --- PENAMBAHAN GOLONGAN DARAH ---
-            darah = st.selectbox("血型 / Golongan Darah", [
-                "A 型", 
-                "B 型", 
-                "AB 型", 
-                "O 型", 
-                "不清楚 (Tidak Diketahui)"
-            ])
+            darah = st.selectbox("血型 / Golongan Darah", ["A 型", "B 型", "AB 型", "O 型", "不清楚 (Tidak Diketahui)"])
         
         with col2:
-            pt = st.selectbox("公司 / Perusahaan *", list_pt if list_pt else ["-"])
-            dept = st.selectbox("部门 / Departemen *", list_dept if list_dept else ["-"])
-            jab = st.selectbox("职位 / Jabatan *", list_jabatan if list_jabatan else ["-"])
+            # Tampilkan selectbox dengan opsi kosong sebagai default
+            pt = st.selectbox("公司 / Perusahaan *", options_pt)
+            dept = st.selectbox("部门 / Departemen *", options_dept)
+            jab = st.selectbox("职位 / Jabatan *", options_jabatan)
+            
             mes = st.text_input("宿舍号 / Blok & No. Kamar Mes *").upper()
             agama = st.selectbox("宗教 / Agama", ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu", "Lainnya"])
-
+    
         st.write("📅 **出生信息 / Informasi Kelahiran**")
         c3, c4 = st.columns(2)
         tmpt = c3.text_input("出生地点 / Tempat Lahir")
         tgl = c4.date_input("出生日期 / Tanggal Lahir", value=datetime(1995, 1, 1))
-
+    
         if st.form_submit_button("提交 / KIRIM PENDAFTARAN", use_container_width=True):
-            if not nama_l or not nik or not wechat or not list_pt:
-                st.error("❌ Mohon lengkapi data wajib (*)")
+            # Tambahkan validasi agar pasien tidak mengirim jawaban "-- Pilih --"
+            if (not nama_l or not nik or not wechat or 
+                pt == options_pt[0] or 
+                dept == options_dept[0] or 
+                jab == options_jabatan[0]):
+                st.error("❌ 请选择所有必填项 / Mohon pilih semua data wajib (*)")
             else:
                 tz_wit = pytz.timezone('Asia/Jayapura')
                 waktu = datetime.now(tz_wit).strftime("%Y-%m-%d %H:%M:%S")
                 with get_connection() as conn:
-                    # Menambahkan 'gol_darah' di kolom dan VALUES
                     conn.execute("""
                         INSERT INTO pasien (
                             tgl_daftar, nama_mandarin, nama_lengkap, nik, gender, 
@@ -124,7 +130,7 @@ if pilihan == "📝 Pendaftaran Pasien":
                         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", 
                         (waktu, nama_m, nama_l, nik, gender, wechat, darah, pt, dept, jab, mes, agama, tmpt, str(tgl)))
                     conn.commit()
-                st.success("✅ Berhasil! Data Anda telah tersimpan. / 提交成功！")
+                st.success("✅ 提交成功！ / Berhasil! Data Anda telah tersimpan.")
 
 # --- HALAMAN 2: DATA PASIEN (HANYA JIKA LOGIN) ---
 elif pilihan == "📋 Data Pasien (Admin)":
