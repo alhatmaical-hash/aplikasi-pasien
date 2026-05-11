@@ -7,6 +7,8 @@ from streamlit_drawable_canvas import st_canvas
 from fpdf import FPDF
 from PIL import Image
 import numpy as np
+import os
+from fpdf import FPDF
 
 # --- DATABASE SETUP ---
 def init_db():
