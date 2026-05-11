@@ -153,39 +153,66 @@ def main():
     elif choice == "1. Registrasi Pasien":
         st.header("📝 Form Registrasi Karyawan")
         with st.form("regis_form"):
+            # Baris 1
             c1, c2, c3 = st.columns(3)
-            id_kar = c1.text_input("No ID Karyawan")
-            nik = c2.text_input("NIK KTP")
-            nama = c3.text_input("Nama Lengkap")
-            tgl_lhr = c1.date_input("Tanggal Lahir", min_value=date(1960,1,1))
-            usia = hitung_usia(tgl_lhr)
-            c2.info(f"Usia: {usia} Tahun")
-            gender = c3.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
-            doh = c1.date_input("Date of Hire")
+            jenis_mcu = c1.selectbox("Jenis MCU", [
+                "MCU ANNUAL (MCU TAHUNAN)", 
+                "PRE EMPLOYMENT (MCU KARYAWAN BARU)"
+            ])
+            id_kar = c2.text_input("No ID Karyawan")
+            nik = c3.text_input("NIK KTP")
             
+            # Baris 2
+            c4, c5, c6 = st.columns(3)
+            nama = c4.text_input("Nama Lengkap")
+            tgl_lhr = c5.date_input("Tanggal Lahir", min_value=date(1960,1,1))
+            usia = hitung_usia(tgl_lhr)
+            c6.info(f"Usia Terhitung: {usia} Tahun")
+            
+            # Baris 3
+            c7, c8, c9 = st.columns(3)
+            gender = c7.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+            # Mengubah Date of Hire menjadi kolom teks ketikan manual
+            doh_manual = c8.text_input("Masa Lama Kerja (Date of Hire)", placeholder="Contoh: 2 Tahun / 5 Bulan")
+            
+            # Ambil data dari master untuk dropdown
             conn = sqlite3.connect('mcu_complex.db')
-            pts = [x[0] for x in conn.execute('SELECT * FROM master_perusahaan').fetchall()]
-            depts = [x[0] for x in conn.execute('SELECT * FROM master_dept').fetchall()]
-            jabs = [x[0] for x in conn.execute('SELECT * FROM master_jabatan').fetchall()]
+            list_pt = [x[0] for x in conn.execute('SELECT * FROM master_perusahaan').fetchall()]
+            list_dept = [x[0] for x in conn.execute('SELECT * FROM master_dept').fetchall()]
+            list_jab = [x[0] for x in conn.execute('SELECT * FROM master_jabatan').fetchall()]
             conn.close()
             
-            pt = c2.selectbox("Perusahaan", pts if pts else ["-"])
-            dept = c3.selectbox("Departemen", depts if depts else ["-"])
-            jab = c1.selectbox("Jabatan", jabs if jabs else ["-"])
-            lokasi = c2.text_input("Lokasi Kerja")
-            hp = c3.text_input("No HP")
-            status_m = c1.selectbox("Status Pernikahan", ["Lajang", "Menikah", "Cerai"])
-            jml_anak = c2.number_input("Jumlah Anak", 0, 10)
-            tinggal = c3.selectbox("Tempat Tinggal", ["Mes", "Kawasi", "Lainnya"])
-            air = c1.selectbox("Sumber Air", ["RO", "Galon", "Sumur"])
+            pt = c9.selectbox("Perusahaan", list_pt if list_pt else ["-"])
+
+            # Baris 4
+            c10, c11, c12 = st.columns(3)
+            dept = c10.selectbox("Departemen", list_dept if list_dept else ["-"])
+            jab = c11.selectbox("Jabatan", list_jab if list_jab else ["-"])
+            lokasi = c12.text_input("Lokasi Kerja")
+
+            # Baris 5
+            c13, c14, c15 = st.columns(3)
+            hp = c13.text_input("No HP")
+            status_m = c14.selectbox("Status Pernikahan", ["Lajang", "Menikah", "Cerai"])
+            jml_anak = c15.number_input("Jumlah Anak", 0, 20)
+
+            # Baris 6
+            c16, c17, c18 = st.columns(3)
+            tinggal = c16.selectbox("Tempat Tinggal", ["Mes", "Kawasi", "Lainnya"])
+            air = c17.selectbox("Sumber Air Minum", ["RO", "Galon Isi Ulang", "Sumur", "PDAM"])
+            mcu_ke = c18.number_input("MCU Annual Ke-", min_value=1, step=1)
             
             if st.form_submit_button("Simpan Registrasi"):
                 conn = sqlite3.connect('mcu_complex.db')
-                conn.execute('INSERT OR REPLACE INTO pasien VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', 
-                             (id_kar, nik, nama, "Tempat", str(tgl_lhr), usia, gender, str(doh), pt, dept, jab, lokasi, hp, status_m, jml_anak, tinggal, air))
+                # Tambahkan kolom jenis_mcu ke query insert jika tabel pasien sudah mendukungnya
+                # Jika belum, pastikan init_db() di atas sudah menyertakan kolom jenis_mcu
+                conn.execute('''INSERT OR REPLACE INTO pasien 
+                             (id_karyawan, nik, nama, tgl_lahir, usia, gender, doh, perusahaan, dept, jabatan, lokasi, no_hp, status_nikah, jml_anak, tempat_tinggal, sumber_air) 
+                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                             (id_kar, nik, nama, str(tgl_lhr), usia, gender, doh_manual, pt, dept, jab, lokasi, hp, status_m, jml_anak, tinggal, air))
                 conn.commit()
                 conn.close()
-                st.success("Registrasi Berhasil!")
+                st.success(f"Berhasil! {nama} terdaftar untuk {jenis_mcu}")
 
     # --- MENU 2: PEMERIKSAAN & UPLOAD ---
     elif choice == "2. Pemeriksaan & Upload":
