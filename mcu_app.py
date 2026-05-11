@@ -123,19 +123,78 @@ def main():
             st.download_button(label="📥 Download Excel", data=buffer.getvalue(), file_name=f"Rekap_MCU_{date.today()}.xlsx")
             st.dataframe(df_p, use_container_width=True, hide_index=True)
 
-    # --- MENU: MASTER DATA ---
+    # --- MENU: MASTER DATA & AKUN ---
     elif choice == "Master Data":
-        st.header("⚙️ Manajemen Data Master")
-        col1, col2, col3 = st.columns(3)
-        conn = sqlite3.connect('mcu_complex.db')
-        with col1:
-            new_pt = st.text_input("Tambah Perusahaan")
-            if st.button("Simpan PT"):
-                conn.execute('INSERT INTO master_perusahaan VALUES (?)', (new_pt,))
-                conn.commit()
-                st.success("PT Tersimpan")
-        # ... (Sama seperti sebelumnya untuk col2 & col3) ...
-        conn.close()
+        st.header("⚙️ Manajemen Data Master & Akun")
+        
+        tab_master, tab_akun = st.tabs(["📋 Data Master", "👤 Manajemen Akun"])
+        
+        with tab_master:
+            conn = sqlite3.connect('mcu_complex.db')
+            
+            # Baris 1: Perusahaan
+            st.subheader("🏢 Perusahaan")
+            c1, c2 = st.columns([3, 1])
+            new_pt = c1.text_input("Nama Perusahaan Baru", key="add_pt")
+            if c2.button("Simpan PT", use_container_width=True):
+                if new_pt:
+                    conn.execute('INSERT INTO master_perusahaan VALUES (?)', (new_pt,))
+                    conn.commit()
+                    st.success(f"PT {new_pt} Berhasil Disimpan")
+                    st.rerun()
+
+            st.divider()
+
+            # Baris 2: Departemen
+            st.subheader("📁 Departemen")
+            c3, c4 = st.columns([3, 1])
+            new_dept = c3.text_input("Nama Departemen Baru", key="add_dept")
+            if c4.button("Simpan Dept", use_container_width=True):
+                if new_dept:
+                    conn.execute('INSERT INTO master_dept VALUES (?)', (new_dept,))
+                    conn.commit()
+                    st.success(f"Dept {new_dept} Berhasil Disimpan")
+                    st.rerun()
+
+            st.divider()
+
+            # Baris 3: Jabatan
+            st.subheader("👔 Jabatan")
+            c5, c6 = st.columns([3, 1])
+            new_jab = c5.text_input("Nama Jabatan Baru", key="add_jab")
+            if c6.button("Simpan Jabatan", use_container_width=True):
+                if new_jab:
+                    conn.execute('INSERT INTO master_jabatan VALUES (?)', (new_jab,))
+                    conn.commit()
+                    st.success(f"Jabatan {new_jab} Berhasil Disimpan")
+                    st.rerun()
+            
+            conn.close()
+
+        with tab_akun:
+            st.subheader("🔐 Tambah Akun Pengguna (Petugas/Dokter)")
+            # Inisialisasi tabel user jika belum ada
+            conn = sqlite3.connect('mcu_complex.db')
+            conn.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
+            
+            with st.form("form_akun"):
+                new_user = st.text_input("Username")
+                new_pass = st.text_input("Password", type="password")
+                new_role = st.selectbox("Role / Jabatan", ["Admin", "Dokter", "Perawat", "Registrasi"])
+                if st.form_submit_button("Buat Akun"):
+                    try:
+                        conn.execute('INSERT INTO users VALUES (?,?,?)', (new_user, new_pass, new_role))
+                        conn.commit()
+                        st.success(f"Akun {new_user} sebagai {new_role} berhasil dibuat!")
+                    except:
+                        st.error("Username sudah ada.")
+            
+            # Tampilkan Daftar Akun
+            st.divider()
+            st.subheader("👥 Daftar Pengguna Sistem")
+            df_users = pd.read_sql_query("SELECT username, role FROM users", conn)
+            st.table(df_users)
+            conn.close()
 
     # --- MENU 1: REGISTRASI ---
     elif choice == "1. Registrasi Pasien":
