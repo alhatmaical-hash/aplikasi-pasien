@@ -8,6 +8,7 @@ from fpdf import FPDF
 from PIL import Image
 import numpy as np
 import os
+import re
 from fpdf import FPDF
 
 # --- DATABASE SETUP ---
@@ -42,28 +43,39 @@ def hitung_usia(birthdate):
 from fpdf import FPDF
 
 def generate_consent_pdf(data_pasien, tipe, img_ttd):
-    # Inisialisasi FPDF dengan format Unicode
+    # 1. Inisialisasi PDF
     pdf = FPDF()
     
-    # --- MENAMBAHKAN FONT UNICODE ---
-    # Pastikan file 'simhei.ttf' sudah diupload ke GitHub folder yang sama
-    try:
-        pdf.add_font('SimHei', '', 'simhei.ttf', uni=True)
-        font_main = 'SimHei'
-    except Exception as e:
-        # Jika font gagal dimuat, aplikasi akan fallback ke Helvetica 
-        # namun teks Mandarin akan hilang/error kembali.
+    # 2. Logika Loading Font Unicode
+    # Pastikan file simhei.ttf ada di root folder GitHub Anda
+    font_path = os.path.join(os.getcwd(), "simhei.ttf")
+    
+    can_use_unicode = False
+    if os.path.exists(font_path):
+        try:
+            pdf.add_font('SimHei', '', font_path)
+            font_main = 'SimHei'
+            can_use_unicode = True
+        except:
+            font_main = 'Helvetica'
+    else:
         font_main = 'Helvetica'
+
+    # 3. Fungsi Helper untuk membersihkan teks jika font tidak tersedia
+    def safe_t(text):
+        if not can_use_unicode:
+            # Hapus karakter non-ASCII (Mandarin) agar tidak Error
+            return re.sub(r'[^\x00-\x7F]+', '', text)
+        return text
 
     pdf.add_page()
     
-    # --- HEADER / KOP SURAT ---
+    # --- HEADER ---
     pdf.set_font(font_main, 'B', 12)
     pdf.cell(0, 5, "KLINIK HARITA NICKEL OBI", ln=True, align='C')
     pdf.set_font(font_main, '', 9)
     pdf.cell(0, 5, "FIRST-AID POST PT. HALMAHERA JAYA FERONIKEL", ln=True, align='C')
     pdf.cell(0, 5, "SITE KAWASI - PULAU OBI - HALSEL - MALUT", ln=True, align='C')
-    pdf.cell(0, 5, "Email: mcu.klinik@hjferonikel.com", ln=True, align='C')
     pdf.line(10, 32, 200, 32)
     pdf.ln(10)
 
@@ -74,68 +86,71 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
     else:
         judul = "INFORMED CONSENT 知情同意书"
     
-    pdf.cell(0, 10, judul, ln=True, align='C')
+    # Gunakan safe_t untuk mencegah FPDFUnicodeEncodingException
+    pdf.cell(0, 10, safe_t(judul), ln=True, align='C')
     pdf.ln(5)
 
     # --- DATA PASIEN ---
     pdf.set_font(font_main, '', 9)
-    col_width = 45
-    data_list = [
-        ["Nama Pasien / 姓名", f": {data_pasien[0]}"],
-        ["No. ID / ID卡号", f": {data_pasien[1]}"],
-        ["Perusahaan / 公司", f": {data_pasien[2]}"],
-        ["Jenis Kelamin / 性别", f": {data_pasien[3]}"],
-        ["Tgl Lahir / 出生日期", f": {data_pasien[4]}"]
+    # data_pasien: (nama, id, perusahaan, gender, tgl_lahir)
+    labels = [
+        ("Nama Pasien / 姓名", data_pasien[0]),
+        ("No. ID / ID卡号", data_pasien[1]),
+        ("Perusahaan / 公司", data_pasien[2]),
+        ("Jenis Kelamin / 性别", data_pasien[3]),
+        ("Tgl Lahir / 出生日期", data_pasien[4])
     ]
-    for row in data_list:
-        pdf.cell(col_width, 6, row[0], border=0)
-        pdf.cell(0, 6, row[1], border=0, ln=True)
+    
+    for label, val in labels:
+        pdf.cell(45, 6, safe_t(label), border=0)
+        pdf.cell(0, 6, f": {val}", border=0, ln=True)
     
     pdf.ln(5)
     pdf.set_font(font_main, 'B', 9)
-    pdf.multi_cell(0, 5, "PASIEN DAN / WALI HUKUM HARUS MEMBACA, MEMAHAMI DAN MENGISI INFORMASI TERSEBUT")
-    pdf.multi_cell(0, 5, "患者和/或法定监护人必须阅读、理解并填写该信息")
+    pdf.multi_cell(0, 5, safe_t("PASIEN DAN / WALI HUKUM HARUS MEMBACA, MEMAHAMI DAN MENGISI INFORMASI TERSEBUT"))
+    pdf.multi_cell(0, 5, safe_t("患者和/ or 法定监护人必须阅读、理解并填写该信息"))
     pdf.ln(2)
 
     # --- ISI PERSETUJUAN ---
     pdf.set_font(font_main, '', 8)
     if tipe == "General Consent":
         content = [
-            "1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan kepada saya. (我同意对我进行检查和/或治疗)",
-            "2. HAK DAN KEWAJIBAN PASIEN: Saya mengakui telah mendapat informasi tentang hak dan kewajiban saya.",
-            "3. PRIVASI: Saya memberi kuasa kepada Klinik Harita Nickel Obi untuk menjaga kerahasiaan penyakit saya.",
-            "4. RAHASIA KEDOKTERAN: Saya setuju rahasia kedokteran saya dibuka untuk kepentingan perawatan atau asuransi.",
-            "5. BARANG PRIBADI: Saya bertanggung jawab penuh atas barang berharga yang saya bawa."
+            "1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan. (我同意对我进行检查)",
+            "2. HAK DAN KEWAJIBAN PASIEN: Saya mengakui telah mendapat informasi hak saya.",
+            "3. PRIVASI: Saya memberi kuasa Klinik untuk menjaga kerahasiaan penyakit saya.",
+            "4. RAHASIA KEDOKTERAN: Saya setuju rahasia medis dibuka untuk asuransi/perawatan.",
+            "5. BARANG PRIBADI: Saya bertanggung jawab penuh atas barang berharga saya."
         ]
     else:
         content = [
-            "Saya menyatakan SETUJU (同意) untuk dilakukan pemeriksaan darah yaitu: anti-HIV, HBsAg dan anti-HCV.",
-            "Demikian persetujuan ini saya buat tanpa paksaan dari pihak manapun secara bebas dan suka rela."
+            "Saya menyatakan SETUJU (同意) untuk dilakukan pemeriksaan darah: anti-HIV, HBsAg.",
+            "Persetujuan ini dibuat tanpa paksaan secara bebas dan suka rela."
         ]
     
     for item in content:
-        pdf.multi_cell(0, 5, item)
+        pdf.multi_cell(0, 5, safe_t(item))
     
     # --- TANDA TANGAN ---
     pdf.ln(15)
-    y_ttd = pdf.get_y()
+    y_start = pdf.get_y()
     
-    # Simpan TTD Pasien secara sementara
-    temp_ttd = "temp_ttd.png"
+    # Simpan TTD Canvas
+    temp_ttd = "temp_signature.png"
     img_ttd.save(temp_ttd)
     
     pdf.set_font(font_main, 'B', 9)
-    pdf.text(30, y_ttd, "Petugas / 护士")
-    pdf.text(140, y_ttd, "Pasien / wali / 病人")
+    pdf.text(30, y_start, safe_t("Petugas / 护士"))
+    pdf.text(140, y_start, safe_t("Pasien / wali / 病人"))
     
-    # Masukkan gambar TTD
-    pdf.image(temp_ttd, x=135, y=y_ttd + 2, w=40)
+    # Tempel Gambar TTD
+    pdf.image(temp_ttd, x=135, y=y_start + 2, w=40)
     
-    pdf.text(140, y_ttd + 30, f"( {data_pasien[0]} )")
-    pdf.text(30, y_ttd + 30, "( Paramedic Staff )")
+    pdf.text(140, y_start + 30, f"( {data_pasien[0]} )")
+    pdf.text(30, y_start + 30, "( Paramedic Staff )")
 
-    # PENTING: Untuk fpdf2, gunakan output() secara langsung tanpa encode latin-1
+    # Final Output (Bytes untuk Streamlit)
     return pdf.output()
+    
 def main():
     st.set_page_config(page_title="Sistem Manajemen MCU Klinik", layout="wide")
     init_db()
