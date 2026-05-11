@@ -37,14 +37,28 @@ def hitung_usia(birthdate):
     today = date.today()
     return today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
 
+from fpdf import FPDF
+
 def generate_consent_pdf(data_pasien, tipe, img_ttd):
+    # Inisialisasi FPDF dengan format Unicode
     pdf = FPDF()
+    
+    # --- MENAMBAHKAN FONT UNICODE ---
+    # Pastikan file 'simhei.ttf' sudah diupload ke GitHub folder yang sama
+    try:
+        pdf.add_font('SimHei', '', 'simhei.ttf', uni=True)
+        font_main = 'SimHei'
+    except Exception as e:
+        # Jika font gagal dimuat, aplikasi akan fallback ke Helvetica 
+        # namun teks Mandarin akan hilang/error kembali.
+        font_main = 'Helvetica'
+
     pdf.add_page()
     
     # --- HEADER / KOP SURAT ---
-    pdf.set_font("Helvetica", 'B', 12)
+    pdf.set_font(font_main, 'B', 12)
     pdf.cell(0, 5, "KLINIK HARITA NICKEL OBI", ln=True, align='C')
-    pdf.set_font("Helvetica", '', 9)
+    pdf.set_font(font_main, '', 9)
     pdf.cell(0, 5, "FIRST-AID POST PT. HALMAHERA JAYA FERONIKEL", ln=True, align='C')
     pdf.cell(0, 5, "SITE KAWASI - PULAU OBI - HALSEL - MALUT", ln=True, align='C')
     pdf.cell(0, 5, "Email: mcu.klinik@hjferonikel.com", ln=True, align='C')
@@ -52,13 +66,17 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
     pdf.ln(10)
 
     # --- JUDUL DOKUMEN ---
-    pdf.set_font("Helvetica", 'B', 11)
-    judul = "PERSETUJUAN UMUM / GENERAL CONSENT / 一般同意" if tipe == "General Consent" else "INFORMED CONSENT 知情同意书"
+    pdf.set_font(font_main, 'B', 11)
+    if tipe == "General Consent":
+        judul = "PERSETUJUAN UMUM / GENERAL CONSENT / 一般同意"
+    else:
+        judul = "INFORMED CONSENT 知情同意书"
+    
     pdf.cell(0, 10, judul, ln=True, align='C')
     pdf.ln(5)
 
     # --- DATA PASIEN ---
-    pdf.set_font("Helvetica", '', 9)
+    pdf.set_font(font_main, '', 9)
     col_width = 45
     data_list = [
         ["Nama Pasien / 姓名", f": {data_pasien[0]}"],
@@ -72,13 +90,13 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
         pdf.cell(0, 6, row[1], border=0, ln=True)
     
     pdf.ln(5)
-    pdf.set_font("Helvetica", 'B', 9)
+    pdf.set_font(font_main, 'B', 9)
     pdf.multi_cell(0, 5, "PASIEN DAN / WALI HUKUM HARUS MEMBACA, MEMAHAMI DAN MENGISI INFORMASI TERSEBUT")
     pdf.multi_cell(0, 5, "患者和/或法定监护人必须阅读、理解并填写该信息")
     pdf.ln(2)
 
-    # --- ISI PERSETUJUAN (Diringkas dari Foto) ---
-    pdf.set_font("Helvetica", '', 8)
+    # --- ISI PERSETUJUAN ---
+    pdf.set_font(font_main, '', 8)
     if tipe == "General Consent":
         content = [
             "1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan kepada saya. (我同意对我进行检查和/或治疗)",
@@ -100,22 +118,22 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
     pdf.ln(15)
     y_ttd = pdf.get_y()
     
-    # Simpan TTD Pasien
+    # Simpan TTD Pasien secara sementara
     temp_ttd = "temp_ttd.png"
     img_ttd.save(temp_ttd)
     
-    pdf.set_font("Helvetica", 'B', 9)
+    pdf.set_font(font_main, 'B', 9)
     pdf.text(30, y_ttd, "Petugas / 护士")
     pdf.text(140, y_ttd, "Pasien / wali / 病人")
     
-    # Masukkan gambar TTD di sisi kanan
+    # Masukkan gambar TTD
     pdf.image(temp_ttd, x=135, y=y_ttd + 2, w=40)
     
     pdf.text(140, y_ttd + 30, f"( {data_pasien[0]} )")
     pdf.text(30, y_ttd + 30, "( Paramedic Staff )")
 
-    return pdf.output(dest='S').encode('latin-1')
-# --- UI APP ---
+    # PENTING: Untuk fpdf2, gunakan output() secara langsung tanpa encode latin-1
+    return pdf.output()
 def main():
     st.set_page_config(page_title="Sistem Manajemen MCU Klinik", layout="wide")
     init_db()
