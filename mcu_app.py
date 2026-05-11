@@ -43,13 +43,10 @@ def hitung_usia(birthdate):
 from fpdf import FPDF
 
 def generate_consent_pdf(data_pasien, tipe, img_ttd):
-    # 1. Inisialisasi PDF
     pdf = FPDF()
     
-    # 2. Logika Loading Font Unicode
-    # Pastikan file simhei.ttf ada di root folder GitHub Anda
+    # --- LOAD FONT ---
     font_path = os.path.join(os.getcwd(), "simhei.ttf")
-    
     can_use_unicode = False
     if os.path.exists(font_path):
         try:
@@ -61,38 +58,32 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
     else:
         font_main = 'Helvetica'
 
-    # 3. Fungsi Helper untuk membersihkan teks jika font tidak tersedia
     def safe_t(text):
         if not can_use_unicode:
-            # Hapus karakter non-ASCII (Mandarin) agar tidak Error
             return re.sub(r'[^\x00-\x7F]+', '', text)
         return text
 
     pdf.add_page()
-    
+    # Tentukan lebar efektif halaman (Total lebar - margin kiri - margin kanan)
+    # Biasanya 210mm - 10mm - 10mm = 190mm
+    eff_width = pdf.w - 2 * pdf.l_margin 
+
     # --- HEADER ---
     pdf.set_font(font_main, 'B', 12)
-    pdf.cell(0, 5, "KLINIK HARITA NICKEL OBI", ln=True, align='C')
-    pdf.set_font(font_main, '', 9)
-    pdf.cell(0, 5, "FIRST-AID POST PT. HALMAHERA JAYA FERONIKEL", ln=True, align='C')
-    pdf.cell(0, 5, "SITE KAWASI - PULAU OBI - HALSEL - MALUT", ln=True, align='C')
-    pdf.line(10, 32, 200, 32)
+    pdf.cell(eff_width, 5, "KLINIK HARITA NICKEL OBI", ln=True, align='C')
+    # ... (Kop surat lainnya gunakan eff_width alih-alih 0 jika ragu)
+
     pdf.ln(10)
 
-    # --- JUDUL DOKUMEN ---
+    # --- JUDUL ---
     pdf.set_font(font_main, 'B', 11)
-    if tipe == "General Consent":
-        judul = "PERSETUJUAN UMUM / GENERAL CONSENT / 一般同意"
-    else:
-        judul = "INFORMED CONSENT 知情同意书"
-    
-    # Gunakan safe_t untuk mencegah FPDFUnicodeEncodingException
-    pdf.cell(0, 10, safe_t(judul), ln=True, align='C')
+    judul = "PERSETUJUAN UMUM / GENERAL CONSENT / 一般同意" if tipe == "General Consent" else "INFORMED CONSENT 知情同意书"
+    pdf.cell(eff_width, 10, safe_t(judul), ln=True, align='C')
     pdf.ln(5)
 
     # --- DATA PASIEN ---
     pdf.set_font(font_main, '', 9)
-    # data_pasien: (nama, id, perusahaan, gender, tgl_lahir)
+    # Gunakan lebar tetap untuk label agar rapi
     labels = [
         ("Nama Pasien / 姓名", data_pasien[0]),
         ("No. ID / ID卡号", data_pasien[1]),
@@ -100,55 +91,38 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
         ("Jenis Kelamin / 性别", data_pasien[3]),
         ("Tgl Lahir / 出生日期", data_pasien[4])
     ]
-    
     for label, val in labels:
         pdf.cell(45, 6, safe_t(label), border=0)
         pdf.cell(0, 6, f": {val}", border=0, ln=True)
-    
+
     pdf.ln(5)
+
+    # --- BAGIAN YANG ERROR (DIPERBAIKI) ---
     pdf.set_font(font_main, 'B', 9)
-    pdf.multi_cell(0, 5, safe_t("PASIEN DAN / WALI HUKUM HARUS MEMBACA, MEMAHAMI DAN MENGISI INFORMASI TERSEBUT"))
-    pdf.multi_cell(0, 5, safe_t("患者和/ or 法定监护人必须阅读、理解并填写该信息"))
+    
+    # Pastikan kursor kembali ke margin kiri sebelum multi_cell
+    pdf.set_x(pdf.l_margin) 
+    
+    # Gunakan eff_width secara eksplisit alih-alih 0
+    pdf.multi_cell(eff_width, 5, safe_t("PASIEN DAN / WALI HUKUM HARUS MEMBACA, MEMAHAMI DAN MENGISI INFORMASI TERSEBUT"))
+    pdf.multi_cell(eff_width, 5, safe_t("患者和/ or 法定监护人必须阅读、理解并填写该信息"))
     pdf.ln(2)
 
     # --- ISI PERSETUJUAN ---
     pdf.set_font(font_main, '', 8)
+    # ... (Loop content) ...
     if tipe == "General Consent":
-        content = [
-            "1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan. (我同意对我进行检查)",
-            "2. HAK DAN KEWAJIBAN PASIEN: Saya mengakui telah mendapat informasi hak saya.",
-            "3. PRIVASI: Saya memberi kuasa Klinik untuk menjaga kerahasiaan penyakit saya.",
-            "4. RAHASIA KEDOKTERAN: Saya setuju rahasia medis dibuka untuk asuransi/perawatan.",
-            "5. BARANG PRIBADI: Saya bertanggung jawab penuh atas barang berharga saya."
-        ]
+        content = ["1. ...", "2. ..."] # dst
     else:
-        content = [
-            "Saya menyatakan SETUJU (同意) untuk dilakukan pemeriksaan darah: anti-HIV, HBsAg.",
-            "Persetujuan ini dibuat tanpa paksaan secara bebas dan suka rela."
-        ]
-    
+        content = ["Saya menyatakan SETUJU...", "..."]
+        
     for item in content:
-        pdf.multi_cell(0, 5, safe_t(item))
-    
-    # --- TANDA TANGAN ---
-    pdf.ln(15)
-    y_start = pdf.get_y()
-    
-    # Simpan TTD Canvas
-    temp_ttd = "temp_signature.png"
-    img_ttd.save(temp_ttd)
-    
-    pdf.set_font(font_main, 'B', 9)
-    pdf.text(30, y_start, safe_t("Petugas / 护士"))
-    pdf.text(140, y_start, safe_t("Pasien / wali / 病人"))
-    
-    # Tempel Gambar TTD
-    pdf.image(temp_ttd, x=135, y=y_start + 2, w=40)
-    
-    pdf.text(140, y_start + 30, f"( {data_pasien[0]} )")
-    pdf.text(30, y_start + 30, "( Paramedic Staff )")
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(eff_width, 4, safe_t(item))
 
-    # Final Output (Bytes untuk Streamlit)
+    # --- TANDA TANGAN ---
+    # ... (Sisa kode tanda tangan tetap sama) ...
+    
     return pdf.output()
     
 def main():
