@@ -37,38 +37,84 @@ def hitung_usia(birthdate):
     today = date.today()
     return today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
 
-def generate_consent_pdf(nama, id_kar, jenis, ttd_image):
+def generate_consent_pdf(data_pasien, tipe, img_ttd):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt=f"DOKUMEN {jenis.upper()}", ln=True, align='C')
-    pdf.set_font("Arial", size=12)
+    
+    # --- HEADER / KOP SURAT ---
+    pdf.set_font("Helvetica", 'B', 12)
+    pdf.cell(0, 5, "KLINIK HARITA NICKEL OBI", ln=True, align='C')
+    pdf.set_font("Helvetica", '', 9)
+    pdf.cell(0, 5, "FIRST-AID POST PT. HALMAHERA JAYA FERONIKEL", ln=True, align='C')
+    pdf.cell(0, 5, "SITE KAWASI - PULAU OBI - HALSEL - MALUT", ln=True, align='C')
+    pdf.cell(0, 5, "Email: mcu.klinik@hjferonikel.com", ln=True, align='C')
+    pdf.line(10, 32, 200, 32)
     pdf.ln(10)
-    pdf.cell(200, 10, txt=f"Nama Pasien: {nama}", ln=True)
-    pdf.cell(200, 10, txt=f"ID Karyawan: {id_kar}", ln=True)
-    pdf.cell(200, 10, txt=f"Tanggal Cetak: {date.today()}", ln=True)
-    pdf.ln(5)
-    
-    if jenis == "General Consent":
-        text = ("Persetujuan Umum: Saya menyetujui untuk dilakukan pemeriksaan fisik, "
-                "laboratorium, dan prosedur rutin lainnya. Saya memahami hak saya sebagai pasien "
-                "dan bersedia mematuhi peraturan klinik.")
-    else:
-        text = ("Informed Consent: Saya telah diberikan penjelasan mengenai tindakan medis khusus "
-                "yang akan dilakukan, termasuk tujuan, risiko, dan alternatifnya. Saya memberikan "
-                "persetujuan tanpa paksaan.")
-    
-    pdf.multi_cell(0, 10, txt=text)
-    pdf.ln(20)
-    pdf.cell(200, 10, txt="Tanda Tangan Pasien:", ln=True)
-    
-    # Simpan TTD sementara
-    temp_img = "temp_ttd.png"
-    ttd_image.save(temp_img)
-    pdf.image(temp_img, x=10, y=pdf.get_y(), w=50)
-    
-    return pdf.output(dest='S').encode('latin-1')
 
+    # --- JUDUL DOKUMEN ---
+    pdf.set_font("Helvetica", 'B', 11)
+    judul = "PERSETUJUAN UMUM / GENERAL CONSENT / 一般同意" if tipe == "General Consent" else "INFORMED CONSENT 知情同意书"
+    pdf.cell(0, 10, judul, ln=True, align='C')
+    pdf.ln(5)
+
+    # --- DATA PASIEN ---
+    pdf.set_font("Helvetica", '', 9)
+    col_width = 45
+    data_list = [
+        ["Nama Pasien / 姓名", f": {data_pasien[0]}"],
+        ["No. ID / ID卡号", f": {data_pasien[1]}"],
+        ["Perusahaan / 公司", f": {data_pasien[2]}"],
+        ["Jenis Kelamin / 性别", f": {data_pasien[3]}"],
+        ["Tgl Lahir / 出生日期", f": {data_pasien[4]}"]
+    ]
+    for row in data_list:
+        pdf.cell(col_width, 6, row[0], border=0)
+        pdf.cell(0, 6, row[1], border=0, ln=True)
+    
+    pdf.ln(5)
+    pdf.set_font("Helvetica", 'B', 9)
+    pdf.multi_cell(0, 5, "PASIEN DAN / WALI HUKUM HARUS MEMBACA, MEMAHAMI DAN MENGISI INFORMASI TERSEBUT")
+    pdf.multi_cell(0, 5, "患者和/或法定监护人必须阅读、理解并填写该信息")
+    pdf.ln(2)
+
+    # --- ISI PERSETUJUAN (Diringkas dari Foto) ---
+    pdf.set_font("Helvetica", '', 8)
+    if tipe == "General Consent":
+        content = [
+            "1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan kepada saya. (我同意对我进行检查和/或治疗)",
+            "2. HAK DAN KEWAJIBAN PASIEN: Saya mengakui telah mendapat informasi tentang hak dan kewajiban saya.",
+            "3. PRIVASI: Saya memberi kuasa kepada Klinik Harita Nickel Obi untuk menjaga kerahasiaan penyakit saya.",
+            "4. RAHASIA KEDOKTERAN: Saya setuju rahasia kedokteran saya dibuka untuk kepentingan perawatan atau asuransi.",
+            "5. BARANG PRIBADI: Saya bertanggung jawab penuh atas barang berharga yang saya bawa."
+        ]
+    else:
+        content = [
+            "Saya menyatakan SETUJU (同意) untuk dilakukan pemeriksaan darah yaitu: anti-HIV, HBsAg dan anti-HCV.",
+            "Demikian persetujuan ini saya buat tanpa paksaan dari pihak manapun secara bebas dan suka rela."
+        ]
+    
+    for item in content:
+        pdf.multi_cell(0, 5, item)
+    
+    # --- TANDA TANGAN ---
+    pdf.ln(15)
+    y_ttd = pdf.get_y()
+    
+    # Simpan TTD Pasien
+    temp_ttd = "temp_ttd.png"
+    img_ttd.save(temp_ttd)
+    
+    pdf.set_font("Helvetica", 'B', 9)
+    pdf.text(30, y_ttd, "Petugas / 护士")
+    pdf.text(140, y_ttd, "Pasien / wali / 病人")
+    
+    # Masukkan gambar TTD di sisi kanan
+    pdf.image(temp_ttd, x=135, y=y_ttd + 2, w=40)
+    
+    pdf.text(140, y_ttd + 30, f"( {data_pasien[0]} )")
+    pdf.text(30, y_ttd + 30, "( Paramedic Staff )")
+
+    return pdf.output(dest='S').encode('latin-1')
 # --- UI APP ---
 def main():
     st.set_page_config(page_title="Sistem Manajemen MCU Klinik", layout="wide")
@@ -252,41 +298,43 @@ def main():
                 conn.close()
                 st.success(f"Berhasil Terdaftar!")
 
-    # --- MENU 1.5: CONSENT (BARU) ---
-    elif choice == "1.5 General & Informed Consent":
-        st.header("📑 Persetujuan Pasien (Digital Consent)")
-        id_cari = st.text_input("Masukkan ID Karyawan untuk Tanda Tangan")
+   # --- DI DALAM MENU 1.5 ---
+elif choice == "1.5 General & Informed Consent":
+    st.header("📑 Digital Consent Form")
+    id_cari = st.text_input("Masukkan ID Karyawan")
+    
+    if id_cari:
+        conn = sqlite3.connect('mcu_complex.db')
+        # Ambil data lengkap untuk PDF
+        p = conn.execute("SELECT nama, id_karyawan, perusahaan, gender, tgl_lahir FROM pasien WHERE id_karyawan=?", (id_cari,)).fetchone()
+        conn.close()
         
-        if id_cari:
-            conn = sqlite3.connect('mcu_complex.db')
-            p_data = conn.execute("SELECT nama FROM pasien WHERE id_karyawan=?", (id_cari,)).fetchone()
-            conn.close()
+        if p:
+            st.success(f"Pasien: {p[0]} ({p[2]})")
+            tipe = st.radio("Pilih Dokumen", ["General Consent", "Informed Consent"], horizontal=True)
             
-            if p_data:
-                st.success(f"Pasien ditemukan: **{p_data[0]}**")
-                tipe = st.radio("Pilih Jenis Persetujuan", ["General Consent", "Informed Consent"], horizontal=True)
-                
-                # Tampilan Isi Dokumen
-                with st.expander("Klik untuk baca isi dokumen", expanded=True):
-                    if tipe == "General Consent":
-                        st.write("Dengan ini saya menyetujui pemeriksaan fisik dan diagnostik rutin...")
-                    else:
-                        st.write("Saya telah dijelaskan mengenai risiko dan prosedur tindakan medis...")
+            # Canvas TTD
+            st.subheader("Tanda Tangan Pasien / 病人签名")
+            canvas_res = st_canvas(
+                stroke_width=2, stroke_color="#000", background_color="#ffffff",
+                height=150, width=400, drawing_mode="freedraw", key="canvas_sig"
+            )
 
-                st.subheader("Silakan Tanda Tangan di bawah ini (Gunakan Mouse)")
-                canvas_res = st_canvas(
-                    stroke_width=3, stroke_color="#000", background_color="#eee",
-                    height=150, width=500, drawing_mode="freedraw", key="consent_canvas"
-                )
-
-                if st.button("Proses Dokumen & Tanda Tangan"):
-                    if canvas_res.image_data is not None:
-                        img = Image.fromarray(canvas_res.image_data.astype('uint8'), 'RGBA')
-                        pdf_file = generate_consent_pdf(p_data[0], id_cari, tipe, img)
-                        st.success("Dokumen PDF Berhasil Dibuat!")
-                        st.download_button(label="📥 Download & Cetak PDF", data=pdf_file, file_name=f"Consent_{id_cari}.pdf", mime="application/pdf")
-            else:
-                st.error("ID Karyawan tidak terdaftar.")
+            if st.button("Generate & Download PDF"):
+                if canvas_res.image_data is not None:
+                    # Ambil gambar dari canvas
+                    img = Image.fromarray(canvas_res.image_data.astype('uint8'), 'RGBA')
+                    # Buat PDF
+                    pdf_out = generate_consent_pdf(p, tipe, img)
+                    
+                    st.download_button(
+                        label="📥 Download Dokumen PDF",
+                        data=pdf_out,
+                        file_name=f"{tipe}_{id_cari}.pdf",
+                        mime="application/pdf"
+                    )
+        else:
+            st.error("Data pasien tidak ditemukan. Silakan registrasi terlebih dahulu.")
 
     # --- MENU 2: PEMERIKSAAN & UPLOAD ---
     elif choice == "2. Pemeriksaan & Upload":
