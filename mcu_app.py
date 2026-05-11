@@ -160,66 +160,55 @@ def main():
         list_jab = [x[0] for x in conn.execute('SELECT * FROM master_jabatan').fetchall()]
         conn.close()
 
+        # Gunakan container agar tata letak tetap rapi saat elemen muncul/hilang
         with st.form("regis_form"):
-            # Baris 1
             c1, c2, c3 = st.columns(3)
-            # Dropdown Jenis MCU (Hijau) - Kosong di awal
+            # 1. Pilihan Jenis MCU (Pemicu kolom otomatis)
             jenis_mcu = c1.selectbox("Jenis MCU", 
                                      ["MCU ANNUAL (MCU TAHUNAN)", "PRE EMPLOYMENT (MCU KARYAWAN BARU)"], 
                                      index=None, placeholder="Pilih Jenis MCU...")
             id_kar = c2.text_input("No ID Karyawan")
             nik = c3.text_input("NIK KTP")
             
-            # Baris 2
             c4, c5, c6 = st.columns(3)
             nama = c4.text_input("Nama Lengkap")
             tgl_lhr = c5.date_input("Tanggal Lahir", min_value=date(1960,1,1))
             usia = hitung_usia(tgl_lhr)
             c6.info(f"Usia Terhitung: {usia} Tahun")
             
-            # Baris 3
             c7, c8, c9 = st.columns(3)
-            # Dropdown Jenis Kelamin (Hijau) - Kosong di awal
             gender = c7.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"], index=None, placeholder="Pilih...")
-            doh_manual = c8.text_input("Masa Lama Kerja (Date of Hire)", placeholder="Contoh: 2 Tahun / 5 Bulan")
-            # Dropdown Perusahaan (Hijau) - Kosong di awal
+            doh_manual = c8.text_input("Masa Lama Kerja (Date of Hire)", placeholder="Contoh: 2 Tahun")
             pt = c9.selectbox("Perusahaan", list_pt, index=None, placeholder="Pilih Perusahaan...")
 
-            # Baris 4
             c10, c11, c12 = st.columns(3)
-            # Dropdown Departemen (Hijau) - Kosong di awal
             dept = c10.selectbox("Departemen", list_dept, index=None, placeholder="Pilih Departemen...")
-            # Dropdown Jabatan (Hijau) - Kosong di awal
             jab = c11.selectbox("Jabatan", list_jab, index=None, placeholder="Pilih Jabatan...")
             lokasi = c12.text_input("Lokasi Kerja")
 
-            # Baris 5
             c13, c14, c15 = st.columns(3)
             hp = c13.text_input("No HP")
-            # Dropdown Status Pernikahan (Hijau) - Kosong di awal
             status_m = c14.selectbox("Status Pernikahan", ["Lajang", "Menikah", "Cerai"], index=None, placeholder="Pilih...")
             jml_anak = c15.number_input("Jumlah Anak", 0, 20)
 
-            # Baris 6
             c16, c17, c18 = st.columns(3)
-            # Dropdown Tempat Tinggal (Hijau) - Kosong di awal
             tinggal = c16.selectbox("Tempat Tinggal", ["Mes", "Kawasi", "Lainnya"], index=None, placeholder="Pilih...")
-            # Dropdown Sumber Air (Hijau) - Kosong di awal
             air = c17.selectbox("Sumber Air Minum", ["RO", "Galon Isi Ulang", "Sumur", "PDAM"], index=None, placeholder="Pilih...")
             
-            # Logika Kondisional untuk kolom MCU Annual Ke-
+            # --- LOGIKA OTOMATIS: Kolom Muncul/Hilang ---
             mcu_ke = 0
             if jenis_mcu == "MCU ANNUAL (MCU TAHUNAN)":
+                # Muncul hanya jika MCU Annual dipilih
                 mcu_ke = c18.number_input("MCU Annual Ke-", min_value=1, step=1)
             else:
-                # Menampilkan kolom kosong sebagai placeholder agar layout tetap rapi
-                c18.write("") 
+                # Kolom hilang (tidak dirender) jika Pre-Employment dipilih
+                c18.empty() 
             
             submit_btn = st.form_submit_button("Simpan Registrasi")
             
             if submit_btn:
-                if not jenis_mcu or not pt or not dept or not gender:
-                    st.error("Silakan lengkapi semua pilihan yang bertanda dropdown!")
+                if not jenis_mcu or not pt or not dept or not nama:
+                    st.error("Silakan lengkapi data wajib (Jenis MCU, PT, Dept, dan Nama)!")
                 else:
                     conn = sqlite3.connect('mcu_complex.db')
                     conn.execute('''INSERT OR REPLACE INTO pasien 
