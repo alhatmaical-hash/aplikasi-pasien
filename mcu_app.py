@@ -219,6 +219,42 @@ def main():
                     conn.commit()
                     conn.close()
                     st.success(f"Berhasil! {nama} terdaftar untuk {jenis_mcu}")
+                    
+    # --- MENU 1.5: CONSENT (BARU) ---
+    elif choice == "1.5 General & Informed Consent":
+        st.header("📑 Persetujuan Pasien (Digital Consent)")
+        id_cari = st.text_input("Masukkan ID Karyawan untuk Tanda Tangan")
+        
+        if id_cari:
+            conn = sqlite3.connect('mcu_complex.db')
+            p_data = conn.execute("SELECT nama FROM pasien WHERE id_karyawan=?", (id_cari,)).fetchone()
+            conn.close()
+            
+            if p_data:
+                st.success(f"Pasien ditemukan: **{p_data[0]}**")
+                tipe = st.radio("Pilih Jenis Persetujuan", ["General Consent", "Informed Consent"], horizontal=True)
+                
+                # Tampilan Isi Dokumen
+                with st.expander("Klik untuk baca isi dokumen", expanded=True):
+                    if tipe == "General Consent":
+                        st.write("Dengan ini saya menyetujui pemeriksaan fisik dan diagnostik rutin...")
+                    else:
+                        st.write("Saya telah dijelaskan mengenai risiko dan prosedur tindakan medis...")
+
+                st.subheader("Silakan Tanda Tangan di bawah ini (Gunakan Mouse)")
+                canvas_res = st_canvas(
+                    stroke_width=3, stroke_color="#000", background_color="#eee",
+                    height=150, width=500, drawing_mode="freedraw", key="consent_canvas"
+                )
+
+                if st.button("Proses Dokumen & Tanda Tangan"):
+                    if canvas_res.image_data is not None:
+                        img = Image.fromarray(canvas_res.image_data.astype('uint8'), 'RGBA')
+                        pdf_file = generate_consent_pdf(p_data[0], id_cari, tipe, img)
+                        st.success("Dokumen PDF Berhasil Dibuat!")
+                        st.download_button(label="📥 Download & Cetak PDF", data=pdf_file, file_name=f"Consent_{id_cari}.pdf", mime="application/pdf")
+            else:
+                st.error("ID Karyawan tidak terdaftar.")
 
     # --- MENU 2: PEMERIKSAAN & UPLOAD ---
     elif choice == "2. Pemeriksaan & Upload":
