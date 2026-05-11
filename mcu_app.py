@@ -45,19 +45,84 @@ def main():
     # --- MENU: DASHBOARD ---
     if choice == "Dashboard":
         st.title("📊 Dashboard Pelayanan MCU")
+        
         conn = sqlite3.connect('mcu_complex.db')
         df_p = pd.read_sql_query("SELECT * FROM pasien", conn)
         df_h = pd.read_sql_query("SELECT * FROM hasil_mcu", conn)
         conn.close()
 
+        # 1. Row Statistik Utama
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total Registrasi", len(df_p))
-        col2.metric("MCU Selesai", len(df_h))
-        col3.metric("Fit for Work", len(df_h[df_h['kesimpulan'] == "Fit for Work"]) if not df_h.empty else 0)
+        total_mcu = len(df_h)
+        col1.metric("Total Pasien Terdaftar", f"{len(df_p)} Orang")
+        col2.metric("Total MCU Selesai", f"{total_mcu} Pemeriksaan")
+        
+        # Hitung persentase penyelesaian (optional tapi keren)
+        prosentase = (total_mcu / len(df_p) * 100) if len(df_p) > 0 else 0
+        col3.metric("Penyelesaian MCU", f"{prosentase:.1f}%")
 
         st.divider()
-        st.subheader("📋 Daftar Pasien Terregistrasi")
-        st.dataframe(df_p, use_container_width=True, hide_index=True)
+
+        # 2. Row Statistik Detail (Fit, Unfit, Follow Up)
+        st.subheader("📈 Statistik Kondisi Kesehatan")
+        s1, s2, s3, s4 = st.columns(4)
+        
+        if not df_h.empty:
+            # Hitung Status Fit
+            # Kita hitung yang mengandung kata 'Fit' (Fit for Work, Fit with Note, Fit with Restriction)
+            jml_fit = len(df_h[df_h['kesimpulan'].str.contains('Fit', na=False)])
+            jml_unfit = len(df_h[df_h['kesimpulan'].str.contains('Unfit', na=False)])
+            
+            # Hitung Follow Up (Berdasarkan teks di kolom follow_up)
+            # Catatan: Ini bergantung pada string yang disimpan saat finalisasi
+            jml_klinik = len(df_h[df_h['follow_up'].str.contains('klinik', na=False, case=False)])
+            jml_spesialis = len(df_h[df_h['follow_up'].str.contains('spesialis', na=False, case=False)])
+            
+            s1.success(f"✅ Total Fit\n### {jml_fit}")
+            s2.error(f"❌ Total Unfit\n### {jml_unfit}")
+            s3.warning(f"🏥 Kontrol Klinik\n### {jml_klinik}")
+            s4.info(f"👨‍⚕️ Ke Spesialis\n### {jml_spesialis}")
+        else:
+            st.info("Statistik akan muncul setelah ada pemeriksaan yang diselesaikan oleh Dokter.")
+
+        st.divider()
+
+        # 3. Tabel Pasien & Fitur Manajemen
+        st.subheader("📋 Manajemen Daftar Pasien")
+        
+        if not df_p.empty:
+            # Tombol Download Excel
+            buffer = BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                df_p.to_excel(writer, index=False, sheet_name='Daftar_Pasien')
+                if not df_h.empty:
+                    df_h.to_excel(writer, index=False, sheet_name='Hasil_MCU')
+            
+            st.download_button(
+                label="📥 Download Data ke Excel (.xlsx)",
+                data=buffer.getvalue(),
+                file_name=f"Rekap_MCU_{date.today()}.xlsx",
+                mime="application/vnd.ms-excel"
+            )
+
+            # Fitur Hapus Data
+            with st.expander("🗑️ Zona Bahaya (Hapus Data Pasien)"):
+                id_hapus = st.selectbox("Pilih ID Karyawan yang akan dihapus:", ["-- Pilih ID --"] + df_p['id_karyawan'].tolist())
+                if st.button("Konfirmasi Hapus Pasien"):
+                    if id_hapus != "-- Pilih ID --":
+                        conn = sqlite3.connect('mcu_complex.db')
+                        cur = conn.cursor()
+                        # Hapus di tabel pasien dan hasil mcu
+                        cur.execute("DELETE FROM pasien WHERE id_karyawan=?", (id_hapus,))
+                        cur.execute("DELETE FROM hasil_mcu WHERE id_karyawan=?", (id_hapus,))
+                        conn.commit()
+                        conn.close()
+                        st.error(f"Data {id_hapus} telah dihapus.")
+                        st.rerun() # Refresh halaman
+
+            st.dataframe(df_p, use_container_width=True, hide_index=True)
+        else:
+            st.write("Belum ada data pasien.")
 
     # --- MENU: MASTER DATA ---
     elif choice == "Master Data":
