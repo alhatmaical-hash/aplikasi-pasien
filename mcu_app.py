@@ -149,29 +149,33 @@ def main():
                 st.success("Jabatan Tersimpan")
         conn.close()
 
-    # --- MENU 1: REGISTRASI ---
+   # --- MENU 1: REGISTRASI ---
     elif choice == "1. Registrasi Pasien":
         st.header("📝 Form Registrasi Karyawan")
         
-        # Ambil data dari master untuk dropdown
+        # Ambil data dari master
         conn = sqlite3.connect('mcu_complex.db')
         list_pt = [x[0] for x in conn.execute('SELECT * FROM master_perusahaan').fetchall()]
         list_dept = [x[0] for x in conn.execute('SELECT * FROM master_dept').fetchall()]
         list_jab = [x[0] for x in conn.execute('SELECT * FROM master_jabatan').fetchall()]
         conn.close()
 
-        # Gunakan container agar tata letak tetap rapi saat elemen muncul/hilang
+        # 1. Letakkan Jenis MCU di LUAR form agar interaktif (langsung muncul/hilang)
+        st.subheader("Pilih Kategori")
+        jenis_mcu = st.selectbox("Jenis MCU", 
+                                 ["MCU ANNUAL (MCU TAHUNAN)", "PRE EMPLOYMENT (MCU KARYAWAN BARU)"], 
+                                 index=None, placeholder="Pilih Jenis MCU...")
+
+        # 2. Form untuk data lainnya
         with st.form("regis_form"):
             c1, c2, c3 = st.columns(3)
-            # 1. Pilihan Jenis MCU (Pemicu kolom otomatis)
-            jenis_mcu = c1.selectbox("Jenis MCU", 
-                                     ["MCU ANNUAL (MCU TAHUNAN)", "PRE EMPLOYMENT (MCU KARYAWAN BARU)"], 
-                                     index=None, placeholder="Pilih Jenis MCU...")
-            id_kar = c2.text_input("No ID Karyawan")
-            nik = c3.text_input("NIK KTP")
+            id_kar = c1.text_input("No ID Karyawan")
+            nik = c2.text_input("NIK KTP")
+            nama = c3.text_input("Nama Lengkap")
             
             c4, c5, c6 = st.columns(3)
-            nama = c4.text_input("Nama Lengkap")
+            # Menambahkan Kolom Tempat Lahir
+            tmp_lhr = c4.text_input("Tempat Lahir")
             tgl_lhr = c5.date_input("Tanggal Lahir", min_value=date(1960,1,1))
             usia = hitung_usia(tgl_lhr)
             c6.info(f"Usia Terhitung: {usia} Tahun")
@@ -195,14 +199,11 @@ def main():
             tinggal = c16.selectbox("Tempat Tinggal", ["Mes", "Kawasi", "Lainnya"], index=None, placeholder="Pilih...")
             air = c17.selectbox("Sumber Air Minum", ["RO", "Galon Isi Ulang", "Sumur", "PDAM"], index=None, placeholder="Pilih...")
             
-            # --- LOGIKA OTOMATIS: Kolom Muncul/Hilang ---
+            # --- LOGIKA INTERAKTIF MCU ANNUAL KE- ---
             mcu_ke = 0
             if jenis_mcu == "MCU ANNUAL (MCU TAHUNAN)":
-                # Muncul hanya jika MCU Annual dipilih
+                # Kolom ini akan langsung muncul begitu Jenis MCU di atas dipilih "ANNUAL"
                 mcu_ke = c18.number_input("MCU Annual Ke-", min_value=1, step=1)
-            else:
-                # Kolom hilang (tidak dirender) jika Pre-Employment dipilih
-                c18.empty() 
             
             submit_btn = st.form_submit_button("Simpan Registrasi")
             
@@ -212,9 +213,9 @@ def main():
                 else:
                     conn = sqlite3.connect('mcu_complex.db')
                     conn.execute('''INSERT OR REPLACE INTO pasien 
-                                 (id_karyawan, nik, nama, tgl_lahir, usia, gender, doh, perusahaan, dept, jabatan, lokasi, no_hp, status_nikah, jml_anak, tempat_tinggal, sumber_air) 
-                                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
-                                 (id_kar, nik, nama, str(tgl_lhr), usia, gender, doh_manual, pt, dept, jab, lokasi, hp, status_m, jml_anak, tinggal, air))
+                                 (id_karyawan, nik, nama, tempat_lahir, tgl_lahir, usia, gender, doh, perusahaan, dept, jabatan, lokasi, no_hp, status_nikah, jml_anak, tempat_tinggal, sumber_air) 
+                                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                                 (id_kar, nik, nama, tmp_lhr, str(tgl_lhr), usia, gender, doh_manual, pt, dept, jab, lokasi, hp, status_m, jml_anak, tinggal, air))
                     conn.commit()
                     conn.close()
                     st.success(f"Berhasil! {nama} terdaftar untuk {jenis_mcu}")
