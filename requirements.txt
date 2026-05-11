@@ -9,3 +9,4 @@ pytz
 Pillow
 fpdf2
 streamlit-autorefresh
+streamlit-drawable-canvas
