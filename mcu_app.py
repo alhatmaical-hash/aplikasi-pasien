@@ -333,12 +333,16 @@ def main():
                     if canvas_res.image_data is not None:
                         # Ambil gambar dari canvas
                         img = Image.fromarray(canvas_res.image_data.astype('uint8'), 'RGBA')
+                        
                         # Buat PDF
-                        pdf_out = generate_consent_pdf(p, tipe, img)
+                        pdf_raw = generate_consent_pdf(p, tipe, img)
+                        
+                        # KONVERSI KE BYTES (Solusi Error)
+                        pdf_bytes = bytes(pdf_raw) 
                         
                         st.download_button(
                             label="📥 Download Dokumen PDF",
-                            data=pdf_out,
+                            data=pdf_bytes, # Gunakan data yang sudah dikonversi
                             file_name=f"{tipe}_{id_cari}.pdf",
                             mime="application/pdf"
                         )
