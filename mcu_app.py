@@ -299,42 +299,42 @@ def main():
                 st.success(f"Berhasil Terdaftar!")
 
    # --- DI DALAM MENU 1.5 ---
-elif choice == "1.5 General & Informed Consent":
-    st.header("📑 Digital Consent Form")
-    id_cari = st.text_input("Masukkan ID Karyawan")
-    
-    if id_cari:
-        conn = sqlite3.connect('mcu_complex.db')
-        # Ambil data lengkap untuk PDF
-        p = conn.execute("SELECT nama, id_karyawan, perusahaan, gender, tgl_lahir FROM pasien WHERE id_karyawan=?", (id_cari,)).fetchone()
-        conn.close()
+    elif choice == "1.5 General & Informed Consent":
+        st.header("📑 Digital Consent Form")
+        id_cari = st.text_input("Masukkan ID Karyawan")
         
-        if p:
-            st.success(f"Pasien: {p[0]} ({p[2]})")
-            tipe = st.radio("Pilih Dokumen", ["General Consent", "Informed Consent"], horizontal=True)
+        if id_cari:
+            conn = sqlite3.connect('mcu_complex.db')
+            # Ambil data lengkap untuk PDF
+            p = conn.execute("SELECT nama, id_karyawan, perusahaan, gender, tgl_lahir FROM pasien WHERE id_karyawan=?", (id_cari,)).fetchone()
+            conn.close()
             
-            # Canvas TTD
-            st.subheader("Tanda Tangan Pasien / 病人签名")
-            canvas_res = st_canvas(
-                stroke_width=2, stroke_color="#000", background_color="#ffffff",
-                height=150, width=400, drawing_mode="freedraw", key="canvas_sig"
-            )
-
-            if st.button("Generate & Download PDF"):
-                if canvas_res.image_data is not None:
-                    # Ambil gambar dari canvas
-                    img = Image.fromarray(canvas_res.image_data.astype('uint8'), 'RGBA')
-                    # Buat PDF
-                    pdf_out = generate_consent_pdf(p, tipe, img)
-                    
-                    st.download_button(
-                        label="📥 Download Dokumen PDF",
-                        data=pdf_out,
-                        file_name=f"{tipe}_{id_cari}.pdf",
-                        mime="application/pdf"
-                    )
-        else:
-            st.error("Data pasien tidak ditemukan. Silakan registrasi terlebih dahulu.")
+            if p:
+                st.success(f"Pasien: {p[0]} ({p[2]})")
+                tipe = st.radio("Pilih Dokumen", ["General Consent", "Informed Consent"], horizontal=True)
+                
+                # Canvas TTD
+                st.subheader("Tanda Tangan Pasien / 病人签名")
+                canvas_res = st_canvas(
+                    stroke_width=2, stroke_color="#000", background_color="#ffffff",
+                    height=150, width=400, drawing_mode="freedraw", key="canvas_sig"
+                )
+    
+                if st.button("Generate & Download PDF"):
+                    if canvas_res.image_data is not None:
+                        # Ambil gambar dari canvas
+                        img = Image.fromarray(canvas_res.image_data.astype('uint8'), 'RGBA')
+                        # Buat PDF
+                        pdf_out = generate_consent_pdf(p, tipe, img)
+                        
+                        st.download_button(
+                            label="📥 Download Dokumen PDF",
+                            data=pdf_out,
+                            file_name=f"{tipe}_{id_cari}.pdf",
+                            mime="application/pdf"
+                        )
+            else:
+                st.error("Data pasien tidak ditemukan. Silakan registrasi terlebih dahulu.")
 
     # --- MENU 2: PEMERIKSAAN & UPLOAD ---
     elif choice == "2. Pemeriksaan & Upload":
