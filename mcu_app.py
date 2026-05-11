@@ -22,10 +22,9 @@ def init_db():
     
     # Tabel Pemeriksaan & Hasil
     c.execute('''CREATE TABLE IF NOT EXISTS hasil_mcu (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT, id_karyawan TEXT, jenis_mcu TEXT, mcu_ke INTEGER,
-                    antropometri TEXT, visus TEXT, buta_warna TEXT, 
-                    lab_summary TEXT, non_lab_summary TEXT, fisik_umum TEXT,
-                    kesimpulan TEXT, follow_up TEXT, saran TEXT, tgl_periksa TEXT)''')
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, id_karyawan TEXT, jenis_mcu TEXT, 
+                    lab_summary TEXT, non_lab_summary TEXT, kesimpulan TEXT, 
+                    follow_up TEXT, saran TEXT, tgl_periksa TEXT)''')
     conn.commit()
     conn.close()
 
@@ -43,22 +42,47 @@ def main():
     menu = ["Dashboard", "Master Data", "1. Registrasi Pasien", "2. Pemeriksaan & Upload", "3. Hasil & Kesimpulan (Dokter)"]
     choice = st.sidebar.radio("Navigasi", menu)
 
-    # --- MENU MASTER DATA ---
-    if choice == "Master Data":
+    # --- MENU: DASHBOARD ---
+    if choice == "Dashboard":
+        st.title("📊 Dashboard Pelayanan MCU")
+        conn = sqlite3.connect('mcu_complex.db')
+        df_p = pd.read_sql_query("SELECT * FROM pasien", conn)
+        df_h = pd.read_sql_query("SELECT * FROM hasil_mcu", conn)
+        conn.close()
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Registrasi", len(df_p))
+        col2.metric("MCU Selesai", len(df_h))
+        col3.metric("Fit for Work", len(df_h[df_h['kesimpulan'] == "Fit for Work"]) if not df_h.empty else 0)
+
+        st.divider()
+        st.subheader("📋 Daftar Pasien Terregistrasi")
+        st.dataframe(df_p, use_container_width=True, hide_index=True)
+
+    # --- MENU: MASTER DATA ---
+    elif choice == "Master Data":
         st.header("⚙️ Manajemen Data Master")
         col1, col2, col3 = st.columns(3)
+        conn = sqlite3.connect('mcu_complex.db')
         with col1:
             new_pt = st.text_input("Tambah Perusahaan")
             if st.button("Simpan PT"):
-                conn = sqlite3.connect('mcu_complex.db'); conn.execute('INSERT INTO master_perusahaan VALUES (?)', (new_pt,)); conn.commit()
+                conn.execute('INSERT INTO master_perusahaan VALUES (?)', (new_pt,))
+                conn.commit()
+                st.success("PT Tersimpan")
         with col2:
             new_dept = st.text_input("Tambah Departemen")
             if st.button("Simpan Dept"):
-                conn = sqlite3.connect('mcu_complex.db'); conn.execute('INSERT INTO master_dept VALUES (?)', (new_dept,)); conn.commit()
+                conn.execute('INSERT INTO master_dept VALUES (?)', (new_dept,))
+                conn.commit()
+                st.success("Dept Tersimpan")
         with col3:
             new_jab = st.text_input("Tambah Jabatan")
             if st.button("Simpan Jabatan"):
-                conn = sqlite3.connect('mcu_complex.db'); conn.execute('INSERT INTO master_jabatan VALUES (?)', (new_jab,)); conn.commit()
+                conn.execute('INSERT INTO master_jabatan VALUES (?)', (new_jab,))
+                conn.commit()
+                st.success("Jabatan Tersimpan")
+        conn.close()
 
     # --- MENU 1: REGISTRASI ---
     elif choice == "1. Registrasi Pasien":
@@ -68,95 +92,73 @@ def main():
             id_kar = c1.text_input("No ID Karyawan")
             nik = c2.text_input("NIK KTP")
             nama = c3.text_input("Nama Lengkap")
-            
             tgl_lhr = c1.date_input("Tanggal Lahir", min_value=date(1960,1,1))
             usia = hitung_usia(tgl_lhr)
-            c2.info(f"Usia Terhitung: {usia} Tahun")
-            
+            c2.info(f"Usia: {usia} Tahun")
             gender = c3.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
-            doh = c1.date_input("Date of Hire (Masa Kerja)")
+            doh = c1.date_input("Date of Hire")
             
-            # Ambil data dari master
             conn = sqlite3.connect('mcu_complex.db')
-            list_pt = [x[0] for x in conn.execute('SELECT * FROM master_perusahaan').fetchall()]
-            list_dept = [x[0] for x in conn.execute('SELECT * FROM master_dept').fetchall()]
-            list_jab = [x[0] for x in conn.execute('SELECT * FROM master_jabatan').fetchall()]
+            pts = [x[0] for x in conn.execute('SELECT * FROM master_perusahaan').fetchall()]
+            depts = [x[0] for x in conn.execute('SELECT * FROM master_dept').fetchall()]
+            jabs = [x[0] for x in conn.execute('SELECT * FROM master_jabatan').fetchall()]
+            conn.close()
             
-            pt = c2.selectbox("Perusahaan", list_pt if list_pt else ["-"])
-            dept = c3.selectbox("Departemen", list_dept if list_dept else ["-"])
-            jab = c1.selectbox("Jabatan", list_jab if list_jab else ["-"])
-            
+            pt = c2.selectbox("Perusahaan", pts if pts else ["-"])
+            dept = c3.selectbox("Departemen", depts if depts else ["-"])
+            jab = c1.selectbox("Jabatan", jabs if jabs else ["-"])
             lokasi = c2.text_input("Lokasi Kerja")
             hp = c3.text_input("No HP")
-            
             status_m = c1.selectbox("Status Pernikahan", ["Lajang", "Menikah", "Cerai"])
-            jml_anak = c2.number_input("Jumlah Anak", 0, 20)
+            jml_anak = c2.number_input("Jumlah Anak", 0, 10)
             tinggal = c3.selectbox("Tempat Tinggal", ["Mes", "Kawasi", "Lainnya"])
-            air = c1.selectbox("Sumber Air Minum", ["RO", "Galon Isi Ulang", "Sumur", "PDAM"])
+            air = c1.selectbox("Sumber Air", ["RO", "Galon", "Sumur"])
             
-            if st.form_submit_button("Daftarkan Karyawan"):
+            if st.form_submit_button("Simpan Registrasi"):
                 conn = sqlite3.connect('mcu_complex.db')
                 conn.execute('INSERT OR REPLACE INTO pasien VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', 
                              (id_kar, nik, nama, "Tempat", str(tgl_lhr), usia, gender, str(doh), pt, dept, jab, lokasi, hp, status_m, jml_anak, tinggal, air))
                 conn.commit()
-                st.success("Data Karyawan Berhasil Disimpan!")
+                conn.close()
+                st.success("Registrasi Berhasil!")
 
     # --- MENU 2: PEMERIKSAAN & UPLOAD ---
     elif choice == "2. Pemeriksaan & Upload":
         st.header("🩺 Input Pemeriksaan & Upload Lampiran")
-        id_cari = st.text_input("Masukkan ID Karyawan untuk Mulai Pemeriksaan")
-        
+        id_cari = st.text_input("Masukkan ID Karyawan")
         if id_cari:
-            with st.expander("Input Fisik & Antropometri", expanded=True):
-                col1, col2 = st.columns(2)
-                antropometri = col1.text_area("Antropometri (TB, BB, BMI, Lingkar Perut)")
-                visus = col2.text_area("Visus (Mata Kanan/Kiri)")
-                buta_warna = col1.selectbox("Buta Warna", ["Tidak Buta Warna", "Buta Warna Parsial", "Buta Warna Total"])
-
-            with st.expander("Upload Hasil Penunjang (PDF/Image)"):
-                up_lab = st.file_uploader("Upload Hasil Lab (PDF)", type=['pdf', 'jpg', 'png'])
-                up_rad = st.file_uploader("Upload Hasil Radiologi (PDF)", type=['pdf', 'jpg', 'png'])
-                up_ekg = st.file_uploader("Upload Hasil EKG (PDF)", type=['pdf', 'jpg', 'png'])
-                if up_lab: st.success("Lab terupload!")
-
-            if st.button("Simpan Tahap Awal"):
-                st.toast("Data pemeriksaan awal tersimpan.")
+            with st.expander("Fisik & Upload", expanded=True):
+                antropometri = st.text_area("Antropometri (TB, BB, BMI)")
+                up_lab = st.file_uploader("Upload Hasil Lab/Rad/EKG", type=['pdf', 'jpg', 'png'], accept_multiple_files=True)
+                if st.button("Simpan Progres"):
+                    st.success("Data pemeriksaan awal tersimpan.")
 
     # --- MENU 3: HASIL & KESIMPULAN (DOKTER) ---
     elif choice == "3. Hasil & Kesimpulan (Dokter)":
         st.header("👨‍⚕️ Resume Medis & Penentuan Kelayakan")
-        id_dr = st.text_input("ID Karyawan")
-        
+        id_dr = st.text_input("ID Karyawan untuk Resume")
         if id_dr:
-            st.subheader("Rangkuman Hasil")
-            tab1, tab2, tab3 = st.tabs(["Laboratorium", "Non-Laboratorium", "Fisik & Kesimpulan"])
-            
+            tab1, tab2, tab3 = st.tabs(["Laboratorium", "Non-Laboratorium", "Kesimpulan"])
             with tab1:
-                hematologi = st.text_area("Hematologi Lengkap")
-                kimia = st.text_area("Kimia Klinik")
-                urine = st.text_area("Urine Lengkap")
-                serologi = st.multiselect("Serologi Positif", ["HBsAg", "Anti HCV", "Anti HAV", "Anti HIV"])
-            
+                hem = st.text_area("Hematologi")
+                kim = st.text_area("Kimia Klinik")
+                ser = st.multiselect("Serologi", ["HBsAg", "Anti HIV", "Anti HCV"])
             with tab2:
-                ekg_res = st.text_input("Hasil EKG")
-                rad_res = st.text_input("Hasil Rontgen Thorax PA")
-                audio = st.text_input("Audiometri")
-                spiro = st.text_input("Spirometri")
-            
+                ekg = st.text_input("Hasil EKG")
+                rad = st.text_input("Hasil Rontgen")
             with tab3:
-                st.write("### Kesimpulan Kelayakan")
-                kesimpulan = st.radio("Status Kelayakan", 
-                    ["Fit for Work", "Fit with Note", "Fit with Restriction", "Unfit Temporary", "Unfit"], horizontal=True)
+                kes = st.radio("Status", ["Fit for Work", "Fit with Note", "Fit with Restriction", "Unfit Temporary", "Unfit"], horizontal=True)
+                fu1 = st.checkbox("Ke Klinik")
+                fu2 = st.checkbox("Ke Spesialis")
+                saran = st.text_area("Saran")
                 
-                st.write("### Follow Up")
-                fu_klinik = st.checkbox("Memerlukan pengobatan ke klinik")
-                fu_spesialis = st.checkbox("Memerlukan pengobatan ke dokter spesialis")
-                
-                saran = st.text_area("Catatan atau Saran Medis")
-                
-                if st.button("Finalisasi & Generate Report"):
-                    st.success("Data Final MCU Berhasil Disimpan!")
-                    st.download_button("Download PDF (Simulasi)", b"PDF_CONTENT", "Hasil_MCU.pdf")
+                if st.button("Finalisasi & Simpan"):
+                    conn = sqlite3.connect('mcu_complex.db')
+                    conn.execute('INSERT INTO hasil_mcu (id_karyawan, lab_summary, non_lab_summary, kesimpulan, saran, tgl_periksa) VALUES (?,?,?,?,?,?)',
+                                 (id_dr, f"Hem: {hem}, Ser: {ser}", f"EKG: {ekg}, Rad: {rad}", kes, saran, str(date.today())))
+                    conn.commit()
+                    conn.close()
+                    st.success("Data MCU Final Tersimpan!")
 
 if __name__ == "__main__":
     main()
