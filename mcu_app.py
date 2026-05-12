@@ -123,8 +123,8 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
     pdf.set_font(font_main, '', 8)
     if tipe == "General Consent":
         points = [
-            "1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan kepada saya (我同意对我进行检查和/或治疗)",
-            "2. HAK DAN KEWAJIBAN SEBAGAI PASIEN:saya mengakui bahwa proses pendaftaran untuk mendaptkan perawatan di klinik harita nickel obi dan
+            """1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan kepada saya (我同意对我进行检查和/或治疗)",
+            """2. HAK DAN KEWAJIBAN SEBAGAI PASIEN:saya mengakui bahwa proses pendaftaran untuk mendaptkan perawatan di klinik harita nickel obi dan
                 penandatanganan dokumen ini, saya telah mendapat informasi tentang hak-hak dan kewajiban saya sebagai pasien.",
             """3. PERSETUJUAN PELAYANAN KESEHATAN:saya menyetujui dan memberikan persetujuan untuk mendapatkan pelayanan kesehatan di Klinik Harita Nickel Obi
                 dan dengan ini saya meminta dan meberikan kuasa kepada pihak Klinik Harita Nickel-Obi, Dokter Dan Perawat, Dan Tenaga Kesehatan Lainnya untuk
@@ -133,17 +133,17 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
                 termasuk X-Ray, pemberian dan atau tindakan medis serta penyuntikan (Intra-muskular, intravena dan prosedur incasif lainnya), produk farmasi dan obat-obatan
                 pemasangan alat kesehatan (kecuali yang membutuhkan persetujuan khusus/tertulis), dan pengambilandarah untuk pemeriksaan laboratorium atau pemeriksaan patologi
                 yang dibutuhkan untuk pengobatan dan tindakan yang aman.",
-            "4. PRIVASI:saya memberi kuasa kepada Klinik Harita Nickel-Obi untuk menjaga privasi dan kerahasiaan penyakit saya selama dalam pemeriksaan.",
-            "5. RAHASIA KEDOKTERAN: Saya setuju Klinik Harita Nickel-Obi wajib menjamin rahasia kedokteran saya baik untuk kepentingan perawatan atau
+            """4. PRIVASI:saya memberi kuasa kepada Klinik Harita Nickel-Obi untuk menjaga privasi dan kerahasiaan penyakit saya selama dalam pemeriksaan.",
+            """5. RAHASIA KEDOKTERAN: Saya setuju Klinik Harita Nickel-Obi wajib menjamin rahasia kedokteran saya baik untuk kepentingan perawatan atau
                 pengobatan, kecuali saya mengugkapkan sendiri atau orang lain yang saya beri kuasa kepada penjamin.",
             """6. MEMBUKA RAHASIA KEDOKTERAN:saya setuju untuk membuka rahasia kedokteran terkait dengan kondisi kesehatan asuhan dan pengobatan yang saya terima kepada
                 a. Dokter dan tenaga kesehatanlain yang memberikan asuhan kepada saya
                 b. Manajemen perusahaan untuk proses klaim asuransi dan/ atau administrasi perusahaan lainnya, seperti kesimpulan kelaikan memulai atau melanjutkan
                    pekerjaan serta hasil pemeriksaan lanjutan dari fasilitas kesehatan lanjut jika di lakukan rujukan
                 c. kepada yang tersebut berikut ini",
-            "7. BARANG PRIBADI:saya setuju untuk tidak membawah barang-barang berharga yang tidak di perlukan selama dalam perawatan di klinik harita nickel obi
+            """7. BARANG PRIBADI:saya setuju untuk tidak membawah barang-barang berharga yang tidak di perlukan selama dalam perawatan di klinik harita nickel obi
                 saya memahami dan menyetujuiklinik harita nickel obi tidak bertanggung jawab terhadap kehilangan, kerusakan, pencurian barang berharga.",
-            "8. PENGAJUAN KELUHAN:saya menyatakan bahwa saya telah menerima informasi tentang adanya tata cara mengajukan dan mengatasi keluhan terhadap
+            """8. PENGAJUAN KELUHAN:saya menyatakan bahwa saya telah menerima informasi tentang adanya tata cara mengajukan dan mengatasi keluhan terhadap
                 pelayanan medis yang diberikan terhadap saya. Saya setuju untuk mengikuti tata cara mengajukan keluhan sesuai prosedur yang ada.",
 
             """Melalui dokuemen ini saya menegaskan kembali bahwa saya mempercayakan kepada tenaga kesehatan klinik harita nickel obi untuk memberikan perawatan, diagnostic dan
