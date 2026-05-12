@@ -235,9 +235,19 @@ def main():
             df_p['bulan_kunjungan'] = df_p['tgl_registrasi'].dt.month_name()
             df_p['tahun_kunjungan'] = df_p['tgl_registrasi'].dt.year
     
-            # --- BAGIAN FILTER ---
+           # --- BAGIAN FILTER ---
             st.subheader("🔍 Filter Kunjungan MCU")
             f_c1, f_c2, f_c3 = st.columns(3)
+            
+            # Ambil opsi unik dari database, bersihkan dari nilai kosong
+            list_mcu_db = df_p['jenis_mcu'].unique().tolist() if 'jenis_mcu' in df_p.columns else []
+            options_mcu = [x for x in list_mcu_db if x and str(x) != 'nan']
+            
+            # Opsi Cadangan: Jika di database belum ada data, tampilkan pilihan standar
+            if not options_mcu:
+                options_mcu = ["Annual MCU", "Pre-Employment MCU", "Special MCU"]
+            
+            sel_mcu = f_c1.multiselect("Jenis MCU", options=options_mcu, default=options_mcu)
             
             # Filter 1: Jenis MCU
             list_mcu = df_p['jenis_mcu'].unique().tolist() if 'jenis_mcu' in df_p.columns else []
@@ -309,8 +319,12 @@ def main():
                     waktu_label = f"{row['bulan_kunjungan']} {row['tahun_kunjungan']}"
                     r_mcu.write(f"{mcu_label} \n ({waktu_label})")
                     
-                    with r_aksi:
-                        if st.button(f"👁️ Detail", key=f"view_{row['id_karyawan']}"):
+                   with r_aksi:
+                        # Membagi kolom aksi menjadi dua untuk tombol Detail dan Hapus
+                        c_btn1, c_btn2 = st.columns(2)
+                        
+                        # Tombol Detail
+                        if c_btn1.button(f"👁️ Detail", key=f"view_{row['id_karyawan']}"):
                             with st.expander("Informasi Lengkap & Foto", expanded=True):
                                 st.write("**Biodata Lengkap:**")
                                 b1, b2, b3 = st.columns(3)
@@ -320,21 +334,32 @@ def main():
                                 b2.write(f"Jabatan: {row['jabatan']}")
                                 b3.write(f"Lokasi: {row['lokasi']}")
                                 b3.write(f"Status: {row['status_nikah']}")
-    
+                    
                                 st.write("---")
-                                # Bagian Foto (ID Card & KTP)
+                                # Bagian Foto
                                 v1, v2 = st.columns(2)
                                 if 'foto_id' in row and row['foto_id']:
                                     v1.image(row['foto_id'], caption="ID Card", use_column_width=True)
-                                    v1.download_button("📥 Download ID", row['foto_id'], f"ID_{row['id_karyawan']}.png")
+                                    v1.download_button("📥 ID", row['foto_id'], f"ID_{row['id_karyawan']}.png", key=f"dl_id_{row['id_karyawan']}")
                                 if 'foto_ktp' in row and row['foto_ktp']:
                                     v2.image(row['foto_ktp'], caption="KTP", use_column_width=True)
-                                    v2.download_button("📥 Download KTP", row['foto_ktp'], f"KTP_{row['id_karyawan']}.png")
-                    st.write("---")
-            else:
-                st.info("Tidak ada data kunjungan yang sesuai dengan filter pendaftaran.")
-        else:
-            st.warning("Database pendaftaran masih kosong.")
+                                    v2.download_button("📥 KTP", row['foto_ktp'], f"KTP_{row['id_karyawan']}.png", key=f"dl_ktp_{row['id_karyawan']}")
+                    
+                        # Tombol Hapus Data
+                        if c_btn2.button(f"🗑️ Hapus", key=f"del_{row['id_karyawan']}"):
+                            try:
+                                conn = sqlite3.connect('mcu_complex.db')
+                                cur = conn.cursor()
+                                # Menghapus dari tabel pasien dan tabel hasil terkait
+                                cur.execute("DELETE FROM pasien WHERE id_karyawan = ?", (row['id_karyawan'],))
+                                cur.execute("DELETE FROM hasil_mcu WHERE id_karyawan = ?", (row['id_karyawan'],))
+                                conn.commit()
+                                conn.close()
+                                
+                                st.success(f"Data {row['nama']} berhasil dihapus!")
+                                st.rerun() # Refresh halaman untuk memperbarui tampilan tabel
+                            except Exception as e:
+                                st.error(f"Gagal menghapus data: {e}")
     # --- MENU: MASTER DATA & AKUN ---
     elif choice == "Master Data":
         st.header("⚙️ Manajemen Data Master & Akun")
