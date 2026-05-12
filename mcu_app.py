@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime
 from io import BytesIO
 from streamlit_drawable_canvas import st_canvas
 from fpdf import FPDF
@@ -279,8 +279,11 @@ def main():
                 buffer = BytesIO()
                 with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                     df_filtered.to_excel(writer, index=False, sheet_name='Data_Terdaftar')
-                st.download_button(label="📥 Download Data Terfilter (Excel)", data=buffer.getvalue(), 
-                                   file_name=f"Data_Pasien_Filtered_{date.today()}.xlsx")
+                st.download_button(
+                    label="📥 Download Data Terfilter (Excel)", 
+                    data=buffer.getvalue(), 
+                    file_name=f"Data_Pasien_Filtered_{date.today()}.xlsx" # Baris ini sekarang aman
+                )
                 
                 # Sembunyikan kolom foto agar tabel tidak berat
                 cols_to_show = [c for c in df_filtered.columns if c not in ['foto_id', 'foto_ktp']]
