@@ -9,7 +9,8 @@ from PIL import Image
 import numpy as np
 import os
 import re
-from fpdf import FPDF
+
+
 
 # --- DATABASE SETUP ---
 def init_db():
@@ -45,7 +46,7 @@ from fpdf import FPDF
 def generate_consent_pdf(data_pasien, tipe, img_ttd):
     pdf = FPDF()
     
-    # --- LOAD FONT ---
+    # --- PENGATURAN FONT (WAJIB ADA simhei.ttf) ---
     font_path = os.path.join(os.getcwd(), "simhei.ttf")
     can_use_unicode = False
     if os.path.exists(font_path):
@@ -53,76 +54,116 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
             pdf.add_font('SimHei', '', font_path)
             font_main = 'SimHei'
             can_use_unicode = True
-        except:
-            font_main = 'Helvetica'
-    else:
-        font_main = 'Helvetica'
+        except: font_main = 'Helvetica'
+    else: font_main = 'Helvetica'
 
     def safe_t(text):
-        if not can_use_unicode:
-            return re.sub(r'[^\x00-\x7F]+', '', text)
-        return text
+        return text if can_use_unicode else re.sub(r'[^\x00-\x7F]+', '', text)
 
     pdf.add_page()
-    # Tentukan lebar efektif halaman (Total lebar - margin kiri - margin kanan)
-    # Biasanya 210mm - 10mm - 10mm = 190mm
-    eff_width = pdf.w - 2 * pdf.l_margin 
+    w = 190 # Lebar konten efektif
 
-    # --- HEADER ---
-    pdf.set_font(font_main, 'B', 12)
-    pdf.cell(eff_width, 5, "KLINIK HARITA NICKEL OBI", ln=True, align='C')
-    # ... (Kop surat lainnya gunakan eff_width alih-alih 0 jika ragu)
-
-    pdf.ln(10)
-
-    # --- JUDUL ---
+    # --- 1. HEADER (KOP SURAT) ---
+    # Membuat tabel header agar rapi seperti di foto
     pdf.set_font(font_main, 'B', 11)
-    judul = "PERSETUJUAN UMUM / GENERAL CONSENT / 一般同意" if tipe == "General Consent" else "INFORMED CONSENT 知情同意书"
-    pdf.cell(eff_width, 10, safe_t(judul), ln=True, align='C')
-    pdf.ln(5)
-
-    # --- DATA PASIEN ---
-    pdf.set_font(font_main, '', 9)
-    # Gunakan lebar tetap untuk label agar rapi
-    labels = [
-        ("Nama Pasien / 姓名", data_pasien[0]),
-        ("No. ID / ID卡号", data_pasien[1]),
-        ("Perusahaan / 公司", data_pasien[2]),
-        ("Jenis Kelamin / 性别", data_pasien[3]),
-        ("Tgl Lahir / 出生日期", data_pasien[4])
-    ]
-    for label, val in labels:
-        pdf.cell(45, 6, safe_t(label), border=0)
-        pdf.cell(0, 6, f": {val}", border=0, ln=True)
-
-    pdf.ln(5)
-
-    # --- BAGIAN YANG ERROR (DIPERBAIKI) ---
+    pdf.cell(140, 7, "KLINIK HARITA NICKEL OBI", border='TL', align='C')
+    pdf.set_font(font_main, '', 8)
+    pdf.cell(20, 7, "No. Dok", border='TL')
+    pdf.cell(30, 7, "HJF-FR-OHS-370", border='TLR', ln=True)
+    
     pdf.set_font(font_main, 'B', 9)
+    pdf.cell(140, 5, "FIRST-AID POST PT. HALMAHERA JAYA FERONIKEL", border='L', align='C')
+    pdf.set_font(font_main, '', 8)
+    pdf.cell(20, 5, "Tgl Terbit", border='L')
+    pdf.cell(30, 5, "22/02/2024", border='LR', ln=True)
     
-    # Pastikan kursor kembali ke margin kiri sebelum multi_cell
-    pdf.set_x(pdf.l_margin) 
+    pdf.cell(140, 5, "SITE KAWASI - PULAU OBI - HALSEL - MALUT", border='L', align='C')
+    pdf.cell(20, 5, "No. Rev", border='L')
+    pdf.cell(30, 5, "000", border='LR', ln=True)
     
-    # Gunakan eff_width secara eksplisit alih-alih 0
-    pdf.multi_cell(eff_width, 5, safe_t("PASIEN DAN / WALI HUKUM HARUS MEMBACA, MEMAHAMI DAN MENGISI INFORMASI TERSEBUT"))
-    pdf.multi_cell(eff_width, 5, safe_t("患者和/ or 法定监护人必须阅读、理解并填写该信息"))
+    pdf.cell(140, 5, "Email: mcu.klinik@hjferonikel.com", border='LB', align='C')
+    pdf.cell(20, 5, "Hal", border='LB')
+    pdf.cell(30, 5, "Page | 1", border='LBR', ln=True)
+
+    pdf.ln(5)
+
+    # --- 2. JUDUL ---
+    pdf.set_font(font_main, 'B', 10)
+    judul = "PERSETUJUAN UMUM / GENERAL CONSENT / 一般同意" if tipe == "General Consent" else "INFORMED CONSENT 知情同意书"
+    pdf.cell(w, 7, safe_t(judul), ln=True, align='C')
     pdf.ln(2)
 
-    # --- ISI PERSETUJUAN ---
-    pdf.set_font(font_main, '', 8)
-    # ... (Loop content) ...
-    if tipe == "General Consent":
-        content = ["1. ...", "2. ..."] # dst
-    else:
-        content = ["Saya menyatakan SETUJU...", "..."]
-        
-    for item in content:
-        pdf.set_x(pdf.l_margin)
-        pdf.multi_cell(eff_width, 4, safe_t(item))
-
-    # --- TANDA TANGAN ---
-    # ... (Sisa kode tanda tangan tetap sama) ...
+    # --- 3. DATA PASIEN (BAGIAN ATAS) ---
+    pdf.set_font(font_main, '', 9)
+    data_label = [
+        ["No. RM/ID 医疗记录号", data_pasien[1]],
+        ["Nama Pasien/姓名", data_pasien[0]],
+        ["Perusahaan/公司", data_pasien[2]],
+        ["Jenis Kelamin/性别", data_pasien[3]],
+        ["Tanggal Lahir/出生日期", data_pasien[4]]
+    ]
     
+    # Geser ke kanan untuk bagian identitas
+    for label, val in data_label:
+        pdf.set_x(110) 
+        pdf.cell(40, 5, safe_t(label), border=0)
+        pdf.cell(40, 5, f": {val}", border=0, ln=True)
+
+    pdf.ln(5)
+
+    # --- 4. PERNYATAAN PEMBUKA ---
+    pdf.set_font(font_main, 'B', 9)
+    pdf.set_x(10)
+    pdf.cell(w, 5, safe_t("PASIEN DAN / WALI HUKUM HARUS MEMBACA, MEMAHAMI"), ln=True, align='C')
+    pdf.cell(w, 5, safe_t("DAN MENGISI INFORMASI TERSEBUT"), ln=True, align='C')
+    pdf.cell(w, 5, safe_t("患者和/或法定监护人必须阅读、理解并填写该信息"), ln=True, align='C')
+    pdf.ln(3)
+
+    # --- 5. ISI POINT-POINT (SESUAI GAMBAR) ---
+    pdf.set_font(font_main, '', 8)
+    if tipe == "General Consent":
+        points = [
+            "1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan kepada saya (我同意对我进行检查和/或治疗)",
+            "2. HAK DAN KEWAJIBAN SEBAGAI PASIEN: Saya mengakui bahwa proses pendaftaran telah memberikan informasi hak-hak saya.",
+            "3. PERSETUJUAN PELAYANAN KESEHATAN: Saya memberikan persetujuan untuk mendapatkan pelayanan kesehatan di Klinik.",
+            "4. PRIVASI: Saya memberi kuasa kepada Klinik untuk menjaga privasi dan kerahasiaan penyakit saya.",
+            "5. RAHASIA KEDOKTERAN: Klinik wajib menjamin rahasia kedokteran saya baik untuk kepentingan perawatan.",
+            "6. MEMBUKA RAHASIA KEDOKTERAN: Saya setuju untuk membuka rahasia kedokteran terkait asuransi atau manajemen perusahaan.",
+            "7. BARANG PRIBADI: Saya setuju untuk tidak membawa barang berharga. Klinik tidak bertanggung jawab atas kehilangan.",
+            "8. PENGAJUAN KELUHAN: Saya telah menerima informasi tentang tata cara mengajukan keluhan."
+        ]
+    else:
+        points = [
+            "Saya menyatakan SETUJU (同意) / MENOLAK (拒绝) untuk dilakukan pemeriksaan darah yaitu:",
+            "anti-HIV, HBsAg dan anti-HCV (人类免疫缺陷病毒、乙型肝炎和丙型肝炎)",
+            "Demikian persetujuan ini saya buat tanpa ada paksaan dari pihak mana pun."
+        ]
+
+    for p in points:
+        pdf.set_x(10)
+        pdf.multi_cell(w, 4, safe_t(p))
+        pdf.ln(1)
+
+    # --- 6. TANDA TANGAN (BAGIAN BAWAH) ---
+    pdf.ln(10)
+    curr_y = pdf.get_y()
+    
+    # Lokasi Tanda Tangan
+    pdf.set_font(font_main, '', 9)
+    pdf.text(30, curr_y, safe_t("Petugas 护士"))
+    pdf.text(140, curr_y, safe_t("Pasien / wali 病人"))
+    
+    # Gambar TTD
+    temp_path = "sign_temp.png"
+    img_ttd.save(temp_path)
+    pdf.image(temp_path, x=135, y=curr_y + 2, w=35)
+    
+    # Nama Terang
+    pdf.text(30, curr_y + 25, "( .................................... )")
+    pdf.text(140, curr_y + 25, f"( {data_pasien[0]} )")
+    pdf.set_font(font_main, '', 7)
+    pdf.text(30, curr_y + 28, "Tanda tangan dan nama lengkap")
+
     return pdf.output()
     
 def main():
