@@ -382,56 +382,58 @@ def main():
                 conn.close()
                 st.success(f"Berhasil Terdaftar!")
 
-   # --- DI DALAM MENU 1.5 ---
-    elif choice == "1.5 General & Informed Consent":
-        st.header("📑 Digital Consent Form")
-        id_cari = st.text_input("Masukkan ID Karyawan")
-        
-        if id_cari:
-            conn = sqlite3.connect('mcu_complex.db')
-            p = conn.execute("SELECT nama, id_karyawan, perusahaan, gender, tgl_lahir FROM pasien WHERE id_karyawan=?", (id_cari,)).fetchone()
-            conn.close()
+  # --- DI DALAM MENU 1.5 ---
+        elif choice == "1.5 General & Informed Consent":
+            st.header("📑 Digital Consent Form")
+            id_cari = st.text_input("Masukkan ID Karyawan")
             
-            if p:
-                st.success(f"Pasien: {p[0]} ({p[2]})")
-                tipe = st.radio("Pilih Dokumen", ["General Consent", "Informed Consent"], horizontal=True)
+            if id_cari:
+                conn = sqlite3.connect('mcu_complex.db')
+                p = conn.execute("SELECT nama, id_karyawan, perusahaan, gender, tgl_lahir FROM pasien WHERE id_karyawan=?", (id_cari,)).fetchone()
+                conn.close()
                 
-                # Membuat dua kolom untuk Tanda Tangan
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.subheader("Tanda Tangan Pasien / 病人签名")
-                    canvas_pasien = st_canvas(
-                        stroke_width=2, stroke_color="#000", background_color="#ffffff",
-                        height=150, width=300, drawing_mode="freedraw", key="canvas_pasien"
-                    )
-                
-                with col2:
-                    st.subheader("Tanda Tangan Petugas / 护士签名")
-                    canvas_petugas = st_canvas(
-                        stroke_width=2, stroke_color="#000", background_color="#ffffff",
-                        height=150, width=300, drawing_mode="freedraw", key="canvas_petugas"
-                    )
-    
-               if st.button("Generate & Download PDF"):
-                    # Cek apakah kedua canvas sudah diisi
-                    if canvas_pasien.image_data is not None and canvas_petugas.image_data is not None:
-                        # Konversi data canvas ke format Image PIL
-                        img_p = Image.fromarray(canvas_pasien.image_data.astype('uint8'), 'RGBA')
-                        img_s = Image.fromarray(canvas_petugas.image_data.astype('uint8'), 'RGBA')
-                        
-                        # BARIS 423: Sekarang mengirim 4 data ke fungsi yang sudah siap menerima 4 data
-                        pdf_raw = generate_consent_pdf(p, tipe, img_p, img_s) 
-                        
-                        pdf_bytes = bytes(pdf_raw)
-                        st.download_button(
-                            label="📥 Download Dokumen PDF",
-                            data=pdf_bytes,
-                            file_name=f"{tipe}_{id_cari}.pdf",
-                            mime="application/pdf"
+                if p:
+                    st.success(f"Pasien: {p[0]} ({p[2]})")
+                    tipe = st.radio("Pilih Dokumen", ["General Consent", "Informed Consent"], horizontal=True)
+                    
+                    # Membuat dua kolom untuk Tanda Tangan
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.subheader("Tanda Tangan Pasien / 病人签名")
+                        canvas_p = st_canvas(
+                            stroke_width=2, stroke_color="#000", background_color="#ffffff",
+                            height=150, width=300, drawing_mode="freedraw", key="canvas_pasien"
                         )
-            else:
-                st.warning("Mohon isi kedua tanda tangan (Pasien & Petugas) terlebih dahulu.")
+                    
+                    with col2:
+                        st.subheader("Tanda Tangan Petugas / 护士签名")
+                        canvas_s = st_canvas(
+                            stroke_width=2, stroke_color="#000", background_color="#ffffff",
+                            height=150, width=300, drawing_mode="freedraw", key="canvas_petugas"
+                        )
+        
+                    # Baris IF ini harus sejajar dengan col1, col2
+                    if st.button("Generate & Download PDF"):
+                        # Cek apakah kedua canvas sudah diisi
+                        if canvas_p.image_data is not None and canvas_s.image_data is not None:
+                            img_p = Image.fromarray(canvas_p.image_data.astype('uint8'), 'RGBA')
+                            img_s = Image.fromarray(canvas_s.image_data.astype('uint8'), 'RGBA')
+                            
+                            # Mengirim 4 argumen ke fungsi (Line 423 Fix)
+                            pdf_raw = generate_consent_pdf(p, tipe, img_p, img_s) 
+                            
+                            pdf_bytes = bytes(pdf_raw)
+                            st.download_button(
+                                label="📥 Download Dokumen PDF",
+                                data=pdf_bytes,
+                                file_name=f"{tipe}_{id_cari}.pdf",
+                                mime="application/pdf"
+                            )
+                        else:
+                            st.warning("Mohon isi kedua tanda tangan terlebih dahulu.")
+                else:
+                    st.error("Data pasien tidak ditemukan.")
     # --- MENU 2: PEMERIKSAAN & UPLOAD ---
     elif choice == "2. Pemeriksaan & Upload":
         st.header("🩺 Input Pemeriksaan & Upload Lampiran")
