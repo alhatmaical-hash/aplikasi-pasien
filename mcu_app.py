@@ -310,21 +310,24 @@ def main():
                 h_aksi.write("**Aksi**")
     
                 for index, row in df_filtered.iterrows():
+                    # Membuat 4 kolom untuk baris data
                     r_id, r_nama, r_mcu, r_aksi = st.columns([1.5, 3, 3, 2])
+                    
                     r_id.write(row['id_karyawan'])
                     r_nama.write(row['nama'])
                     
-                    # Menampilkan Jenis MCU dan Waktu Kunjungan (Bulan & Tahun Daftar)
+                    # Menampilkan Jenis MCU dan Waktu Kunjungan
                     mcu_label = row.get('jenis_mcu', '-')
                     waktu_label = f"{row['bulan_kunjungan']} {row['tahun_kunjungan']}"
                     r_mcu.write(f"{mcu_label} \n ({waktu_label})")
                     
-                   with r_aksi:
+                    # PERBAIKAN INDENTASI: with r_aksi sejajar dengan r_id.write
+                    with r_aksi:
                         # Membagi kolom aksi menjadi dua untuk tombol Detail dan Hapus
                         c_btn1, c_btn2 = st.columns(2)
                         
                         # Tombol Detail
-                        if c_btn1.button(f"👁️ Detail", key=f"view_{row['id_karyawan']}"):
+                        if c_btn1.button(f"👁️", key=f"view_{row['id_karyawan']}", help="Detail"):
                             with st.expander("Informasi Lengkap & Foto", expanded=True):
                                 st.write("**Biodata Lengkap:**")
                                 b1, b2, b3 = st.columns(3)
@@ -344,22 +347,24 @@ def main():
                                 if 'foto_ktp' in row and row['foto_ktp']:
                                     v2.image(row['foto_ktp'], caption="KTP", use_column_width=True)
                                     v2.download_button("📥 KTP", row['foto_ktp'], f"KTP_{row['id_karyawan']}.png", key=f"dl_ktp_{row['id_karyawan']}")
-                    
+                        
                         # Tombol Hapus Data
-                        if c_btn2.button(f"🗑️ Hapus", key=f"del_{row['id_karyawan']}"):
+                        if c_btn2.button(f"🗑️", key=f"del_{row['id_karyawan']}", help="Hapus"):
                             try:
                                 conn = sqlite3.connect('mcu_complex.db')
                                 cur = conn.cursor()
-                                # Menghapus dari tabel pasien dan tabel hasil terkait
+                                # Menghapus dari tabel pasien dan hasil_mcu
                                 cur.execute("DELETE FROM pasien WHERE id_karyawan = ?", (row['id_karyawan'],))
                                 cur.execute("DELETE FROM hasil_mcu WHERE id_karyawan = ?", (row['id_karyawan'],))
                                 conn.commit()
                                 conn.close()
                                 
-                                st.success(f"Data {row['nama']} berhasil dihapus!")
-                                st.rerun() # Refresh halaman untuk memperbarui tampilan tabel
+                                st.success(f"Data {row['nama']} Berhasil Dihapus!")
+                                st.rerun() 
                             except Exception as e:
                                 st.error(f"Gagal menghapus data: {e}")
+                
+                    st.write("---")
     # --- MENU: MASTER DATA & AKUN ---
     elif choice == "Master Data":
         st.header("⚙️ Manajemen Data Master & Akun")
