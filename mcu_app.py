@@ -215,100 +215,124 @@ def main():
     ]
     choice = st.sidebar.radio("Navigasi", menu)
 
-    # --- MENU: DASHBOARD ---
+   # --- MENU: DASHBOARD ---
     if choice == "Dashboard":
         st.title("📊 Dashboard Pelayanan MCU")
+        
         conn = sqlite3.connect('mcu_complex.db')
+        # Ambil semua kolom dari tabel pasien
         df_p = pd.read_sql_query("SELECT * FROM pasien", conn)
         df_h = pd.read_sql_query("SELECT * FROM hasil_mcu", conn)
         conn.close()
 
+        # Konversi tgl_lahir atau kolom tanggal lainnya jika ada untuk filter waktu
+        # Asumsi: Kita menggunakan tanggal pendaftaran (jika ada) atau tgl_lahir sebagai demo
+        df_p['tgl_lahir'] = pd.to_datetime(df_p['tgl_lahir'])
+        df_p['bulan'] = df_p['tgl_lahir'].dt.month_name()
+        df_p['tahun'] = df_p['tgl_lahir'].dt.year
+
+        # --- BAGIAN FILTER ---
+        st.subheader("🔍 Filter Data")
+        f_c1, f_c2, f_c3 = st.columns(3)
+        
+        # Ambil opsi unik untuk filter
+        list_mcu = df_p['jenis_mcu'].unique().tolist() if 'jenis_mcu' in df_p.columns else []
+        sel_mcu = f_c1.multiselect("Jenis MCU", options=list_mcu, default=list_mcu)
+        
+        list_thn = sorted(df_p['tahun'].unique().tolist())
+        sel_thn = f_c2.multiselect("Tahun", options=list_thn, default=list_thn)
+        
+        list_bln = df_p['bulan'].unique().tolist()
+        sel_bln = f_c3.multiselect("Bulan", options=list_bln, default=list_bln)
+
+        # Terapkan Filter ke DataFrame
+        mask = df_p['tahun'].isin(sel_thn) & df_p['bulan'].isin(sel_bln)
+        if 'jenis_mcu' in df_p.columns:
+            mask = mask & df_p['jenis_mcu'].isin(sel_mcu)
+        
+        df_filtered = df_p[mask]
+
+        # --- STATISTIK UTAMA (Berdasarkan Data Terfilter) ---
         col1, col2, col3 = st.columns(3)
+        total_p_filter = len(df_filtered)
+        col1.metric("Pasien Terfilter", f"{total_p_filter} Orang")
+        
+        # Statistik kesehatan (tetap menggunakan df_h global atau bisa difilter juga jika ada relasi key)
         total_mcu = len(df_h)
-        col1.metric("Total Pasien Terdaftar", f"{len(df_p)} Orang")
         col2.metric("Total MCU Selesai", f"{total_mcu} Pemeriksaan")
+        
         prosentase = (total_mcu / len(df_p) * 100) if len(df_p) > 0 else 0
-        col3.metric("Penyelesaian MCU", f"{prosentase:.1f}%")
+        col3.metric("Total Penyelesaian", f"{prosentase:.1f}%")
 
         st.divider()
-        st.subheader("📈 Statistik Kondisi Kesehatan")
-        s1, s2, s3, s4 = st.columns(4)
-        if not df_h.empty:
-            jml_fit = len(df_h[df_h['kesimpulan'].str.contains('Fit', na=False)])
-            jml_unfit = len(df_h[df_h['kesimpulan'].str.contains('Unfit', na=False)])
-            jml_klinik = len(df_h[df_h['follow_up'].str.contains('klinik', na=False, case=False)])
-            jml_spesialis = len(df_h[df_h['follow_up'].str.contains('spesialis', na=False, case=False)])
-            s1.success(f"✅ Total Fit\n### {jml_fit}")
-            s2.error(f"❌ Total Unfit\n### {jml_unfit}")
-            s3.warning(f"🏥 Kontrol Klinik\n### {jml_klinik}")
-            s4.info(f"👨‍⚕️ Ke Spesialis\n### {jml_spesialis}")
-        else:
-            st.info("Statistik akan muncul setelah ada pemeriksaan.")
 
-        st.divider()
+        # --- TABEL MANAJEMEN DATA LENGKAP ---
+        st.subheader("📋 Manajemen Data & Dokumen Pasien (Lengkap)")
         
-        # --- BAGIAN TABEL DATA PASIEN & DOKUMEN ---
-        st.subheader("📋 Manajemen Data & Dokumen Pasien")
-        
-        if not df_p.empty:
-            # Tombol Download Rekap Excel Tetap Ada
+        if not df_filtered.empty:
+            # Tombol Download Excel untuk data yang sudah difilter
             buffer = BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                df_p.to_excel(writer, index=False, sheet_name='Daftar_Pasien')
-            st.download_button(label="📥 Download Rekap Excel", data=buffer.getvalue(), file_name=f"Rekap_MCU_{date.today()}.xlsx")
+                df_filtered.to_excel(writer, index=False, sheet_name='Data_Terdaftar')
+            st.download_button(label="📥 Download Data Terfilter (Excel)", data=buffer.getvalue(), 
+                               file_name=f"Data_Pasien_Filtered_{date.today()}.xlsx")
             
-            st.write("---")
-            # Header Tabel Kustom
-            h_id, h_nama, h_pt, h_aksi = st.columns([1.5, 3, 2.5, 2])
-            h_id.write("**ID Karyawan**")
-            h_nama.write("**Nama Lengkap**")
-            h_pt.write("**Perusahaan**")
-            h_aksi.write("**Dokumen**")
-            st.write("---")
+            # Menampilkan Dataframe lengkap untuk semua kolom teks
+            # Kita sembunyikan kolom BLOB foto agar tidak berat saat loading tabel
+            cols_to_show = [c for c in df_filtered.columns if c not in ['foto_id', 'foto_ktp']]
+            st.dataframe(df_filtered[cols_to_show], use_container_width=True)
 
-            for index, row in df_p.iterrows():
-                r_id, r_nama, r_pt, r_aksi = st.columns([1.5, 3, 2.5, 2])
+            st.write("---")
+            st.markdown("**Pratinjau Dokumen & Aksi**")
+            
+            # Header untuk baris aksi
+            h_id, h_nama, h_mcu, h_aksi = st.columns([1.5, 3, 3, 2])
+            h_id.write("**ID Karyawan**")
+            h_nama.write("**Nama**")
+            h_mcu.write("**Jenis MCU / Waktu**")
+            h_aksi.write("**Aksi**")
+
+            for index, row in df_filtered.iterrows():
+                r_id, r_nama, r_mcu, r_aksi = st.columns([1.5, 3, 3, 2])
                 
                 r_id.write(row['id_karyawan'])
                 r_nama.write(row['nama'])
-                r_pt.write(row['perusahaan'])
                 
-                # Tombol Mata untuk pratinjau dokumen
+                # Tampilkan info Jenis MCU, Bulan, dan Tahun
+                mcu_info = row.get('jenis_mcu', '-')
+                r_mcu.write(f"{mcu_info} \n ({row['bulan']} {row['tahun']})")
+                
                 with r_aksi:
-                    btn_view = st.button(f"👁️ Lihat", key=f"btn_{row['id_karyawan']}")
-                
-                if btn_view:
-                    with st.expander(f"Pratinjau Dokumen: {row['nama']}", expanded=True):
-                        v1, v2 = st.columns(2)
-                        
-                        # Cek dan Tampilkan ID Card
-                        if 'foto_id' in row and row['foto_id'] is not None:
-                            v1.image(row['foto_id'], caption="ID Card Perusahaan", use_column_width=True)
-                            v1.download_button(
-                                label="📥 Download ID Card",
-                                data=row['foto_id'],
-                                file_name=f"ID_{row['id_karyawan']}.png",
-                                mime="image/png",
-                                key=f"dl_id_{row['id_karyawan']}"
-                            )
-                        else:
-                            v1.warning("Foto ID Card tidak tersedia.")
+                    if st.button(f"👁️ Detail & Dokumen", key=f"view_{row['id_karyawan']}"):
+                        with st.expander("Informasi Lengkap & Foto", expanded=True):
+                            # Tampilkan Biodata Detail dalam bentuk kolom
+                            st.write("**Biodata Lengkap:**")
+                            b1, b2, b3 = st.columns(3)
+                            b1.write(f"NIK: {row['nik']}")
+                            b1.write(f"Gender: {row['gender']}")
+                            b1.write(f"HP: {row['no_hp']}")
                             
-                        # Cek dan Tampilkan KTP
-                        if 'foto_ktp' in row and row['foto_ktp'] is not None:
-                            v2.image(row['foto_ktp'], caption="KTP Karyawan", use_column_width=True)
-                            v2.download_button(
-                                label="📥 Download KTP",
-                                data=row['foto_ktp'],
-                                file_name=f"KTP_{row['id_karyawan']}.png",
-                                mime="image/png",
-                                key=f"dl_ktp_{row['id_karyawan']}"
-                            )
-                        else:
-                            v2.warning("Foto KTP tidak tersedia.")
+                            b2.write(f"Jabatan: {row['jabatan']}")
+                            b2.write(f"Dept: {row['dept']}")
+                            b2.write(f"Lokasi: {row['lokasi']}")
+                            
+                            b3.write(f"Status: {row['status_nikah']}")
+                            b3.write(f"Anak: {row['jml_anak']}")
+                            b3.write(f"Tinggal: {row['tempat_tinggal']}")
+
+                            st.write("---")
+                            # Bagian Foto
+                            v1, v2 = st.columns(2)
+                            if 'foto_id' in row and row['foto_id']:
+                                v1.image(row['foto_id'], caption="ID Card", use_column_width=True)
+                                v1.download_button("📥 Download ID", row['foto_id'], f"ID_{row['id_karyawan']}.png")
+                            
+                            if 'foto_ktp' in row and row['foto_ktp']:
+                                v2.image(row['foto_ktp'], caption="KTP", use_column_width=True)
+                                v2.download_button("📥 Download KTP", row['foto_ktp'], f"KTP_{row['id_karyawan']}.png")
                 st.write("---")
         else:
-            st.info("Belum ada data pasien terdaftar.")
+            st.info("Tidak ada data yang sesuai dengan filter.")
     # --- MENU: MASTER DATA & AKUN ---
     elif choice == "Master Data":
         st.header("⚙️ Manajemen Data Master & Akun")
