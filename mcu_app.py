@@ -166,28 +166,37 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
         pdf.multi_cell(w, 4, safe_t(p))
         pdf.ln(1)
 
-    # --- 6. BAGIAN TANDA TANGAN (UPDATE POSISI) ---
+   # --- 6. BAGIAN TANDA TANGAN (Line 414 Fix) ---
     pdf.ln(10)
     curr_y = pdf.get_y()
     
+    # Menghindari ttd terpotong di akhir halaman
+    if curr_y > 250:
+        pdf.add_page()
+        curr_y = 20
+
     pdf.set_font(font_main, '', 9)
-    # Teks Label
+    # Teks Label: Petugas di Kiri, Pasien di Kanan
     pdf.text(30, curr_y, safe_t("Petugas 护士"))
     pdf.text(140, curr_y, safe_t("Pasien / wali 病人"))
     
-    # Simpan dan masukkan TTD Petugas (Kiri)
-    temp_s = "staff_sig.png"
-    img_s.save(temp_s)
-    pdf.image(temp_s, x=25, y=curr_y + 2, w=35)
+    # Masukkan TTD Petugas (X=25 untuk posisi kiri)
+    path_s = "staff_sig.png"
+    img_s.save(path_s)
+    pdf.image(path_s, x=25, y=curr_y + 2, w=35)
     
-    # Simpan dan masukkan TTD Pasien (Kanan)
-    temp_p = "pasien_sig.png"
-    img_p.save(temp_p)
-    pdf.image(temp_p, x=135, y=curr_y + 2, w=35)
+    # Masukkan TTD Pasien (X=135 untuk posisi kanan)
+    path_p = "pasien_sig.png"
+    img_p.save(path_p)
+    pdf.image(path_p, x=135, y=curr_y + 2, w=35)
     
     # Nama Terang
+    pdf.set_font(font_main, '', 9)
     pdf.text(30, curr_y + 25, "( Paramedic Staff )")
     pdf.text(140, curr_y + 25, f"( {data_pasien[0]} )")
+    
+    pdf.set_font(font_main, '', 7)
+    pdf.text(30, curr_y + 28, "Tanda tangan dan nama lengkap")
 
     return pdf.output()
     
@@ -405,12 +414,12 @@ def main():
                     )
     
                 if st.button("Generate & Download PDF"):
-                    # Pastikan kedua canvas sudah ada isinya
+                    # Pastikan kedua canvas sudah ditarik datanya
                     if canvas_pasien.image_data is not None and canvas_petugas.image_data is not None:
                         img_p = Image.fromarray(canvas_pasien.image_data.astype('uint8'), 'RGBA')
                         img_s = Image.fromarray(canvas_petugas.image_data.astype('uint8'), 'RGBA')
                         
-                        # BARIS 414: Mengirim 4 argumen
+                        # BARIS 414: Sekarang mengirim 4 data ke fungsi yang sudah siap menerima 4 data
                         pdf_raw = generate_consent_pdf(p, tipe, img_p, img_s) 
                         
                         pdf_bytes = bytes(pdf_raw)
