@@ -166,25 +166,28 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
         pdf.multi_cell(w, 4, safe_t(p))
         pdf.ln(1)
 
-    # --- 6. TANDA TANGAN (BAGIAN BAWAH) ---
+    # --- 6. BAGIAN TANDA TANGAN ---
     pdf.ln(10)
     curr_y = pdf.get_y()
     
-    # Lokasi Tanda Tangan
+    # Label Tanda Tangan
     pdf.set_font(font_main, '', 9)
-    pdf.text(30, curr_y, safe_t("Petugas 护士"))
-    pdf.text(140, curr_y, safe_t("Pasien / wali 病人"))
+    pdf.text(30, curr_y, safe_t("Petugas 护士")) # Posisi Kiri
+    pdf.text(140, curr_y, safe_t("Pasien / wali 病人")) # Posisi Kanan
     
-    # Gambar TTD
-    temp_path = "sign_temp.png"
-    img_ttd.save(temp_path)
-    pdf.image(temp_path, x=135, y=curr_y + 2, w=35)
+    # Masukkan TTD Petugas (Sisi Kiri)
+    temp_s = "staff_sig.png"
+    img_s.save(temp_s)
+    pdf.image(temp_s, x=25, y=curr_y + 2, w=35)
+    
+    # Masukkan TTD Pasien (Sisi Kanan)
+    temp_p = "pasien_sig.png"
+    img_p.save(temp_p)
+    pdf.image(temp_p, x=135, y=curr_y + 2, w=35)
     
     # Nama Terang
-    pdf.text(30, curr_y + 25, "( .................................... )")
+    pdf.text(30, curr_y + 25, "( Paramedic Staff )")
     pdf.text(140, curr_y + 25, f"( {data_pasien[0]} )")
-    pdf.set_font(font_main, '', 7)
-    pdf.text(30, curr_y + 28, "Tanda tangan dan nama lengkap")
 
     return pdf.output()
     
