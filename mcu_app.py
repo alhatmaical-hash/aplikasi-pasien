@@ -137,20 +137,21 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
             """4. PRIVASI:saya memberi kuasa kepada Klinik Harita Nickel-Obi untuk menjaga privasi dan kerahasiaan penyakit saya selama dalam pemeriksaan.""",
             """5. RAHASIA KEDOKTERAN: Saya setuju Klinik Harita Nickel-Obi wajib menjamin rahasia kedokteran saya baik untuk kepentingan perawatan atau
     pengobatan, kecuali saya mengugkapkan sendiri atau orang lain yang saya beri kuasa kepada penjamin.""",
-            """6. MEMBUKA RAHASIA KEDOKTERAN:saya setuju untuk membuka rahasia kedokteran terkait dengan kondisi kesehatan asuhan dan pengobatan yang saya terima kepada
-        a. Dokter dan tenaga kesehatanlain yang memberikan asuhan kepada saya
-        b. Manajemen perusahaan untuk proses klaim asuransi dan/ atau administrasi perusahaan lainnya, seperti kesimpulan kelaikan memulai atau melanjutkan
-        pekerjaan serta hasil pemeriksaan lanjutan dari fasilitas kesehatan lanjut jika di lakukan rujukan
-        c. kepada yang tersebut berikut ini""",
+            """6. MEMBUKA RAHASIA KEDOKTERAN:saya setuju untuk membuka rahasia kedokteran terkait dengan kondisi kesehatan asuhan dan pengobatan
+    yang saya terima kepada
+    a. Dokter dan tenaga kesehatanlain yang memberikan asuhan kepada saya
+    b. Manajemen perusahaan untuk proses klaim asuransi dan/ atau administrasi perusahaan lainnya, seperti kesimpulan kelaikan memulai atau melanjutkan
+    pekerjaan serta hasil pemeriksaan lanjutan dari fasilitas kesehatan lanjut jika di lakukan rujukan
+    c. kepada yang tersebut berikut ini""",
             """7. BARANG PRIBADI:saya setuju untuk tidak membawah barang-barang berharga yang tidak di perlukan selama dalam perawatan di klinik harita nickel obi
     saya memahami dan menyetujuiklinik harita nickel obi tidak bertanggung jawab terhadap kehilangan, kerusakan, pencurian barang berharga.""",
-            """8. PENGAJUAN KELUHAN:saya menyatakan bahwa saya telah menerima informasi tentang adanya tata cara mengajukan dan mengatasi keluhan terhadap
-    pelayanan medis yang diberikan terhadap saya. Saya setuju untuk mengikuti tata cara mengajukan keluhan sesuai prosedur yang ada.""",
+            """8. PENGAJUAN KELUHAN:saya menyatakan bahwa saya telah menerima informasi tentang adanya tata cara mengajukan dan
+    mengatasi keluhan terhadap pelayanan medis yang diberikan terhadap saya. Saya setuju untuk mengikuti tata cara mengajukan keluhan sesuai prosedur yang ada.""",
 
-            """Melalui dokuemen ini saya menegaskan kembali bahwa saya mempercayakan kepada tenaga kesehatan klinik harita nickel obi untuk memberikan perawatan, diagnostic dan
-    terapi kepada saya sebagai pasien rawat jalan, rawat inap, medical check up (MCU) atau unit gawat darurat, termasuk semua pemeriksaan penunjang yangdibutuhkan untuk
-    pengobatan dan tindakan yang aman. SAYA TELAH MEMBACA DAN SEPENUHNYA SETUJU dengan setiap pernyataan yang terdapat pada formulir ini dan menandatangani tanpa paksaan
-    dan dengan kesadaran penuh.""" 
+            """Melalui dokuemen ini saya menegaskan kembali bahwa saya mempercayakan kepada tenaga kesehatan klinik harita nickel obi untuk
+    memberikan perawatan, diagnostic dan terapi kepada saya sebagai pasien rawat jalan, rawat inap, medical check up (MCU) atau unit gawat darurat
+    termasuk semua pemeriksaan penunjang yangdibutuhkan untuk pengobatan dan tindakan yang aman. SAYA TELAH MEMBACA DAN SEPENUHNYA SETUJU 
+    dengan setiap pernyataan yang terdapat pada formulir ini dan menandatangani tanpa paksaandan dengan kesadaran penuh.""" 
                 
         ]
     else:
