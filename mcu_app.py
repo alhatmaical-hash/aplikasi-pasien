@@ -124,7 +124,7 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
     if tipe == "General Consent":
         points = [
             "1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan kepada saya (我同意对我进行检查和/或治疗)",
-            "2. HAK DAN KEWAJIBAN SEBAGAI PASIEN: Saya mengakui bahwa proses pendaftaran untuk mendaptkan perawatan di Klinik Harita Nickel Obi dan
+            "2. HAK DAN KEWAJIBAN SEBAGAI PASIEN:saya mengakui bahwa proses pendaftaran untuk mendaptkan perawatan di klinik harita nickel Obi dan
                 penandatanganan dokumen ini, saya telah mendapat informasi tentang hak-hak dan kewajiban saya sebagai pasien.",
             """3. PERSETUJUAN PELAYANAN KESEHATAN:saya menyetujui dan memberikan persetujuan untuk mendapatkan pelayanan kesehatan di Klinik Harita Nickel Obi
                 dan dengan ini saya meminta dan meberikan kuasa kepada pihak Klinik Harita Nickel-Obi, Dokter Dan Perawat, Dan Tenaga Kesehatan Lainnya untuk
@@ -140,9 +140,7 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
                 a. Dokter dan tenaga kesehatanlain yang memberikan asuhan kepada saya
                 b. Manajemen perusahaan untuk proses klaim asuransi dan/ atau administrasi perusahaan lainnya, seperti kesimpulan kelaikan memulai atau melanjutkan
                    pekerjaan serta hasil pemeriksaan lanjutan dari fasilitas kesehatan lanjut jika di lakukan rujukan
-                c. kepada yang tersebut berikut ini
-                    a)                            Hubungan                                
-                    b)                            Hubungan.",
+                c. kepada yang tersebut berikut ini",
             "7. BARANG PRIBADI:saya setuju untuk tidak membawah barang-barang berharga yang tidak di perlukan selama dalam perawatan di Klinik Harita Nickel Obi
                 saya memahami dan menyetujui Klinik Harita Nickel Obi tidak bertanggung jawab terhadap kehilangan, kerusakan, pencurian barang berharga.",
             "8. PENGAJUAN KELUHAN:saya menyatakan bahwa saya telah menerima informasi tentang adanya tata cara mengajukan dan mengatasi keluhan terhadap
