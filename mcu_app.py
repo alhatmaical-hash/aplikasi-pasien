@@ -128,12 +128,12 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
     penandatanganan dokumen ini, saya telah mendapat informasi tentang hak-hak dan kewajiban saya sebagai pasien.""",
             """3. PERSETUJUAN PELAYANAN KESEHATAN:saya menyetujui dan memberikan persetujuan untuk mendapatkan pelayanan kesehatan 
     diKlinik Harita Nickel Obi dan dengan ini saya meminta dan meberikan kuasa kepada pihak Klinik Harita Nickel-Obi, Dokter Dan Perawat, Dan 
-    Tenaga Kesehatan Lainnya  untuk memberikan asuhan keperawatan, pemeriksaan fisik yang di lakukan oleh dokter dan perawat, melakukan prosedur 
-    diagnostic, radiologi, dan atau terapi dan tata laksana sesuai pertimbangan dokter yang di perlukan atau di rasarankan pada perawat saya. Hal 
-    ini mencangkup seluruh pemeriksaan dan prosedur diagnostic rutin termasuk X-Ray, pemberian dan atau tindakan medis serta penyuntikan
-    (Intra-muskular, intravena dan prosedur incasif lainnya), produk farmasi dan obat-obatan pemasangan alat kesehatan 
-    (kecuali yang membutuhkan persetujuan khusus/tertulis), dan pengambilandarah untuk pemeriksaan laboratorium atau pemeriksaan patologi
-    yang dibutuhkan untuk pengobatan dan tindakan yang aman.""",
+    Tenaga Kesehatan Lainnya  untuk memberikan asuhan keperawatan, pemeriksaan fisik yang di lakukan oleh dokter dan perawat
+    melakukan prosedur diagnostic, radiologi, dan atau terapi dan tata laksana sesuai pertimbangan dokter yang di perlukan atau
+    di rasarankan pada perawat saya. Hal ini mencangkup seluruh pemeriksaan dan prosedur diagnostic rutin termasuk X-Ray
+    pemberian dan atau tindakan medis serta penyuntikan(Intra-muskular, intravena dan prosedur incasif lainnya)
+    produk farmasi dan obat-obatan pemasangan alat kesehatan (kecuali yang membutuhkan persetujuan khusus/tertulis)
+    dan pengambilandarah untuk pemeriksaan laboratorium atau pemeriksaan patologi yang dibutuhkan untuk pengobatan dan tindakan yang aman.""",
             """4. PRIVASI:saya memberi kuasa kepada Klinik Harita Nickel-Obi untuk menjaga privasi dan kerahasiaan penyakit saya selama dalam pemeriksaan.""",
             """5. RAHASIA KEDOKTERAN: Saya setuju Klinik Harita Nickel-Obi wajib menjamin rahasia kedokteran saya baik untuk kepentingan perawatan atau
     pengobatan, kecuali saya mengugkapkan sendiri atau orang lain yang saya beri kuasa kepada penjamin.""",
