@@ -371,16 +371,40 @@ def main():
             mcu_ke = 0
             if jenis_mcu == "MCU ANNUAL (MCU TAHUNAN)":
                 mcu_ke = c18.number_input("MCU Annual Ke-", min_value=1, step=1)
+
+            # --- TAMBAHAN UPLOAD FOTO ---
+            st.markdown("---")
+            st.subheader("📸 Dokumen Pendukung")
+            f1, f2 = st.columns(2)
+            foto_id = f1.file_uploader("Upload Foto ID Perusahaan (Wajib)", type=['png', 'jpg', 'jpeg'])
+            foto_ktp = f2.file_uploader("Upload Foto KTP (Wajib)", type=['png', 'jpg', 'jpeg'])
             
             if st.form_submit_button("Simpan Registrasi"):
-                conn = sqlite3.connect('mcu_complex.db')
-                conn.execute('''INSERT OR REPLACE INTO pasien 
-                             (id_karyawan, nik, nama, tempat_lahir, tgl_lahir, usia, gender, doh, perusahaan, dept, jabatan, lokasi, no_hp, status_nikah, jml_anak, tempat_tinggal, sumber_air) 
-                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
-                             (id_kar, nik, nama, tmp_lhr, str(tgl_lhr), usia, gender, doh_manual, pt, dept, jab, lokasi, hp, status_m, jml_anak, tinggal, air))
-                conn.commit()
-                conn.close()
-                st.success(f"Berhasil Terdaftar!")
+                # Validasi Semua Field Wajib
+                wajib_teks = [jenis_mcu, id_kar, nik, nama, tmp_lhr, gender, pt, dept, jab, lokasi, hp, status_m, tinggal, air]
+                
+                if any(x is None or x == "" for x in wajib_teks):
+                    st.error("❌ Gagal Simpan! Semua kolom biodata wajib diisi.")
+                elif foto_id is None or foto_ktp is None:
+                    st.error("❌ Gagal Simpan! Foto ID Perusahaan dan KTP wajib diunggah.")
+                else:
+                    # Proses Simpan ke Database
+                    try:
+                        # Baca file gambar menjadi bytes untuk disimpan ke BLOB (opsional)
+                        # data_foto_id = foto_id.read()
+                        # data_foto_ktp = foto_ktp.read()
+
+                        conn = sqlite3.connect('mcu_complex.db')
+                        conn.execute('''INSERT OR REPLACE INTO pasien 
+                                     (id_karyawan, nik, nama, tempat_lahir, tgl_lahir, usia, gender, doh, perusahaan, dept, jabatan, lokasi, no_hp, status_nikah, jml_anak, tempat_tinggal, sumber_air) 
+                                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', 
+                                     (id_kar, nik, nama, tmp_lhr, str(tgl_lhr), usia, gender, doh_manual, pt, dept, jab, lokasi, hp, status_m, jml_anak, tinggal, air))
+                        conn.commit()
+                        conn.close()
+                        st.success(f"✅ Berhasil Terdaftar! Data {nama} telah tersimpan.")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"Terjadi kesalahan: {e}")
 
     # --- DI DALAM MENU 1.5 ---
     elif choice == "1.5 General & Informed Consent":
