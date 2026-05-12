@@ -246,13 +246,69 @@ def main():
             st.info("Statistik akan muncul setelah ada pemeriksaan.")
 
         st.divider()
+        
+        # --- BAGIAN TABEL DATA PASIEN & DOKUMEN ---
+        st.subheader("📋 Manajemen Data & Dokumen Pasien")
+        
         if not df_p.empty:
+            # Tombol Download Rekap Excel Tetap Ada
             buffer = BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                 df_p.to_excel(writer, index=False, sheet_name='Daftar_Pasien')
-            st.download_button(label="📥 Download Excel", data=buffer.getvalue(), file_name=f"Rekap_MCU_{date.today()}.xlsx")
-            st.dataframe(df_p, use_container_width=True, hide_index=True)
+            st.download_button(label="📥 Download Rekap Excel", data=buffer.getvalue(), file_name=f"Rekap_MCU_{date.today()}.xlsx")
+            
+            st.write("---")
+            # Header Tabel Kustom
+            h_id, h_nama, h_pt, h_aksi = st.columns([1.5, 3, 2.5, 2])
+            h_id.write("**ID Karyawan**")
+            h_nama.write("**Nama Lengkap**")
+            h_pt.write("**Perusahaan**")
+            h_aksi.write("**Dokumen**")
+            st.write("---")
 
+            for index, row in df_p.iterrows():
+                r_id, r_nama, r_pt, r_aksi = st.columns([1.5, 3, 2.5, 2])
+                
+                r_id.write(row['id_karyawan'])
+                r_nama.write(row['nama'])
+                r_pt.write(row['perusahaan'])
+                
+                # Tombol Mata untuk pratinjau dokumen
+                with r_aksi:
+                    btn_view = st.button(f"👁️ Lihat", key=f"btn_{row['id_karyawan']}")
+                
+                if btn_view:
+                    with st.expander(f"Pratinjau Dokumen: {row['nama']}", expanded=True):
+                        v1, v2 = st.columns(2)
+                        
+                        # Cek dan Tampilkan ID Card
+                        if 'foto_id' in row and row['foto_id'] is not None:
+                            v1.image(row['foto_id'], caption="ID Card Perusahaan", use_column_width=True)
+                            v1.download_button(
+                                label="📥 Download ID Card",
+                                data=row['foto_id'],
+                                file_name=f"ID_{row['id_karyawan']}.png",
+                                mime="image/png",
+                                key=f"dl_id_{row['id_karyawan']}"
+                            )
+                        else:
+                            v1.warning("Foto ID Card tidak tersedia.")
+                            
+                        # Cek dan Tampilkan KTP
+                        if 'foto_ktp' in row and row['foto_ktp'] is not None:
+                            v2.image(row['foto_ktp'], caption="KTP Karyawan", use_column_width=True)
+                            v2.download_button(
+                                label="📥 Download KTP",
+                                data=row['foto_ktp'],
+                                file_name=f"KTP_{row['id_karyawan']}.png",
+                                mime="image/png",
+                                key=f"dl_ktp_{row['id_karyawan']}"
+                            )
+                        else:
+                            v2.warning("Foto KTP tidak tersedia.")
+                st.write("---")
+        else:
+            st.info("Belum ada data pasien terdaftar.")
     # --- MENU: MASTER DATA & AKUN ---
     elif choice == "Master Data":
         st.header("⚙️ Manajemen Data Master & Akun")
