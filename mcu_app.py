@@ -166,21 +166,21 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
         pdf.multi_cell(w, 4, safe_t(p))
         pdf.ln(1)
 
-    # --- 6. BAGIAN TANDA TANGAN ---
+    # --- 6. BAGIAN TANDA TANGAN (UPDATE POSISI) ---
     pdf.ln(10)
     curr_y = pdf.get_y()
     
-    # Label Tanda Tangan
     pdf.set_font(font_main, '', 9)
-    pdf.text(30, curr_y, safe_t("Petugas 护士")) # Posisi Kiri
-    pdf.text(140, curr_y, safe_t("Pasien / wali 病人")) # Posisi Kanan
+    # Teks Label
+    pdf.text(30, curr_y, safe_t("Petugas 护士"))
+    pdf.text(140, curr_y, safe_t("Pasien / wali 病人"))
     
-    # Masukkan TTD Petugas (Sisi Kiri)
+    # Simpan dan masukkan TTD Petugas (Kiri)
     temp_s = "staff_sig.png"
     img_s.save(temp_s)
     pdf.image(temp_s, x=25, y=curr_y + 2, w=35)
     
-    # Masukkan TTD Pasien (Sisi Kanan)
+    # Simpan dan masukkan TTD Pasien (Kanan)
     temp_p = "pasien_sig.png"
     img_p.save(temp_p)
     pdf.image(temp_p, x=135, y=curr_y + 2, w=35)
@@ -405,15 +405,15 @@ def main():
                     )
     
                 if st.button("Generate & Download PDF"):
+                    # Pastikan kedua canvas sudah ada isinya
                     if canvas_pasien.image_data is not None and canvas_petugas.image_data is not None:
-                        # Konversi kedua canvas ke Gambar
                         img_p = Image.fromarray(canvas_pasien.image_data.astype('uint8'), 'RGBA')
                         img_s = Image.fromarray(canvas_petugas.image_data.astype('uint8'), 'RGBA')
                         
-                        # Panggil fungsi PDF dengan dua gambar tanda tangan
-                        pdf_raw = generate_consent_pdf(p, tipe, img_p, img_s)
-                        pdf_bytes = bytes(pdf_raw) 
+                        # BARIS 414: Mengirim 4 argumen
+                        pdf_raw = generate_consent_pdf(p, tipe, img_p, img_s) 
                         
+                        pdf_bytes = bytes(pdf_raw)
                         st.download_button(
                             label="📥 Download Dokumen PDF",
                             data=pdf_bytes,
