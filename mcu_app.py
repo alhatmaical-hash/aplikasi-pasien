@@ -430,8 +430,8 @@ def main():
                             file_name=f"{tipe}_{id_cari}.pdf",
                             mime="application/pdf"
                         )
-                    else:
-                        st.warning("Mohon isi kedua tanda tangan (Pasien & Petugas) terlebih dahulu.")
+            else:
+                st.warning("Mohon isi kedua tanda tangan (Pasien & Petugas) terlebih dahulu.")
     # --- MENU 2: PEMERIKSAAN & UPLOAD ---
     elif choice == "2. Pemeriksaan & Upload":
         st.header("🩺 Input Pemeriksaan & Upload Lampiran")
