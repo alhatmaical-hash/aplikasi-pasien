@@ -126,12 +126,13 @@ def generate_consent_pdf(data_pasien, tipe, img_ttd):
             """1. Saya menyetujui dilakukan pemeriksaan dan/atau perawatan kepada saya (我同意对我进行检查和/或治疗)""",
             """2. HAK DAN KEWAJIBAN SEBAGAI PASIEN:saya mengakui bahwa proses pendaftaran untuk mendaptkan perawatan di klinik harita nickel obi dan
     penandatanganan dokumen ini, saya telah mendapat informasi tentang hak-hak dan kewajiban saya sebagai pasien.""",
-            """3. PERSETUJUAN PELAYANAN KESEHATAN:saya menyetujui dan memberikan persetujuan untuk mendapatkan pelayanan kesehatan di Klinik Harita Nickel Obi
-    dan dengan ini saya meminta dan meberikan kuasa kepada pihak Klinik Harita Nickel-Obi, Dokter Dan Perawat, Dan Tenaga Kesehatan Lainnya untuk
-    memberikan asuhan keperawatan, pemeriksaan fisik yang di lakukan oleh dokter dan perawat, melakukan prosedur diagnostic, radiologi, dan atau terapi dan tata
-    laksana sesuai pertimbangan dokter yang di perlukan atau di rasarankan pada perawat saya. Hal ini mencangkup seluruh pemeriksaan dan prosedur diagnostic rutin
-    termasuk X-Ray, pemberian dan atau tindakan medis serta penyuntikan (Intra-muskular, intravena dan prosedur incasif lainnya), produk farmasi dan obat-obatan
-    pemasangan alat kesehatan (kecuali yang membutuhkan persetujuan khusus/tertulis), dan pengambilandarah untuk pemeriksaan laboratorium atau pemeriksaan patologi
+            """3. PERSETUJUAN PELAYANAN KESEHATAN:saya menyetujui dan memberikan persetujuan untuk mendapatkan pelayanan kesehatan 
+    diKlinik Harita Nickel Obi dan dengan ini saya meminta dan meberikan kuasa kepada pihak Klinik Harita Nickel-Obi, Dokter Dan Perawat, Dan 
+    Tenaga Kesehatan Lainnya  untuk memberikan asuhan keperawatan, pemeriksaan fisik yang di lakukan oleh dokter dan perawat, melakukan prosedur 
+    diagnostic, radiologi, dan atau terapi dan tata laksana sesuai pertimbangan dokter yang di perlukan atau di rasarankan pada perawat saya. Hal 
+    ini mencangkup seluruh pemeriksaan dan prosedur diagnostic rutin termasuk X-Ray, pemberian dan atau tindakan medis serta penyuntikan
+    (Intra-muskular, intravena dan prosedur incasif lainnya), produk farmasi dan obat-obatan pemasangan alat kesehatan 
+    (kecuali yang membutuhkan persetujuan khusus/tertulis), dan pengambilandarah untuk pemeriksaan laboratorium atau pemeriksaan patologi
     yang dibutuhkan untuk pengobatan dan tindakan yang aman.""",
             """4. PRIVASI:saya memberi kuasa kepada Klinik Harita Nickel-Obi untuk menjaga privasi dan kerahasiaan penyakit saya selama dalam pemeriksaan.""",
             """5. RAHASIA KEDOKTERAN: Saya setuju Klinik Harita Nickel-Obi wajib menjamin rahasia kedokteran saya baik untuk kepentingan perawatan atau
