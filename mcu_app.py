@@ -377,7 +377,6 @@ def main():
         
         if id_cari:
             conn = sqlite3.connect('mcu_complex.db')
-            # Ambil data lengkap untuk PDF
             p = conn.execute("SELECT nama, id_karyawan, perusahaan, gender, tgl_lahir FROM pasien WHERE id_karyawan=?", (id_cari,)).fetchone()
             conn.close()
             
@@ -385,33 +384,41 @@ def main():
                 st.success(f"Pasien: {p[0]} ({p[2]})")
                 tipe = st.radio("Pilih Dokumen", ["General Consent", "Informed Consent"], horizontal=True)
                 
-                # Canvas TTD
-                st.subheader("Tanda Tangan Pasien / 病人签名")
-                canvas_res = st_canvas(
-                    stroke_width=2, stroke_color="#000", background_color="#ffffff",
-                    height=150, width=400, drawing_mode="freedraw", key="canvas_sig"
-                )
+                # Membuat dua kolom untuk Tanda Tangan
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.subheader("Tanda Tangan Pasien / 病人签名")
+                    canvas_pasien = st_canvas(
+                        stroke_width=2, stroke_color="#000", background_color="#ffffff",
+                        height=150, width=300, drawing_mode="freedraw", key="canvas_pasien"
+                    )
+                
+                with col2:
+                    st.subheader("Tanda Tangan Petugas / 护士签名")
+                    canvas_petugas = st_canvas(
+                        stroke_width=2, stroke_color="#000", background_color="#ffffff",
+                        height=150, width=300, drawing_mode="freedraw", key="canvas_petugas"
+                    )
     
                 if st.button("Generate & Download PDF"):
-                    if canvas_res.image_data is not None:
-                        # Ambil gambar dari canvas
-                        img = Image.fromarray(canvas_res.image_data.astype('uint8'), 'RGBA')
+                    if canvas_pasien.image_data is not None and canvas_petugas.image_data is not None:
+                        # Konversi kedua canvas ke Gambar
+                        img_p = Image.fromarray(canvas_pasien.image_data.astype('uint8'), 'RGBA')
+                        img_s = Image.fromarray(canvas_petugas.image_data.astype('uint8'), 'RGBA')
                         
-                        # Buat PDF
-                        pdf_raw = generate_consent_pdf(p, tipe, img)
-                        
-                        # KONVERSI KE BYTES (Solusi Error)
+                        # Panggil fungsi PDF dengan dua gambar tanda tangan
+                        pdf_raw = generate_consent_pdf(p, tipe, img_p, img_s)
                         pdf_bytes = bytes(pdf_raw) 
                         
                         st.download_button(
                             label="📥 Download Dokumen PDF",
-                            data=pdf_bytes, # Gunakan data yang sudah dikonversi
+                            data=pdf_bytes,
                             file_name=f"{tipe}_{id_cari}.pdf",
                             mime="application/pdf"
                         )
             else:
                 st.error("Data pasien tidak ditemukan. Silakan registrasi terlebih dahulu.")
-
     # --- MENU 2: PEMERIKSAAN & UPLOAD ---
     elif choice == "2. Pemeriksaan & Upload":
         st.header("🩺 Input Pemeriksaan & Upload Lampiran")
