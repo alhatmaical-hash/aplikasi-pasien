@@ -252,6 +252,7 @@ elif choice == "✈️ Kalkulator Roster & Cuti":
             """, unsafe_allow_html=True)
 
 # ==========================================
+# ==========================================
 # 4. HALAMAN MANAJEMEN KARYAWAN
 # ==========================================
 elif choice == "👥 Manajemen Karyawan":
@@ -299,7 +300,7 @@ elif choice == "👥 Manajemen Karyawan":
                     conn.commit()
                     conn.close()
                     st.success(f"Karyawan {nama_karyawan} berhasil disimpan!")
-                    st.rerun() # Refresh halaman untuk update tabel bawah
+                    st.rerun() # Refresh halaman untuk update daftar bawah
 
     with tab2:
         st.subheader("🛠️ Tambah Kamus Jabatan Baru")
@@ -324,14 +325,54 @@ elif choice == "👥 Manajemen Karyawan":
                     except sqlite3.IntegrityError:
                         st.error("Jabatan tersebut sudah terdaftar di sistem.")
 
-    # Menampilkan tabel rekap di bagian bawah halaman karyawan
+    # --- BAGIAN BAWAH YANG DIPERBARUI (DAFTAR KARYAWAN + TOMBOL HAPUS) ---
     st.write("---")
     st.subheader("Daftar Karyawan Terdaftar")
+    
     conn = get_db_connection()
-    df_karyawan = pd.read_sql_query("SELECT id AS 'ID', nama AS 'Nama', tipe AS 'Tipe', jabatan AS 'Jabatan', perusahaan AS 'Perusahaan' FROM karyawan", conn)
+    df_karyawan = pd.read_sql_query("SELECT id, nama, tipe, jabatan, perusahaan FROM karyawan ORDER BY id DESC", conn)
     conn.close()
     
     if not df_karyawan.empty:
-        st.dataframe(df_karyawan, use_container_width=True, hide_index=True)
+        # Loop untuk menampilkan data baris demi baris beserta tombol hapusnya
+        for idx, row in df_karyawan.iterrows():
+            col_data, col_aksi = st.columns([4, 1])
+            
+            with col_data:
+                st.markdown(f"""
+                    <div style="padding: 10px; background-color: #f8f9fa; border-radius: 5px; margin-bottom: 5px; border-left: 4px solid #6c757d;">
+                        <b>{row['nama']}</b> ({row['tipe']})<br>
+                        <span style="font-size: 0.85rem; color: #555;">{row['jabatan']} | {row['perusahaan']}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+            with col_aksi:
+                # Tombol hapus dengan key unik berbasis ID karyawan
+                hapus_klik = st.button("🗑️ Hapus", key=f"del_{row['id']}")
+                
+                if hapus_klik:
+                    # Modal dialog konfirmasi pengaman
+                    @st.dialog(f"Konfirmasi Hapus: {row['nama']}")
+                    def konfirmasi_dialog(karyawan_id, nama_karyawan):
+                        st.write(f"Apakah Anda yakin ingin menghapus data **{nama_karyawan}**? Semua riwayat jadwal miliknya juga akan terhapus.")
+                        col_ya, col_tidak = st.columns(2)
+                        
+                        with col_ya:
+                            if st.button("Ya, Hapus", type="primary"):
+                                conn = get_db_connection()
+                                cursor = conn.cursor()
+                                # Hapus jadwalnya dulu agar tidak melanggar foreign key constraint
+                                cursor.execute("DELETE FROM jadwal WHERE karyawan_id = ?", (karyawan_id,))
+                                # Baru hapus data karyawannya
+                                cursor.execute("DELETE FROM karyawan WHERE id = ?", (karyawan_id,))
+                                conn.commit()
+                                conn.close()
+                                st.success("Data berhasil dihapus!")
+                                st.rerun()
+                        with col_tidak:
+                            if st.button("Batal"):
+                                st.rerun()
+                                
+                    konfirmasi_dialog(row['id'], row['nama'])
     else:
         st.caption("Belum ada karyawan yang terdaftar.")
