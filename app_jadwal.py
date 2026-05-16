@@ -213,13 +213,25 @@ elif choice == "✈️ Kalkulator Roster & Cuti":
             st.write("### 📌 Penyesuaian Jadwal Lapangan")
             hari_mundur = st.number_input("Jumlah Hari Menunda Pulang / Mundur Cuti (Jika ada)", min_value=0, step=1, value=0)
             
-            total_hari_kerja_aktual = 70 + hari_mundur
+            # --- LOGIKA BARU UNTUK SUPERVISOR, STAFF, & CREW ---
+            if tipe_karyawan == "Supervisor":
+                total_hari_kerja_standar = 63
+                hari_perjalanan = 4  # Setara staff, silakan ubah angka ini jika berbeda
+            elif tipe_karyawan == "Staff":
+                total_hari_kerja_standar = 70
+                hari_perjalanan = 4
+            else: # Crew
+                total_hari_kerja_standar = 70
+                hari_perjalanan = 2
+                
+            total_hari_kerja_aktual = total_hari_kerja_standar + hari_mundur
             cuti_dasar = 14
-            hari_perjalanan = 4 if tipe_karyawan == "Staff" else 2
             
+            # Rumus bonus cuti extra (Mundur 5 hari = +1 hari cuti)
             extra_cuti = hari_mundur // 5
             total_cuti_aktual = cuti_dasar + extra_cuti
             
+            # Perhitungan Tanggal Otomatis
             tgl_mulai_cuti = tgl_mulai_kerja + timedelta(days=total_hari_kerja_aktual)
             total_hari_off_site = total_cuti_aktual + hari_perjalanan
             tgl_kembali_site = tgl_mulai_cuti + timedelta(days=total_hari_off_site)
@@ -228,8 +240,9 @@ elif choice == "✈️ Kalkulator Roster & Cuti":
             <div class="highlight-box">
                 <h4>📊 Hasil Kalkulasi Roster ({tipe_karyawan}):</h4>
                 <ul>
-                    <li><b>Total Hari Kerja di Site:</b> {total_hari_kerja_aktual} Hari</li>
-                    <li><b>Total Cuti Bersih:</b> {total_cuti_aktual} Hari (Bonus +{extra_cuti} Hari)</li>
+                    <li><b>Siklus Kerja Standar:</b> {total_hari_kerja_standar} Hari Kerja</li>
+                    <li><b>Total Hari Kerja di Site (Aktual):</b> {total_hari_kerja_aktual} Hari (Termasuk mundur {hari_mundur} hari)</li>
+                    <li><b>Total Cuti Bersih:</b> {total_cuti_aktual} Hari (Jatah {cuti_dasar} hari + Bonus {extra_cuti} hari)</li>
                     <li><b>Waktu Perjalanan PP:</b> {hari_perjalanan} Hari</li>
                 </ul>
                 <hr>
@@ -267,7 +280,7 @@ elif choice == "👥 Manajemen Karyawan":
             # Memakai index=None agar dropdown bawaan kosong sampai dipilih pengguna
             pilih_jabatan = st.selectbox("Pilih Jabatan / Posisi", options=list_jabatan_db, index=None, placeholder="-- Silakan Pilih Jabatan --")
             pilih_perusahaan = st.selectbox("Pilih Perusahaan Induk", options=perusahaan_options, index=None, placeholder="-- Silakan Pilih Perusahaan --")
-            tipe_karyawan = st.selectbox("Tipe Karyawan", ["Crew", "Staff"])
+            tipe_karyawan = st.selectbox("Tipe Karyawan", ["Crew", "Staff", "Supervisor"])
             
             submit_karyawan = st.form_submit_button("Daftarkan Karyawan")
             
