@@ -10,11 +10,20 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- KONEKSI DATABASE ---
+# --- KONEKSI DATABASE & INISIALISASI ---
 def init_db():
-    conn = sqlite3.connect("office_schedule_v2.db")
+    conn = sqlite3.connect("office_schedule_v3.db")
     cursor = conn.cursor()
-    # Tabel Karyawan (Ditambah kolom tipe untuk membedakan Staff/Crew)
+    
+    # 1. Tabel Master Jabatan
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS master_jabatan (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nama_jabatan TEXT NOT NULL UNIQUE
+        )
+    """)
+    
+    # 2. Tabel Karyawan
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS karyawan (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +33,8 @@ def init_db():
             tipe TEXT NOT NULL DEFAULT 'Crew'
         )
     """)
-    # Tabel Jadwal
+    
+    # 3. Tabel Jadwal Kerja
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS jadwal (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,13 +44,24 @@ def init_db():
             FOREIGN KEY (karyawan_id) REFERENCES karyawan (id)
         )
     """)
+    
+    # --- ISI DATA JABATAN STANDAR JIKA MASIH KOSONG ---
+    cursor.execute("SELECT COUNT(*) FROM master_jabatan")
+    if cursor.fetchone()[0] == 0:
+        jabatan_default = [
+            "Supervisor Klinik", "Supervisor Paramedic", "Supervisor Pharmacy", 
+            "Formen", "Paramedic Staff", "Medical Record Staff", 
+            "Pharmacy Staff", "Admin Klinik", "Translator Klinik", "Crew Klinik"
+        ]
+        cursor.executemany("INSERT INTO master_jabatan (nama_jabatan) VALUES (?)", [(j,) for j in jabatan_default])
+        
     conn.commit()
     conn.close()
 
 init_db()
 
 def get_db_connection():
-    return sqlite3.connect("office_schedule_v2.db")
+    return sqlite3.connect("office_schedule_v3.db")
 
 # --- CSS CUSTOM ---
 st.markdown("""
@@ -126,8 +147,6 @@ elif choice == "📅 Atur Jadwal & Shift":
             pilih_karyawan = st.selectbox("Pilih Karyawan", options=list(karyawan_options.keys()), index=None, placeholder="-- Pilih Karyawan --")
             
             pilih_tanggal = st.date_input("Pilih Tanggal", value=datetime.now())
-            
-            # Update Pilihan Shift sesuai instruksi baru Anda
             pilih_shift = st.selectbox("Pilih Shift Kerja", [
                 "Shift Pagi (07:00 - 18:00)", 
                 "Shift Malam (19:00 - 07:00)", 
@@ -171,11 +190,10 @@ elif choice == "📅 Atur Jadwal & Shift":
         st.dataframe(df_all, use_container_width=True, hide_index=True)
 
 # ==========================================
-# 3. HALAMAN KALKULATOR ROSTER & CUTI (LOGIKA 70 HARI)
+# 3. HALAMAN KALKULATOR ROSTER & CUTI
 # ==========================================
 elif choice == "✈️ Kalkulator Roster & Cuti":
     st.title("✈️ Analisis Siklus Roster & Cuti Panjang")
-    st.subheader("Simulasi Jadwal Istirahat (70 Hari Kerja)")
     
     conn = get_db_connection()
     karyawan_df = pd.read_sql_query("SELECT id, nama, tipe FROM karyawan", conn)
@@ -189,44 +207,29 @@ elif choice == "✈️ Kalkulator Roster & Cuti":
         
         if pilih:
             karyawan_id, tipe_karyawan = karyawan_options[pilih]
-            
-            # Input parameter tanggal mulai roster
             tgl_mulai_kerja = st.date_input("Tanggal Mulai Masuk On-Site (Hari ke-1)", value=datetime.now())
             
             st.markdown("---")
             st.write("### 📌 Penyesuaian Jadwal Lapangan")
-            # Fitur input jika karyawan mundur tanggal cutinya
             hari_mundur = st.number_input("Jumlah Hari Menunda Pulang / Mundur Cuti (Jika ada)", min_value=0, step=1, value=0)
             
-            # Logika Perhitungan dasar
-            total_hari_kerja_standar = 70
-            total_hari_kerja_aktual = total_hari_kerja_standar + hari_mundur
-            
-            # Jatah cuti & perjalanan dasar berdasarkan Staff/Crew
+            total_hari_kerja_aktual = 70 + hari_mundur
             cuti_dasar = 14
             hari_perjalanan = 4 if tipe_karyawan == "Staff" else 2
             
-            # Logika Extra Cuti: Mundur 5 hari = +1 hari cuti
             extra_cuti = hari_mundur // 5
             total_cuti_aktual = cuti_dasar + extra_cuti
             
-            # Kalkulasi Tanggal Otomatis
-            # 1. Tanggal Mulai Cuti (Setelah selesai hari kerja aktual)
             tgl_mulai_cuti = tgl_mulai_kerja + timedelta(days=total_hari_kerja_aktual)
-            # 2. Total durasi di luar site (Cuti + Perjalanan)
             total_hari_off_site = total_cuti_aktual + hari_perjalanan
-            # 3. Tanggal kembali masuk site
             tgl_kembali_site = tgl_mulai_cuti + timedelta(days=total_hari_off_site)
             
-            # Tampilan Output Analisis
             st.markdown(f"""
             <div class="highlight-box">
                 <h4>📊 Hasil Kalkulasi Roster ({tipe_karyawan}):</h4>
                 <ul>
-                    <li><b>Total Hari Kerja di Site:</b> {total_hari_kerja_aktual} Hari (Standar 70 hari + Mundur {hari_mundur} hari)</li>
-                    <li><b>Jatah Cuti Utama:</b> {cuti_dasar} Hari</li>
-                    <li><b>Bonus Cuti Ekstra (Mundur):</b> <span style="color:green; font-weight:bold;">+{extra_cuti} Hari</span></li>
-                    <li><b>Total Cuti Bersih:</b> {total_cuti_aktual} Hari</li>
+                    <li><b>Total Hari Kerja di Site:</b> {total_hari_kerja_aktual} Hari</li>
+                    <li><b>Total Cuti Bersih:</b> {total_cuti_aktual} Hari (Bonus +{extra_cuti} Hari)</li>
                     <li><b>Waktu Perjalanan PP:</b> {hari_perjalanan} Hari</li>
                 </ul>
                 <hr>
@@ -239,30 +242,76 @@ elif choice == "✈️ Kalkulator Roster & Cuti":
 # 4. HALAMAN MANAJEMEN KARYAWAN
 # ==========================================
 elif choice == "👥 Manajemen Karyawan":
-    st.title("👥 Manajemen Data Karyawan")
+    st.title("👥 Data Karyawan & Master Jabatan")
     
-    with st.form("form_karyawan", clear_on_submit=True):
-        st.subheader("Tambah Karyawan Baru")
-        nama_karyawan = st.text_input("Nama Lengkap")
-        jabatan_karyawan = st.text_input("Jabatan / Posisi")
-        perusahaan_induk = st.text_input("Perusahaan / Site Unit")
-        # Penambahan pilihan tipe Staff atau Crew
-        tipe_karyawan = st.selectbox("Tipe Karyawan", ["Crew", "Staff"])
-        
-        submit_karyawan = st.form_submit_button("Daftarkan Karyawan")
-        
-        if submit_karyawan:
-            if nama_karyawan.strip() == "" or jabatan_karyawan.strip() == "":
-                st.error("Nama dan Jabatan tidak boleh kosong!")
-            else:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute("INSERT INTO karyawan (nama, jabatan, perusahaan, tipe) VALUES (?, ?, ?, ?)", 
-                               (nama_karyawan, jabatan_karyawan, perusahaan_induk, tipe_karyawan))
-                conn.commit()
-                conn.close()
-                st.success(f"Karyawan {nama_karyawan} ({tipe_karyawan}) berhasil disimpan!")
+    # Ambil data list jabatan dari database secara dinamis
+    conn = get_db_connection()
+    list_jabatan_db = pd.read_sql_query("SELECT nama_jabatan FROM master_jabatan ORDER BY nama_jabatan ASC", conn)['nama_jabatan'].tolist()
+    conn.close()
+    
+    # Buat daftar Perusahaan sesuai instruksi tetap Anda
+    perusahaan_options = [
+        "PT. HALMAHERA JAYA FERONIKEL", 
+        "PT. KARUNIA PERMAI SENTOSA", 
+        "PT. OBI SINAR TIMUR"
+    ]
+    
+    # Kita bagi halaman menjadi dua bagian (Tab) agar rapi
+    tab1, tab2 = st.tabs(["➕ Tambah Karyawan", "🛠️ Kelola Jabatan Baru"])
+    
+    with tab1:
+        with st.form("form_karyawan", clear_on_submit=True):
+            st.subheader("Pendaftaran Karyawan Baru")
+            nama_karyawan = st.text_input("Nama Lengkap Karyawan")
+            
+            # Memakai index=None agar dropdown bawaan kosong sampai dipilih pengguna
+            pilih_jabatan = st.selectbox("Pilih Jabatan / Posisi", options=list_jabatan_db, index=None, placeholder="-- Silakan Pilih Jabatan --")
+            pilih_perusahaan = st.selectbox("Pilih Perusahaan Induk", options=perusahaan_options, index=None, placeholder="-- Silakan Pilih Perusahaan --")
+            tipe_karyawan = st.selectbox("Tipe Karyawan", ["Crew", "Staff"])
+            
+            submit_karyawan = st.form_submit_button("Daftarkan Karyawan")
+            
+            if submit_karyawan:
+                if not nama_karyawan.strip():
+                    st.error("Nama karyawan tidak boleh kosong!")
+                elif pilih_jabatan is None:
+                    st.error("Mohon pilih jabatan terlebih dahulu!")
+                elif pilih_perusahaan is None:
+                    st.error("Mohon pilih perusahaan terlebih dahulu!")
+                else:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("INSERT INTO karyawan (nama, jabatan, perusahaan, tipe) VALUES (?, ?, ?, ?)", 
+                                   (nama_karyawan, pilih_jabatan, pilih_perusahaan, tipe_karyawan))
+                    conn.commit()
+                    conn.close()
+                    st.success(f"Karyawan {nama_karyawan} berhasil disimpan!")
+                    st.rerun() # Refresh halaman untuk update tabel bawah
 
+    with tab2:
+        st.subheader("🛠️ Tambah Kamus Jabatan Baru")
+        st.caption("Gunakan formulir ini jika di kemudian hari terdapat divisi atau posisi jabatan baru di klinik.")
+        
+        with st.form("form_jabatan_baru", clear_on_submit=True):
+            jabatan_baru = st.text_input("Ketik Nama Jabatan Baru (cth: HSE Officer, Driver)")
+            submit_jabatan = st.form_submit_button("Simpan Jabatan Baru 💾")
+            
+            if submit_jabatan:
+                if jabatan_baru.strip() == "":
+                    st.error("Nama jabatan baru tidak boleh kosong.")
+                else:
+                    try:
+                        conn = get_db_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("INSERT INTO master_jabatan (nama_jabatan) VALUES (?)", (jabatan_baru.strip(),))
+                        conn.commit()
+                        conn.close()
+                        st.success(f"Jabatan '{jabatan_baru}' berhasil ditambahkan ke dalam sistem!")
+                        st.rerun() # Refresh agar langsung muncul di dropdown tab sebelah
+                    except sqlite3.IntegrityError:
+                        st.error("Jabatan tersebut sudah terdaftar di sistem.")
+
+    # Menampilkan tabel rekap di bagian bawah halaman karyawan
     st.write("---")
     st.subheader("Daftar Karyawan Terdaftar")
     conn = get_db_connection()
@@ -271,3 +320,5 @@ elif choice == "👥 Manajemen Karyawan":
     
     if not df_karyawan.empty:
         st.dataframe(df_karyawan, use_container_width=True, hide_index=True)
+    else:
+        st.caption("Belum ada karyawan yang terdaftar.")
