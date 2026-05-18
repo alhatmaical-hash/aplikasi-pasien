@@ -239,7 +239,7 @@ elif choice == "📅 Atur Jadwal & Shift":
                     return 'background-color: #ffeeba; color: #856404; font-weight: bold; text-align: center;'
                 return 'text-align: center; color: #ccc;'
 
-            style_df = df_pivot.style.applymap(beri_warna_shift, subset=df_pivot.columns[1:])
+            style_df = df_pivot.style.map(beri_warna_shift, subset=df_pivot.columns[1:])
             
             # Tampilkan ke Streamlit dengan container lebar penuh
             st.dataframe(style_df, use_container_width=True, hide_index=True)
