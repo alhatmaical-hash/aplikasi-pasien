@@ -132,8 +132,8 @@ if choice == "🏠 Dasbor Hari Ini":
 # 2. HALAMAN ATUR JADWAL & SHIFT
 # ==========================================
 elif choice == "📅 Atur Jadwal & Shift":
-    st.title("📅 Pengaturan Jadwal Harian")
-    st.caption("Aturan Roster Pendek: Kerja 13 Hari $\\rightarrow$ Off 1 Hari")
+    st.title("📅 Pengaturan Jadwal & Roster Matriks")
+    st.caption("Aturan Roster Pendek: Kerja 13 Hari → Off 1 Hari")
     
     conn = get_db_connection()
     karyawan_df = pd.read_sql_query("SELECT id, nama, jabatan, tipe FROM karyawan", conn)
@@ -142,52 +142,120 @@ elif choice == "📅 Atur Jadwal & Shift":
     if karyawan_df.empty:
         st.warning("Silakan daftarkan karyawan terlebih dahulu di menu 'Manajemen Karyawan'.")
     else:
-        with st.form("form_jadwal", clear_on_submit=True):
-            karyawan_options = {f"{row['nama']} ({row['jabatan']} - {row['tipe']})": row['id'] for idx, row in karyawan_df.iterrows()}
-            pilih_karyawan = st.selectbox("Pilih Karyawan", options=list(karyawan_options.keys()), index=None, placeholder="-- Pilih Karyawan --")
-            
-            pilih_tanggal = st.date_input("Pilih Tanggal", value=datetime.now())
-            pilih_shift = st.selectbox("Pilih Shift Kerja", [
-                "Shift Pagi (07:00 - 18:00)", 
-                "Shift Malam (19:00 - 07:00)", 
-                "Off / Hari Libur (Roster 13-1)"
-            ])
-            
-            simpan_jadwal = st.form_submit_button("Simpan Jadwal")
-            
-            if simpan_jadwal:
-                if pilih_karyawan is None:
-                    st.error("Mohon tentukan karyawan terlebih dahulu.")
-                else:
-                    karyawan_id = karyawan_options[pilih_karyawan]
-                    tgl_str = pilih_tanggal.strftime("%Y-%m-%d")
-                    
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT id FROM jadwal WHERE karyawan_id = ? AND tanggal = ?", (karyawan_id, tgl_str))
-                    exist = cursor.fetchone()
-                    
-                    if exist:
-                        cursor.execute("UPDATE jadwal SET shift = ? WHERE karyawan_id = ? AND tanggal = ?", (pilih_shift, karyawan_id, tgl_str))
-                        st.success(f"Jadwal {pilih_karyawan} pada {tgl_str} berhasil diupdate!")
+        # --- FORM INPUT JADWAL ---
+        with st.expander("➕ Tambah / Update Jadwal Harian", expanded=False):
+            with st.form("form_jadwal", clear_on_submit=True):
+                karyawan_options = {f"{row['nama']} ({row['jabatan']} - {row['tipe']})": row['id'] for idx, row in karyawan_df.iterrows()}
+                pilih_karyawan = st.selectbox("Pilih Karyawan", options=list(karyawan_options.keys()), index=None, placeholder="-- Pilih Karyawan --")
+                
+                pilih_tanggal = st.date_input("Pilih Tanggal", value=datetime.now())
+                pilih_shift = st.selectbox("Pilih Shift Kerja", [
+                    "P",   # Pagi (Sesuai kode di gambar Anda)
+                    "M",   # Malam
+                    "OFF", # Libur
+                    "CT",  # Cuti
+                    "TRV"  # Travel / Perjalanan
+                ])
+                
+                simpan_jadwal = st.form_submit_button("Simpan Jadwal")
+                
+                if simpan_jadwal:
+                    if pilih_karyawan is None:
+                        st.error("Mohon tentukan karyawan terlebih dahulu.")
                     else:
-                        cursor.execute("INSERT INTO jadwal (karyawan_id, tanggal, shift) VALUES (?, ?, ?)", (karyawan_id, tgl_str, pilih_shift))
-                        st.success(f"Jadwal berhasil ditambahkan!")
+                        karyawan_id = karyawan_options[pilih_karyawan]
+                        tgl_str = pilih_tanggal.strftime("%Y-%m-%d")
                         
-                    conn.commit()
-                    conn.close()
-                    
-    st.write("---")
-    st.subheader("🗓️ Log Semua Jadwal Terdaftar")
-    conn = get_db_connection()
-    df_all = pd.read_sql_query("""
-        SELECT j.tanggal AS 'Tanggal', k.nama AS 'Nama', k.tipe AS 'Tipe', k.jabatan AS 'Jabatan', j.shift AS 'Shift' 
-        FROM jadwal j JOIN karyawan k ON j.karyawan_id = k.id ORDER BY j.tanggal DESC
-    """, conn)
-    conn.close()
-    
-    if not df_all.empty:
-        st.dataframe(df_all, use_container_width=True, hide_index=True)
+                        conn = get_db_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT id FROM jadwal WHERE karyawan_id = ? AND tanggal = ?", (karyawan_id, tgl_str))
+                        exist = cursor.fetchone()
+                        
+                        if exist:
+                            cursor.execute("UPDATE jadwal SET shift = ? WHERE karyawan_id = ? AND tanggal = ?", (pilih_shift, karyawan_id, tgl_str))
+                            st.success(f"Jadwal berhasil diupdate!")
+                        else:
+                            cursor.execute("INSERT INTO jadwal (karyawan_id, tanggal, shift) VALUES (?, ?, ?)", (karyawan_id, tgl_str, pilih_shift))
+                            st.success(f"Jadwal berhasil ditambahkan!")
+                            
+                        conn.commit()
+                        conn.close()
+                        st.rerun()
+
+        st.write("---")
+        
+        # --- FILTER BULAN & TAHUN UNTUK GRID VIEW ---
+        st.subheader("🗓️ Matriks Jadwal Jaga Bulanan")
+        col_bln, col_thn = st.columns(2)
+        with col_bln:
+            bulan_pilihan = st.selectbox("Pilih Bulan", list(range(1, 13)), index=datetime.now().month - 1, format_func=lambda x: datetime(2000, x, 1).strftime('%B'))
+        with col_thn:
+            tahun_pilihan = st.selectbox("Pilih Tahun", [2025, 2026, 2027], index=1) # Default 2026 sesuai template Anda
+
+        # Ambil data jadwal berdasarkan bulan dan tahun yang dipilih
+        conn = get_db_connection()
+        query_matriks = """
+            SELECT k.nama AS Nama, j.tanggal, j.shift 
+            FROM jadwal j 
+            JOIN karyawan k ON j.karyawan_id = k.id
+            WHERE strftime('%m', j.tanggal) = ? AND strftime('%Y', j.tanggal) = ?
+        """
+        # Format parameter agar sesuai dengan format database SQLite ('05' untuk Mei, '2026' untuk tahun)
+        bln_str = f"{bulan_pilihan:02d}"
+        thn_str = str(tahun_pilihan)
+        
+        df_log = pd.read_sql_query(query_matriks, conn, params=(bln_str, thn_str))
+        conn.close()
+
+        # --- LOGIKA GENERATE MATRIX TABLE ---
+        if not df_log.empty:
+            # Ekstrak angka tanggal saja (1-31) untuk dijadikan header kolom seperti di Excel Anda
+            df_log['Hari'] = pd.to_datetime(df_log['tanggal']).dt.day
+            
+            # Proses Pivot: Mengubah baris log menjadi kolom horizontal (Matrix)
+            df_pivot = df_log.pivot(index='Nama', columns='Hari', values='shift').fillna('-')
+            
+            # Pastikan semua tanggal (1 sampai jumlah hari di bulan tersebut) muncul sebagai kolom
+            import calendar
+            jumlah_hari = calendar.monthrange(tahun_pilihan, bulan_pilihan)[1]
+            for hari in range(1, jumlah_hari + 1):
+                if hari not in df_pivot.columns:
+                    df_pivot[hari] = '-'
+            
+            # Urutkan kolom dari tanggal 1 sampai akhir
+            df_pivot = df_pivot[sorted(df_pivot.columns)]
+            df_pivot = df_pivot.reset_index()
+
+            # --- HIGHLIGHT / WARNA GAYA MODEREN ---
+            # Menggunakan pandas styler untuk mewarnai cell otomatis (P=Hijau, M=Biru, OFF/CT=Merah) seperti gambar Anda
+            def beri_warna_shift(val):
+                if val == 'P':
+                    return 'background-color: #d4edda; color: #155724; font-weight: bold; text-align: center;'
+                elif val == 'M':
+                    return 'background-color: #cce5ff; color: #004085; font-weight: bold; text-align: center;'
+                elif val in ['OFF', 'CT', 'CHT']:
+                    return 'background-color: #f8d7da; color: #721c24; font-weight: bold; text-align: center;'
+                elif val == 'TRV':
+                    return 'background-color: #ffeeba; color: #856404; font-weight: bold; text-align: center;'
+                return 'text-align: center; color: #ccc;'
+
+            style_df = df_pivot.style.applymap(beri_warna_shift, subset=df_pivot.columns[1:])
+            
+            # Tampilkan ke Streamlit dengan container lebar penuh
+            st.dataframe(style_df, use_container_width=True, hide_index=True)
+            
+            # --- LEGEND / KETERANGAN ---
+            st.markdown("""
+            <div style="display: flex; gap: 15px; margin-top: 15px; font-size: 0.85rem;">
+                <div><span style="background-color: #d4edda; padding: 2px 8px; border-radius: 3px; font-weight:bold;">P</span> Pagi</div>
+                <div><span style="background-color: #cce5ff; padding: 2px 8px; border-radius: 3px; font-weight:bold;">M</span> Malam</div>
+                <div><span style="background-color: #f8d7da; padding: 2px 8px; border-radius: 3px; font-weight:bold;">OFF / CT</span> Libur / Cuti</div>
+                <div><span style="background-color: #ffeeba; padding: 2px 8px; border-radius: 3px; font-weight:bold;">TRV</span> Travel</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        else:
+            st.info(f"Belum ada data jadwal yang diinput untuk bulan {datetime(2000, bulan_pilihan, 1).strftime('%B')} {tahun_pilihan}.")
 
 # ==========================================
 # 3. HALAMAN KALKULATOR ROSTER & CUTI
