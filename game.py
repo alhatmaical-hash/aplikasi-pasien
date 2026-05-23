@@ -1,8 +1,3 @@
-Tentu, mari kita ubah tampilan dan mekanik prototipe game Anda.
-
-Berikut adalah pembaruan pada visual karakter agar menjadi bentuk orang beranimasi, penambahan AI (komputer) sebagai lawan, serta penghapusan kontrol untuk Player 2.
-
-### Daftar Perubahan Utama:
 
 1. **Visual Karakter:** Pemain (Biru) dan Musuh (Merah) kini memiliki model karakter berbasis piksel yang lebih detail, lengkap dengan gaya visual rambut dan pakaian, menggantikan bentuk kotak sederhana.
 2. **Mekanik Animasi:** Kedua karakter sekarang berada dalam posisi sedang saling memukul (menerjang maju) pada saat yang sama, menciptakan momen pertarungan yang dinamis.
