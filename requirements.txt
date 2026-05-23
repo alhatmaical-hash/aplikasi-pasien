@@ -10,3 +10,4 @@ Pillow
 fpdf2
 streamlit-autorefresh
 streamlit-drawable-canvas
+streamlit>=1.30.0
