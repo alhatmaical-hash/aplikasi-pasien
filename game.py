@@ -1,13 +1,3 @@
-
-1. **Visual Karakter:** Pemain (Biru) dan Musuh (Merah) kini memiliki model karakter berbasis piksel yang lebih detail, lengkap dengan gaya visual rambut dan pakaian, menggantikan bentuk kotak sederhana.
-2. **Mekanik Animasi:** Kedua karakter sekarang berada dalam posisi sedang saling memukul (menerjang maju) pada saat yang sama, menciptakan momen pertarungan yang dinamis.
-3. **Hapus Player 2:** Kontrol manual untuk Player 2 telah sepenuhnya dihilangkan.
-4. **Lawan Komputer:** Karakter Merah sekarang secara eksplisit ditandai dengan teks **"(CPU)"** pada bar darahnya untuk menunjukkan bahwa ia dikendalikan oleh AI, bukan pemain kedua.
-5. **Pembaruan Panduan:** Teks instruksi di bagian bawah halaman telah diperbarui untuk mencerminkan bahwa game ini sekarang hanya untuk satu pemain (P1 vs CPU).
-
----
-
-```python
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -96,7 +86,6 @@ class Fighter {
         this.attackCooldown = 0;
         this.attackRect = { x: 0, y: 0, width: 0, height: 0 };
         this.facingRight = isPlayer;
-        this.isHitStun = False
     }
 
     update(target) {
@@ -110,7 +99,7 @@ class Fighter {
         
         if (this.isPlayer) {
             // Kontrol Manual Player 1
-            if (!this.isAttacking && !this.isHitStun) {
+            if (!this.isAttacking) {
                 if (keys[this.controls.left]) this.x -= this.speed;
                 if (keys[this.controls.right]) this.x += this.speed;
                 
@@ -128,21 +117,18 @@ class Fighter {
                     let attackX = this.facingRight ? this.x + this.width - 30 : this.x - attackWidth + 30;
                     this.attackRect = { x: attackX, y: this.y + 10, width: attackWidth, height: 60 };
                     
-                    // Serangan P1 membuat P1 maju sedikit
                     if (this.facingRight) this.x += 15; else this.x -= 15;
                 }
             }
         } else {
             // Kontrol AI (Lawan Merah)
-            if (!this.isAttacking && !this.isHitStun && !gameOver) {
-                // AI Sederhana: Kejar Pemain
+            if (!this.isAttacking && !gameOver) {
                 if (this.x > target.x + target.width + 10) {
                     this.x -= this.speed;
                 } else if (this.x < target.x - 10) {
                     this.x += this.speed;
                 }
                 
-                // AI Sederhana: Serang jika dalam jangkauan
                 let distX = Math.abs((this.x + this.width/2) - (target.x + target.width/2));
                 if (distX < this.width + 20 && this.attackCooldown === 0 && Math.random() < 0.1) {
                     this.isAttacking = true;
@@ -151,11 +137,9 @@ class Fighter {
                     let attackX = this.facingRight ? this.x + this.width - 30 : this.x - attackWidth + 30;
                     this.attackRect = { x: attackX, y: this.y + 10, width: attackWidth, height: 60 };
                     
-                    // Serangan AI membuat AI maju sedikit
                     if (this.facingRight) this.x += 15; else this.x -= 15;
                 }
                 
-                // AI Sederhana: Acak Lompat
                 if (Math.random() < 0.01 && !this.isJumping) {
                     this.velY = -18;
                     this.isJumping = true;
@@ -165,7 +149,6 @@ class Fighter {
 
         // --- Deteksi Tabrakan Serangan ---
         if (this.isAttacking) {
-            // Cek tabrakan Hitbox dengan Hurtbox musuh
             if (
                 this.attackRect.x < target.x + target.width &&
                 this.attackRect.x + this.attackRect.width > target.x &&
@@ -174,64 +157,54 @@ class Fighter {
             ) {
                 target.health -= 10;
                 if (target.health < 0) target.health = 0;
-                target.isHitStun = True;
-                setTimeout(() => { target.isHitStun = False; }, 200); // 200ms HitStun
             }
-            this.isAttacking = false; // Matikan status setelah tabrakan dicek
+            this.isAttacking = false;
         }
 
-        // --- Fisika Lanjut ---
-        // Menerapkan Gravitasi
+        // --- Fisika ---
         this.velY += GRAVITY;
         this.y += this.velY;
 
-        // Batasan Lantai (Y = 450 adalah batas bawah kaki)
         if (this.y + this.height > 450) {
             this.y = 450 - this.height;
             this.isJumping = false;
             this.velY = 0;
         }
 
-        // Batasan Dinding Layar
         if (this.x < 0) this.x = 0;
         if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
 
-        // Jeda waktu serangan
         if (this.attackCooldown > 0) this.attackCooldown--;
     }
 
     draw() {
-        // --- Menggambar Model Karakter (Visual Orang Piksel) ---
-        // (Warna Tubuh Dasar digunakan untuk visual piksel)
         ctx.fillStyle = this.color;
         
-        // 1. Gambar Batang Tubuh
+        // 1. Batang Tubuh
         ctx.fillRect(this.x + 20, this.y + 40, this.width - 40, 70);
         
-        // 2. Gambar Kepala (dengan rambut sederhana)
-        ctx.fillStyle = "#f39c12"; // Rambut oranye
+        // 2. Kepala & Rambut
+        ctx.fillStyle = "#f39c12"; 
         ctx.fillRect(this.x + 35, this.y + 10, this.width - 70, 30);
-        ctx.fillStyle = this.color; // Wajah
+        ctx.fillStyle = this.color; 
         ctx.fillRect(this.x + 40, this.y + 15, this.width - 80, 20);
 
-        // 3. Gambar Lengan (Maju dalam serangan)
+        // 3. Lengan
         let armX = this.facingRight ? this.x + this.width - 25 : this.x - 5;
         let armY = this.y + 50;
-        ctx.fillRect(armX, armY, 30, 20); // Bahu
-        ctx.fillRect(armX + (this.facingRight ? 15 : -15), armY + 20, 20, 30); // Kepalan maju
+        ctx.fillRect(armX, armY, 30, 20); 
+        ctx.fillRect(armX + (this.facingRight ? 15 : -15), armY + 20, 20, 30); 
 
-        // 4. Gambar Kaki
-        ctx.fillRect(this.x + 25, this.y + 110, 20, 50); // Kaki 1
-        ctx.fillRect(this.x + 65, this.y + 110, 20, 50); // Kaki 2
+        // 4. Kaki
+        ctx.fillRect(this.x + 25, this.y + 110, 20, 50); 
+        ctx.fillRect(this.x + 65, this.y + 110, 20, 50); 
         
-        // --- Indikator Visual ---
-        // Gambar Mata (Indikator Hadap)
+        // Mata
         ctx.fillStyle = "#ffffff";
         let eyeX = this.facingRight ? this.x + this.width - 35 : this.x + 25;
         ctx.fillRect(eyeX, this.y + 20, 8, 8);
         
-        // Visualisasi Pukulan Aktif (Hitbox Kuning)
-        // (Tampilkan selama beberapa frame cooldown awal)
+        // Efek Pukulan (Hitbox Kuning)
         if (this.attackCooldown > 30) {
             ctx.fillStyle = "#f1c40f";
             ctx.fillRect(this.attackRect.x, this.attackRect.y, this.attackRect.width, this.attackRect.height);
@@ -239,20 +212,16 @@ class Fighter {
     }
 }
 
-// Inisialisasi Karakter (Player vs CPU)
+// Inisialisasi
 const p1Controls = { left: 'a', right: 'd', jump: 'w', attack: 'f' };
-
 const player1 = new Fighter(150, "#3498db", p1Controls, true, "Pemain 1");
-const computerOpponent = new Fighter(780, "#e74c3c", null, false, "(CPU)"); // Hapus kontrol untuk CPU
+const computerOpponent = new Fighter(780, "#e74c3c", null, false, "(CPU)");
 
 let gameOver = false;
 
-// Game Loop Utama
 function gameLoop() {
-    // Bersihkan layar
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Update Logika jika game belum selesai
     if (!gameOver) {
         player1.update(computerOpponent);
         computerOpponent.update(player1);
@@ -262,30 +231,27 @@ function gameLoop() {
         }
     }
 
-    // --- PROSES MENGGAMBAR ---
-    // Gambar Tanah/Lantai
+    // Lantai
     ctx.fillStyle = "#1e272e";
     ctx.fillRect(0, 450, canvas.width, 50);
 
-    // Gambar Karakter
     player1.draw();
     computerOpponent.draw();
 
-    // Gambar UI Bar Darah P1 (Kiri)
+    // Bar Darah P1
     ctx.fillStyle = "#c0392b";
     ctx.fillRect(40, 20, 400, 30);
     ctx.fillStyle = "#2ecc71";
     ctx.fillRect(40, 20, player1.health * 4, 30);
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px Arial"; ctx.fillText(player1.name, 45, 41);
 
-    // Gambar UI Bar Darah CPU (Kanan)
+    // Bar Darah CPU
     ctx.fillStyle = "#c0392b";
     ctx.fillRect(560, 20, 400, 30);
     ctx.fillStyle = "#2ecc71";
     ctx.fillRect(560 + (400 - computerOpponent.health * 4), 20, computerOpponent.health * 4, 30);
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px Arial"; ctx.textAlign = "right"; ctx.fillText(computerOpponent.name, 955, 41);
 
-    // Teks Layar Akhir (Game Over)
     if (gameOver) {
         ctx.fillStyle = "#f1c40f";
         ctx.font = "bold 50px Arial";
@@ -297,7 +263,6 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Jalankan Mesin Game
 gameLoop();
 </script>
 
@@ -305,14 +270,10 @@ gameLoop();
 </html>
 """
 
-# Render komponen game ke dalam Streamlit (Tinggi disesuaikan agar pas tanpa scrollbar)
 components.html(game_html, height=520, scrolling=False)
 
-# Informasi petunjuk kontrol di bagian bawah aplikasi Streamlit
 st.info("""
 🎮 **Panduan Kontrol (Mode Solo):**
 * **Anda (Biru - P1):** Tombol **A / D** untuk Jalan, **W** untuk Lompat, dan **F** untuk Menyerang.
 * **Musuh (Merah - CPU):** Dikendalikan secara otomatis oleh komputer. Tidak ada kontrol manual untuk Player 2.
 """)
-
-```
