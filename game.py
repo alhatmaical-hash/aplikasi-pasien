@@ -3,30 +3,15 @@ import streamlit.components.v1 as components
 
 # Konfigurasi halaman Streamlit agar responsif dan bersih
 st.set_page_config(
-    page_title="Pixel Brawler 2D - Streamlit (Solo Mode)",
+    page_title="3D Brawler Arena - Streamlit",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# Menghilangkan padding bawaan Streamlit menggunakan CSS khusus
-st.markdown("""
-    <style>
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 0rem;
-        max-width: 1020px;
-    }
-    iframe {
-        border-radius: 10px;
-        box-shadow: 0px 4px 15px rgba(0,0,0,0.3);
-    }
-    </style>
-""", unsafe_allow_html=True)
+st.title("🥋 3D Pixel Brawler Arena")
+st.subheader("Prototipe Game Fighting dengan Grafis 3D Real-Time!")
 
-st.title("🥷 Pixel Brawler 2D (Solo Mode)")
-st.subheader("Hadapi Komputer dalam duel seni bela diri!")
-
-# Kode HTML5 + JavaScript Game Engine (Client-Side Rendering untuk performa 60 FPS)
+# Kode HTML5 + Three.js (WebGL Engine untuk performa grafis 3D 60 FPS)
 game_html = """
 <!DOCTYPE html>
 <html>
@@ -35,245 +20,235 @@ game_html = """
     <style>
         body {
             margin: 0;
-            background-color: #2c3e50;
+            background-color: #1a1a1a;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Arial', sans-serif;
             overflow: hidden;
-            touch-action: none;
         }
-        canvas {
-            background-color: #34495e;
-            border: 2px solid #ffffff;
-            display: block;
+        #canvas-container {
+            width: 1000px;
+            height: 500px;
+            border: 3px solid #ffffff;
+            border-radius: 8px;
+            box-shadow: 0px 10px 30px rgba(0,0,0,0.7);
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-<canvas id="gameCanvas" width="1000" height="500"></canvas>
+<div id="canvas-container"></div>
 
 <script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+// --- 1. SETUP ENGINE 3D (THREE.JS) ---
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1e272e);
 
-// Sistem Input Keyboard (Sekarang hanya untuk P1)
+// Kamera Perspektif 3D
+const camera = new THREE.PerspectiveCamera(45, 1000 / 500, 0.1, 1000);
+camera.position.set(0, 4, 16); // Posisi kamera melihat dari depan agak atas
+camera.lookAt(0, 2, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(1000, 500);
+renderer.shadowMap.enabled = true; // Mengaktifkan efek bayangan nyata
+container.appendChild(renderer.domElement);
+
+// --- 2. PENCAHAYAAN (LIGHTING) ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(5, 15, 5);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+// --- 3. ARENA & LANTAI 3D ---
+const floorGeo = new THREE.BoxGeometry(30, 0.5, 10);
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.8 });
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.position.y = -0.25;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// --- 4. SISTEM INPUT KEYBOARD ---
 const keys = {};
 window.addEventListener("keydown", e => { keys[e.key.toLowerCase()] = true; });
 window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
 
-// Kelas Fighter (Karakter) dengan Visual Piksel
-class Fighter {
-    constructor(x, color, controls, isPlayer, name) {
-        this.x = x;
-        this.y = 290;
-        this.width = 110;
-        this.height = 160;
-        this.color = color;
-        this.controls = controls;
+// --- 5. KELAS KARAKTER 3D (MANEKIN PETARUNG) ---
+class Fighter3D {
+    constructor(startX, colorHex, isPlayer, name) {
         this.isPlayer = isPlayer;
         this.name = name;
-        
-        // Fisika
+        this.health = 100;
+        this.speed = 0.15;
         this.velY = 0;
         this.isJumping = false;
-        this.speed = 7;
-        
-        // Logika Bertarung
-        this.health = 100;
         this.isAttacking = false;
         this.attackCooldown = 0;
-        this.attackRect = { x: 0, y: 0, width: 0, height: 0 };
         this.facingRight = isPlayer;
+
+        // Group Utama untuk menampung bagian tubuh karakter
+        this.mesh = new THREE.Group();
+        this.mesh.position.set(startX, 0, 0);
+
+        // Bagian Tubuh 1: Badan (Kotak 3D)
+        const bodyGeo = new THREE.BoxGeometry(1, 1.8, 0.8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
+        this.body = new THREE.Mesh(bodyGeo, bodyMat);
+        this.body.position.y = 1.4;
+        this.body.castShadow = true;
+        this.mesh.add(this.body);
+
+        // Bagian Tubuh 2: Kepala (Bola 3D)
+        const headGeo = new THREE.SphereGeometry(0.4, 16, 16);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac }); // Warna kulit dasar
+        this.head = new THREE.Mesh(headGeo, headMat);
+        this.head.position.y = 2.6;
+        this.head.castShadow = true;
+        this.mesh.add(this.head);
+
+        // Bagian Tubuh 3: Tangan untuk Memukul
+        const armGeo = new THREE.BoxGeometry(0.3, 0.3, 1.2);
+        this.arm = new THREE.Mesh(armGeo, bodyMat);
+        this.arm.position.set(0.4, 1.6, 0.5); // Posisi default tangan di samping depan
+        this.arm.castShadow = true;
+        this.mesh.add(this.arm);
+
+        scene.add(this.mesh);
     }
 
     update(target) {
-        const GRAVITY = 1.0;
-        
-        // Otomatis menghadap ke arah lawan
-        this.facingRight = (this.x + this.width/2 < target.x + target.width/2);
+        const GRAVITY = 0.01;
 
-        // --- Logika Input / AI ---
-        let attackWidth = 130;
-        
+        // Logika Arah Hadap (Rotasi Model 3D ke arah musuh)
+        if (this.mesh.position.x < target.mesh.position.x) {
+            this.mesh.rotation.y = Math.PI / 2; // Hadap Kanan
+            this.facingRight = true;
+        } else {
+            this.mesh.rotation.y = -Math.PI / 2; // Hadap Kiri
+            this.facingRight = false;
+        }
+
+        // --- KONTROL GERAKAN ---
         if (this.isPlayer) {
-            // Kontrol Manual Player 1
-            if (!this.isAttacking) {
-                if (keys[this.controls.left]) this.x -= this.speed;
-                if (keys[this.controls.right]) this.x += this.speed;
-                
-                // Lompat
-                if (keys[this.controls.jump] && !this.isJumping) {
-                    this.velY = -20;
-                    this.isJumping = true;
-                }
-                
-                // Serangan (Maju Sambil Memukul)
-                if (keys[this.controls.attack] && this.attackCooldown === 0) {
-                    this.isAttacking = true;
-                    this.attackCooldown = 35; 
-                    
-                    let attackX = this.facingRight ? this.x + this.width - 30 : this.x - attackWidth + 30;
-                    this.attackRect = { x: attackX, y: this.y + 10, width: attackWidth, height: 60 };
-                    
-                    if (this.facingRight) this.x += 15; else this.x -= 15;
-                }
+            // Pergerakan Player 1
+            if (keys['a']) this.mesh.position.x -= this.speed;
+            if (keys['d']) this.mesh.position.x += this.speed;
+            
+            // Lompat P1
+            if (keys['w'] && !this.isJumping) {
+                this.velY = 0.25;
+                this.isJumping = true;
+            }
+
+            // Serangan P1 (Tombol F)
+            if (keys['f'] && this.attackCooldown === 0) {
+                this.isAttacking = true;
+                this.attackCooldown = 25;
             }
         } else {
-            // Kontrol AI (Lawan Merah)
+            // PERGERAKAN AI (KOMPUTER)
             if (!this.isAttacking && !gameOver) {
-                if (this.x > target.x + target.width + 10) {
-                    this.x -= this.speed;
-                } else if (this.x < target.x - 10) {
-                    this.x += this.speed;
+                // AI Mengejar Posisi Pemain
+                if (this.mesh.position.x > target.mesh.position.x + 1.8) {
+                    this.mesh.position.x -= this.speed * 0.8;
+                } else if (this.mesh.position.x < target.mesh.position.x - 1.8) {
+                    this.mesh.position.x += this.speed * 0.8;
                 }
-                
-                let distX = Math.abs((this.x + this.width/2) - (target.x + target.width/2));
-                if (distX < this.width + 20 && this.attackCooldown === 0 && Math.random() < 0.1) {
+
+                // AI Menyerang secara acak jika jarak dekat
+                let dist = Math.abs(this.mesh.position.x - target.mesh.position.x);
+                if (dist < 2.2 && this.attackCooldown === 0 && Math.random() < 0.07) {
                     this.isAttacking = true;
-                    this.attackCooldown = 40; 
-                    
-                    let attackX = this.facingRight ? this.x + this.width - 30 : this.x - attackWidth + 30;
-                    this.attackRect = { x: attackX, y: this.y + 10, width: attackWidth, height: 60 };
-                    
-                    if (this.facingRight) this.x += 15; else this.x -= 15;
-                }
-                
-                if (Math.random() < 0.01 && !this.isJumping) {
-                    this.velY = -18;
-                    this.isJumping = true;
+                    this.attackCooldown = 30;
                 }
             }
         }
 
-        // --- Deteksi Tabrakan Serangan ---
+        // --- ANIMASI & LOGIKA SERANGAN (PUKULAN 3D) ---
         if (this.isAttacking) {
-            if (
-                this.attackRect.x < target.x + target.width &&
-                this.attackRect.x + this.attackRect.width > target.x &&
-                this.attackRect.y < target.y + target.height &&
-                this.attackRect.y + this.attackRect.height > target.y
-            ) {
+            // Menggerakkan lengan 3D maju ke depan (memanjang)
+            this.arm.position.z = 1.8;
+            this.arm.scale.set(1, 1, 2);
+
+            // Hitung Jarak Jangkauan Pukulan (Deteksi Hitbox 3D)
+            let distance = Math.abs(this.mesh.position.x - target.mesh.position.x);
+            if (distance < 2.3 && Math.abs(this.mesh.position.y - target.mesh.position.y) < 1.5) {
                 target.health -= 10;
                 if (target.health < 0) target.health = 0;
             }
             this.isAttacking = false;
+        } else {
+            // Mengembalikan posisi lengan ke semula secara bertahap jika tidak memukul
+            if (this.attackCooldown < 15) {
+                this.arm.position.z = 0.5;
+                this.arm.scale.set(1, 1, 1);
+            }
         }
 
-        // --- Fisika ---
-        this.velY += GRAVITY;
-        this.y += this.velY;
+        // --- FISIKA GRAVITASI 3D ---
+        if (this.isJumping) {
+            this.velY -= GRAVITY;
+            this.mesh.position.y += this.velY;
 
-        if (this.y + this.height > 450) {
-            this.y = 450 - this.height;
-            this.isJumping = false;
-            this.velY = 0;
+            // Deteksi menyentuh lantai
+            if (this.mesh.position.y <= 0) {
+                this.mesh.position.y = 0;
+                this.isJumping = false;
+                this.velY = 0;
+            }
         }
 
-        if (this.x < 0) this.x = 0;
-        if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+        // Pembatas Pinggir Arena 3D
+        if (this.mesh.position.x < -14) this.mesh.position.x = -14;
+        if (this.mesh.position.x > 14) this.mesh.position.x = 14;
 
         if (this.attackCooldown > 0) this.attackCooldown--;
     }
-
-    draw() {
-        ctx.fillStyle = this.color;
-        
-        // 1. Batang Tubuh
-        ctx.fillRect(this.x + 20, this.y + 40, this.width - 40, 70);
-        
-        // 2. Kepala & Rambut
-        ctx.fillStyle = "#f39c12"; 
-        ctx.fillRect(this.x + 35, this.y + 10, this.width - 70, 30);
-        ctx.fillStyle = this.color; 
-        ctx.fillRect(this.x + 40, this.y + 15, this.width - 80, 20);
-
-        // 3. Lengan
-        let armX = this.facingRight ? this.x + this.width - 25 : this.x - 5;
-        let armY = this.y + 50;
-        ctx.fillRect(armX, armY, 30, 20); 
-        ctx.fillRect(armX + (this.facingRight ? 15 : -15), armY + 20, 20, 30); 
-
-        // 4. Kaki
-        ctx.fillRect(this.x + 25, this.y + 110, 20, 50); 
-        ctx.fillRect(this.x + 65, this.y + 110, 20, 50); 
-        
-        // Mata
-        ctx.fillStyle = "#ffffff";
-        let eyeX = this.facingRight ? this.x + this.width - 35 : this.x + 25;
-        ctx.fillRect(eyeX, this.y + 20, 8, 8);
-        
-        // Efek Pukulan (Hitbox Kuning)
-        if (this.attackCooldown > 30) {
-            ctx.fillStyle = "#f1c40f";
-            ctx.fillRect(this.attackRect.x, this.attackRect.y, this.attackRect.width, this.attackRect.height);
-        }
-    }
 }
 
-// Inisialisasi
-const p1Controls = { left: 'a', right: 'd', jump: 'w', attack: 'f' };
-const player1 = new Fighter(150, "#3498db", p1Controls, true, "Pemain 1");
-const computerOpponent = new Fighter(780, "#e74c3c", null, false, "(CPU)");
+// Inisialisasi Karakter Player (Biru) vs CPU (Merah)
+const player1 = new Fighter3D(-5, 0x3498db, true, "Pemain 1");
+const computer = new Fighter3D(5, 0xe74c3c, false, "(CPU)");
 
 let gameOver = false;
 
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// --- 6. GAME LOOP UTAMA (RENDERER 3D) ---
+function animate() {
+    requestAnimationFrame(animate);
 
     if (!gameOver) {
-        player1.update(computerOpponent);
-        computerOpponent.update(player1);
+        player1.update(computer);
+        computer.update(player1);
 
-        if (player1.health <= 0 || computerOpponent.health <= 0) {
+        if (player1.health <= 0 || computer.health <= 0) {
             gameOver = true;
         }
     }
 
-    // Lantai
-    ctx.fillStyle = "#1e272e";
-    ctx.fillRect(0, 450, canvas.width, 50);
+    // Kamera mengikuti posisi tengah antara kedua pemain (Sistem Kamera Dinamis)
+    camera.position.x = (player1.mesh.position.x + computer.mesh.position.x) / 2;
 
-    player1.draw();
-    computerOpponent.draw();
-
-    // Bar Darah P1
-    ctx.fillStyle = "#c0392b";
-    ctx.fillRect(40, 20, 400, 30);
-    ctx.fillStyle = "#2ecc71";
-    ctx.fillRect(40, 20, player1.health * 4, 30);
-    ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px Arial"; ctx.fillText(player1.name, 45, 41);
-
-    // Bar Darah CPU
-    ctx.fillStyle = "#c0392b";
-    ctx.fillRect(560, 20, 400, 30);
-    ctx.fillStyle = "#2ecc71";
-    ctx.fillRect(560 + (400 - computerOpponent.health * 4), 20, computerOpponent.health * 4, 30);
-    ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px Arial"; ctx.textAlign = "right"; ctx.fillText(computerOpponent.name, 955, 41);
-
-    if (gameOver) {
-        ctx.fillStyle = "#f1c40f";
-        ctx.font = "bold 50px Arial";
-        ctx.textAlign = "center";
-        let winner = player1.health <= 0 ? "KOMPUTER MENANG!" : "PEMAIN 1 MENANG!";
-        ctx.fillText(winner, canvas.width / 2, canvas.height / 2);
-    }
-
-    requestAnimationFrame(gameLoop);
+    renderer.render(scene, camera);
 }
 
-gameLoop();
+animate();
 </script>
 
 </body>
 </html>
 """
 
+# Render komponen game ke dalam Streamlit beserta bar informasi darah standar
 components.html(game_html, height=520, scrolling=False)
 
 st.info("""
-🎮 **Panduan Kontrol (Mode Solo):**
-* **Anda (Biru - P1):** Tombol **A / D** untuk Jalan, **W** untuk Lompat, dan **F** untuk Menyerang.
-* **Musuh (Merah - CPU):** Dikendalikan secara otomatis oleh komputer. Tidak ada kontrol manual untuk Player 2.
+🎮 **Panduan Kontrol Arena 3D:**
+* **Ingat:** Silakan **Klik Kiri 1x pada area game 3D** di atas agar tombol keyboard aktif!
+* **Navigasi Anda (P1 - Biru):** Tombol **A / D** untuk Jalan, **W** untuk Lompat 3D, dan **F** untuk Meluncurkan Pukulan Lengan.
+* **Lawan (CPU - Merah):** Bergerak dan melancarkan pukulan otomatis menggunakan kecerdasan buatan komputer.
 """)
