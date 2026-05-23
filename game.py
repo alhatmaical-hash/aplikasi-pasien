@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 # Konfigurasi halaman Streamlit agar bersih dan fokus ke game
 st.set_page_config(
-    page_title="Stickman Fighting 3D",
+    page_title="Stickman Fighting 3D - Advanced Combat",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -17,14 +17,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Kode Game Utama yang Sudah Diperbaiki (Fix Layar Gelap)
+# Kode Game Utama dengan Fitur: Tendangan, Bantingan, dan Fatality
 game_code = """
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stickman Fighting 3D</title>
+    <title>Stickman Fighting 3D - Advanced Combat</title>
     <style>
         * { box-sizing: border-box; user-select: none; }
         body {
@@ -105,6 +105,14 @@ game_code = """
         .hud-name { position: absolute; top: -22px; font-family: Arial; font-weight: bold; font-size: 15px; color: #fff; text-shadow: 1px 1px #000; }
         #timer-box { font-size: 34px; color: #deff9a; background: rgba(0,0,0,0.7); padding: 2px 15px; border: 2px solid #333; border-radius: 4px; }
         
+        /* OVERLAY TEXT UNTUK FATALITY / FINISH HIM */
+        #announcer-text {
+            position: absolute; width: 100%; text-align: center; top: 35%;
+            font-size: 75px; color: #e74c3c; font-weight: bold; display: none;
+            text-transform: uppercase; letter-spacing: 5px; z-index: 6;
+            text-shadow: 0 0 20px rgba(231,76,60,0.8), 4px 4px #000;
+        }
+
         #three-canvas { width: 100%; height: 100%; display: none; }
     </style>
     
@@ -114,9 +122,11 @@ game_code = """
 
 <div id="game-container">
     
+    <div id="announcer-text">FINISH HIM!</div>
+
     <div id="menu-screen" class="screen active">
         <h1>Stickman <span>Fighting 3D</span></h1>
-        <div class="subtitle">Arsitektur UI & Arena Duel Komputer</div>
+        <div class="subtitle">Update: Tendangan, Bantingan & Fatality System</div>
         
         <div class="menu-layout">
             <div class="menu-buttons">
@@ -180,69 +190,59 @@ game_code = """
 </div>
 
 <script>
-// --- DATA ROSTER STICKMAN (Total 16 Variasi Sesuai Gambar Referensi) ---
+// --- DATA ROSTER STICKMAN ---
 const rosterData = [
-    { id: 'st-classic', name: 'Stickman', color: '#3498db', desc: 'Classic Blue' },
-    { id: 'st-zombie', name: 'Zombie', color: '#2ecc71', desc: 'Undead Green' },
-    { id: 'st-cyber', name: 'Cyber', color: '#9b59b6', desc: 'Neon Neon' },
-    { id: 'st-soldier', name: 'Soldier', color: '#27ae60', desc: 'Military' },
-    { id: 'st-pyro', name: 'Pyro', color: '#e67e22', desc: 'Fire Flame' },
-    { id: 'st-frost', name: 'Frost', color: '#a5dff9', desc: 'Ice Frost' },
-    { id: 'st-demon', name: 'Demon', color: '#95a5a6', desc: 'Dark Soul' },
-    { id: 'st-void', name: 'Void', color: '#111111', desc: 'Shadow' },
-    { id: 'st-orange', name: 'Orange', color: '#f39c12', desc: 'Burst' },
-    { id: 'st-pink', name: 'Pinky', color: '#f1c40f', desc: 'Sparkle' },
-    { id: 'st-vip', name: 'Gentleman', color: '#34495e', desc: 'Top Hat' },
-    { id: 'st-anon', name: 'Anon', color: '#ffffff', desc: 'Masked' },
-    { id: 'st-rainbow', name: 'Rainbow', color: '#e74c3c', desc: 'Spectrum' },
-    { id: 'st-ninja', name: 'Shadow', color: '#2c3e50', desc: 'Assassin' },
-    { id: 'st-titan', name: 'Titan', color: '#d35400', desc: 'Colossus' },
-    { id: 'st-bot', name: 'Mecha', color: '#bdc3c7', desc: 'Android' }
+    { id: 'st-classic', name: 'Stickman', color: '#3498db' },
+    { id: 'st-zombie', name: 'Zombie', color: '#2ecc71' },
+    { id: 'st-cyber', name: 'Cyber', color: '#9b59b6' },
+    { id: 'st-soldier', name: 'Soldier', color: '#27ae60' },
+    { id: 'st-pyro', name: 'Pyro', color: '#e67e22' },
+    { id: 'st-frost', name: 'Frost', color: '#a5dff9' },
+    { id: 'st-demon', name: 'Demon', color: '#7f8c8d' },
+    { id: 'st-void', name: 'Void', color: '#2c3e50' },
+    { id: 'st-orange', name: 'Orange', color: '#f39c12' },
+    { id: 'st-pink', name: 'Pinky', color: '#ff7675' },
+    { id: 'st-vip', name: 'Gentleman', color: '#dfe6e9' },
+    { id: 'st-anon', name: 'Anon', color: '#ffffff' },
+    { id: 'st-rainbow', name: 'Rainbow', color: '#fdcb6e' },
+    { id: 'st-ninja', name: 'Shadow', color: '#2d3436' },
+    { id: 'st-titan', name: 'Titan', color: '#e17055' },
+    { id: 'st-bot', name: 'Mecha', color: '#ffeaa7' }
 ];
 
 let selectedDifficulty = 'normal';
 let selectedP1Index = 0;
 let selectedGameMode = '1match';
 
-// Render Grid Pilihan Karakter secara Otomatis saat Halaman Dimuat
 const rosterMount = document.getElementById('roster-mount');
 rosterData.forEach((char, index) => {
     const card = document.createElement('div');
     card.className = `char-card ${index === 0 ? 'selected' : ''}`;
     card.id = `card-${index}`;
     card.onclick = () => selectCharIndex(index);
-    
-    card.innerHTML = `
-        <div class="char-circle" style="background:${char.color}"></div>
-        <span>${char.name}</span>
-    `;
+    card.innerHTML = `<div class="char-circle" style="background:${char.color}"></div><span>${char.name}</span>`;
     rosterMount.appendChild(card);
 });
 
-// Update Data Pilihan Tingkat Kesulitan
 function setDifficulty(level) {
     document.querySelectorAll('.diff-option').forEach(opt => opt.classList.remove('selected'));
     document.getElementById(`opt-${level}`).classList.add('selected');
     selectedDifficulty = level;
 }
 
-// Ganti Karakter Terpilih
 function selectCharIndex(idx) {
     document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
     document.getElementById(`card-${idx}`).classList.add('selected');
-    
     selectedP1Index = idx;
-    // Update Tampilan Kotak Preview Kiri
     document.getElementById('p1-avatar').style.background = rosterData[idx].color;
     document.getElementById('p1-preview-name').innerText = rosterData[idx].name;
 }
 
-// Navigasi Antar Layar Menu
 function openSelection(mode) {
     selectedGameMode = mode;
     document.getElementById('menu-screen').style.display = 'none';
     document.getElementById('char-screen').style.display = 'flex';
-    selectCharIndex(selectedP1Index); // Triger info awal
+    selectCharIndex(selectedP1Index);
 }
 
 function backToMenu() {
@@ -250,103 +250,90 @@ function backToMenu() {
     document.getElementById('menu-screen').style.display = 'flex';
 }
 
-// --- LOGIKA UTAMA 3D ENGINE (THREE.JS) ---
-let scene, camera, renderer, p1Model, cpuModel, animationId, isBattleOver = false;
+// --- ENGINE 3D COMBAT SYSTEM ---
+let scene, camera, renderer, p1Model, cpuModel, animationId;
+let fatalityState = false; // Menandai fase "Finish Him" aktif
+let matchEnded = false;
 const inputKeys = {};
 
 window.addEventListener("keydown", e => { inputKeys[e.key.toLowerCase()] = true; });
 window.addEventListener("keyup", e => { inputKeys[e.key.toLowerCase()] = false; });
 
 function buildStickmanMesh(colorHex) {
-    // Membuat grup objek utama stickman
     const group = new THREE.Group();
-    const material = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.4 });
-    const jointMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const material = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3 });
 
-    // Kepala (Bola Bulat Stickman)
+    // Kepala (Bisa copot/hancur saat Fatality!)
     const headGeo = new THREE.SphereGeometry(0.35, 32, 32);
     const head = new THREE.Mesh(headGeo, material);
     head.position.y = 2.4;
+    head.name = "head";
     group.add(head);
 
-    // Tulang Badan Utama (Silinder/Tabung Panjang)
+    // Badan
     const spineGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 16);
     const spine = new THREE.Mesh(spineGeo, material);
     spine.position.y = 1.4;
     group.add(spine);
 
-    // Lengan Tangan Kiri & Kanan
+    // Tangan Kiri
     const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.9, 16);
-    
     const leftArm = new THREE.Mesh(armGeo, material);
     leftArm.position.set(-0.35, 1.5, 0.2);
     leftArm.rotation.z = Math.PI / 4;
     group.add(leftArm);
 
-    // Lengan Serang Kanan (Bisa memanjang saat menekan tombol F)
+    // Tangan Kanan Serang (Pukulan / Fatality)
     const rightArmGroup = new THREE.Group();
     rightArmGroup.position.set(0.35, 1.6, 0);
-    
     const rightArm = new THREE.Mesh(armGeo, material);
     rightArm.position.y = -0.4;
-    rightArm.name = "forearm";
     rightArmGroup.add(rightArm);
+    rightArmGroup.name = "rightArm";
     group.add(rightArmGroup);
 
-    // Kaki Kiri & Kanan
-    const legGeo = new THREE.CylinderGeometry(0.07, 0.07, 1.0, 16);
+    // Kaki Kiri
+    const legGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.0, 16);
     const leftLeg = new THREE.Mesh(legGeo, material);
     leftLeg.position.set(-0.25, 0.5, 0);
-    leftLeg.rotation.z = 0.1;
     group.add(leftLeg);
 
+    // Kaki Kanan Serang (Tendangan)
+    const rightLegGroup = new THREE.Group();
+    rightLegGroup.position.set(0.25, 1.0, 0);
     const rightLeg = new THREE.Mesh(legGeo, material);
-    rightLeg.position.set(0.25, 0.5, 0);
-    rightLeg.rotation.z = -0.1;
-    group.add(rightLeg);
+    rightLeg.position.y = -0.5;
+    rightLegGroup.add(rightLeg);
+    rightLegGroup.name = "rightLeg";
+    group.add(rightLegGroup);
 
-    // Beri kemampuan memancarkan bayangan di arena pertarungan
-    group.traverse(child => {
-        if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-        }
-    });
-
-    return { group, rightArmGroup };
+    group.traverse(child => { if (child.isMesh) child.castShadow = true; });
+    return { group, rightArmGroup, rightLegGroup, headMesh: head };
 }
 
 function launchBattle() {
-    // Pastikan library Three.js sudah siap di dalam jendela browser
-    if (typeof THREE === 'undefined') {
-        alert("Sistem 3D WebGL sedang memuat komponen, harap tunggu 3 detik dan klik FIGHT lagi!");
-        return;
-    }
-
-    // Ganti Tampilan Layar dari Menu ke Arena 3D
     document.getElementById('char-screen').style.display = 'none';
     document.getElementById('hud').style.display = 'flex';
     document.getElementById('three-canvas').style.display = 'block';
+    document.getElementById('announcer-text').style.display = 'none';
 
-    // Ambil Informasi Karakter Pilihan User
     const player1Data = rosterData[selectedP1Index];
-    // Pilih acak musuh dari roster untuk variasi bertanding
-    const cpuData = rosterData[(selectedP1Index + 3) % rosterData.length];
+    const cpuData = rosterData[(selectedP1Index + 4) % rosterData.length];
 
     document.getElementById('hud-p1-name').innerText = player1Data.name;
     document.getElementById('hud-cpu-name').innerText = `${cpuData.name} (${selectedDifficulty.toUpperCase()})`;
 
-    // Reset status HP bar game
-    isBattleOver = false;
+    fatalityState = false;
+    matchEnded = false;
     document.getElementById('p1-bar').style.width = '100%';
     document.getElementById('cpu-bar').style.width = '100%';
 
-    // --- SETUP DUNIA THREE.JS ---
+    // SETUP THREE.JS
     const container = document.getElementById('three-canvas');
-    container.innerHTML = ''; // bersihkan render lama
+    container.innerHTML = '';
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x14191f);
+    scene.background = new THREE.Color(0x11141c);
 
     camera = new THREE.PerspectiveCamera(45, 1000 / 550, 0.1, 1000);
     camera.position.set(0, 3.5, 13);
@@ -357,28 +344,24 @@ function launchBattle() {
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
 
-    // Pencahayaan Efek Panggung Neon 3D
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    
-    const spotLight = new THREE.SpotLight(0xdeff9a, 1.2);
-    spotLight.position.set(0, 15, 5);
-    spotLight.castShadow = true;
-    scene.add(spotLight);
+    // Cahaya Arena
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    const light = new THREE.SpotLight(0xffffff, 1.3);
+    light.position.set(0, 15, 3);
+    light.castShadow = true;
+    scene.add(light);
 
-    // Lantai Grid Arena 3D
-    const floorGeo = new THREE.BoxGeometry(26, 0.4, 6);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e272e, roughness: 0.7 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
+    // Lantai Grid
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(26, 0.4, 6), new THREE.MeshStandardMaterial({ color: 0x1e272e }));
     floor.position.y = -0.2;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    const gridHelper = new THREE.GridHelper(26, 26, 0xdeff9a, 0x444444);
-    gridHelper.position.y = 0.01;
-    scene.add(gridHelper);
+    const grid = new THREE.GridHelper(26, 26, 0xe74c3c, 0x333333);
+    grid.position.y = 0.01;
+    scene.add(grid);
 
-    // Struktur Kontrol Logika Karakter Petarung Stickman
+    // FIGHTER CONTROLLER LOGIC ENGINE
     class FighterController {
         constructor(startX, colorHex, isPlayer) {
             this.isPlayer = isPlayer;
@@ -387,85 +370,91 @@ function launchBattle() {
             this.velY = 0;
             this.isJumping = false;
             this.attackCooldown = 0;
-            this.isPunching = false;
-            this.facingRight = isPlayer;
+            
+            // State Aksi Tempur
+            this.combatAction = 'idle'; // 'punch', 'kick', 'throw', 'fatality', 'dizzy', 'airborne'
+            this.actionTimer = 0;
 
             const assets = buildStickmanMesh(colorHex);
             this.mesh = assets.group;
-            this.armJoint = assets.rightArmGroup;
+            this.arm = assets.rightArmGroup;
+            this.leg = assets.rightLegGroup;
+            this.head = assets.headMesh;
             
             this.mesh.position.set(startX, 0, 0);
             scene.add(this.mesh);
         }
 
         update(opponent) {
-            // Pengaturan Rotasi Sumbu Arah Hadap Otomatis Menghadap Musuh
-            if (this.mesh.position.x < opponent.mesh.position.x) {
-                this.mesh.rotation.y = Math.PI / 2;
-                this.facingRight = true;
-            } else {
-                this.mesh.rotation.y = -Math.PI / 2;
-                this.facingRight = false;
+            // Logika Arah Hadap Otomatis (Kecuali saat dibanting/airborne)
+            if (this.combatAction !== 'airborne') {
+                if (this.mesh.position.x < opponent.mesh.position.x) {
+                    this.mesh.rotation.y = Math.PI / 2;
+                } else {
+                    this.mesh.rotation.y = -Math.PI / 2;
+                }
             }
 
-            if (this.isPlayer) {
-                // Input Deteksi Keyboard Player 1
+            // PENGURANGAN TIMER AKSI ANIMASI
+            if (this.actionTimer > 0) {
+                this.actionTimer--;
+                this.animateAction();
+                return; 
+            } else if (this.combatAction !== 'idle' && this.combatAction !== 'dizzy') {
+                this.resetSkeleton();
+            }
+
+            // JIKA MUSUH DIKANDANGI STATUS DIZZY (MENUNGGU FATALITY)
+            if (this.combatAction === 'dizzy') {
+                this.mesh.rotation.z = Math.sin(Date.now() * 0.01) * 0.15; // Goyang sempoyongan
+                return;
+            }
+
+            let distance = Math.abs(this.mesh.position.x - opponent.mesh.position.x);
+
+            // INPUT KONTROL KEYBOARD PLAYER
+            if (this.isPlayer && !matchEnded) {
                 if (inputKeys['a']) this.mesh.position.x -= this.speed;
                 if (inputKeys['d']) this.mesh.position.x += this.speed;
                 if (inputKeys['w'] && !this.isJumping) { this.velY = 0.22; this.isJumping = true; }
-                if (inputKeys['f'] && this.attackCooldown === 0) { this.isPunching = true; this.attackCooldown = 20; }
-            } else {
-                // Logika Pergerakan AI Komputer Otomatis (CPU)
-                let distance = Math.abs(this.mesh.position.x - opponent.mesh.position.x);
-                let cpuSpeed = this.speed * 0.75;
-                let attackThreshold = 0.04;
-
-                // Modifikasi Algoritma Agresivitas Berdasarkan Opsi Kesulitan
-                if (selectedDifficulty === 'hard') { cpuSpeed = this.speed * 0.95; attackThreshold = 0.09; }
-                if (selectedDifficulty === 'hell') { cpuSpeed = this.speed * 1.3; attackThreshold = 0.22; }
-
-                if (!this.isPunching && !isBattleOver) {
-                    if (this.mesh.position.x > opponent.mesh.position.x + 1.4) {
-                        this.mesh.position.x -= cpuSpeed;
-                    } else if (this.mesh.position.x < opponent.mesh.position.x - 1.4) {
-                        this.mesh.position.x += cpuSpeed;
+                
+                // [FITUR 1]: Pukulan Biasa (F)
+                if (inputKeys['f'] && this.attackCooldown === 0) {
+                    this.executeAttack('punch', 15, 6, 1.8, opponent);
+                }
+                // [FITUR 2]: Tendangan Kaki Maut (G)
+                if (inputKeys['g'] && this.attackCooldown === 0) {
+                    this.executeAttack('kick', 20, 12, 2.0, opponent);
+                }
+                // [FITUR 3]: Bantingan Judo Jarak Dekat (E)
+                if (inputKeys['e'] && this.attackCooldown === 0) {
+                    if (distance < 1.4) {
+                        this.executeAttack('throw', 40, 20, 1.5, opponent);
                     }
+                }
+                // [FITUR 4]: TOMBOL EKSEKUSI FATALITY (R)
+                if (inputKeys['r'] && fatalityState && distance < 1.8) {
+                    this.executeAttack('fatality', 60, 100, 2.0, opponent);
+                }
+            } else if (!this.isPlayer && !matchEnded && !fatalityState) {
+                // LOGIKA AI KOMPUTER OTOMATIS
+                let cpuMove = this.speed * 0.75;
+                if (selectedDifficulty === 'hard') cpuMove = this.speed * 1.0;
+                if (selectedDifficulty === 'hell') cpuMove = this.speed * 1.3;
 
-                    if (distance < 1.8 && this.attackCooldown === 0 && Math.random() < attackThreshold) {
-                        this.isPunching = true;
-                        this.attackCooldown = 25;
-                    }
+                if (this.mesh.position.x > opponent.mesh.position.x + 1.5) this.mesh.position.x -= cpuMove;
+                else if (this.mesh.position.x < opponent.mesh.position.x - 1.5) this.mesh.position.x += cpuMove;
+
+                // AI Memilih Acak Pukulan, Tendangan, atau Bantingan
+                if (distance < 1.9 && this.attackCooldown === 0 && Math.random() < 0.06) {
+                    let rand = Math.random();
+                    if (rand < 0.5) this.executeAttack('punch', 15, 6, 1.8, opponent);
+                    else if (rand < 0.85) this.executeAttack('kick', 20, 10, 2.0, opponent);
+                    else if (distance < 1.3) this.executeAttack('throw', 40, 18, 1.4, opponent);
                 }
             }
 
-            // Animasi Pukulan Lengan Menembak Maju ke Depan
-            if (this.isPunching) {
-                this.armJoint.rotation.x = -Math.PI / 2; // Angkat tangan lurus ke depan
-                this.armJoint.scale.set(1, 2.0, 1);     // Panjangkan struktur silinder lengan
-
-                // Deteksi Tabrakan Hitbox Serangan
-                let targetDist = Math.abs(this.mesh.position.x - opponent.mesh.position.x);
-                if (targetDist < 2.0 && Math.abs(this.mesh.position.y - opponent.mesh.position.y) < 1.2) {
-                    opponent.health -= 7;
-                    if (opponent.health < 0) opponent.health = 0;
-                    
-                    // Update Tampilan UI Bar Darah Hijau di Browser
-                    if (opponent.isPlayer) {
-                        document.getElementById('p1-bar').style.width = opponent.health + '%';
-                    } else {
-                        document.getElementById('cpu-bar').style.width = opponent.health + '%';
-                    }
-                }
-                this.isPunching = false;
-            } else {
-                // Kembalikan posisi lengan secara perlahan ke mode normal siap sedia
-                if (this.attackCooldown < 10) {
-                    this.armJoint.rotation.x = 0;
-                    this.armJoint.scale.set(1, 1, 1);
-                }
-            }
-
-            // Simulasi Fisika Jatuh Gravitasi Bumi
+            // SIMULASI GRAVITASI LOMPATAN
             if (this.isJumping) {
                 this.velY -= 0.012;
                 this.mesh.position.y += this.velY;
@@ -476,11 +465,98 @@ function launchBattle() {
                 }
             }
 
-            // Batas Pinggir Garis Panggung Arena Match
             if (this.mesh.position.x < -12) this.mesh.position.x = -12;
             if (this.mesh.position.x > 12) this.mesh.position.x = 12;
-
             if (this.attackCooldown > 0) this.attackCooldown--;
+        }
+
+        executeAttack(type, duration, damage, range, opponent) {
+            this.combatAction = type;
+            this.actionTimer = duration;
+            this.attackCooldown = duration + 15;
+
+            let currentDist = Math.abs(this.mesh.position.x - opponent.mesh.position.x);
+            
+            if (currentDist <= range && Math.abs(this.mesh.position.y - opponent.mesh.position.y) < 1.5) {
+                // Konsekuensi jika serangan mendarat telak
+                if (type === 'throw') {
+                    // Memicu musuh masuk kondisi terlempar ke udara (Bantingan)
+                    opponent.combatAction = 'airborne';
+                    opponent.actionTimer = 40;
+                    opponent.velY = 0.25;
+                }
+                
+                if (type === 'fatality') {
+                    opponent.combatAction = 'headless';
+                    opponent.actionTimer = 999; 
+                    opponent.head.visible = false; // Kepala musuh hilang tertebas!
+                    matchEnded = true;
+                    triggerFinalVictory("FATALITY! PLAYER 1 WIN");
+                    return;
+                }
+
+                opponent.health -= damage;
+                if (opponent.health < 0) opponent.health = 0;
+
+                // Sync Bar Darah
+                if (opponent.isPlayer) document.getElementById('p1-bar').style.width = opponent.health + '%';
+                else document.getElementById('cpu-bar').style.width = opponent.health + '%';
+
+                // CEK APAKAH FATALITY SENGGOLAN SUDAH BISA DIMULAI
+                if (opponent.health <= 0 && !fatalityState) {
+                    fatalityState = true;
+                    opponent.combatAction = 'dizzy';
+                    document.getElementById('announcer-text').style.display = 'block';
+                    // Beri waktu 8 detik bagi player untuk menekan tombol R (Fatality)
+                    setTimeout(() => {
+                        if (!matchEnded) {
+                            matchEnded = true;
+                            triggerFinalVictory(opponent.isPlayer ? "CPU WIN" : "PLAYER 1 WIN");
+                        }
+                    }, 8000);
+                }
+            }
+        }
+
+        animateAction() {
+            // MENGGERAKKAN TULANG 3D BERDASARKAN COMBAT ACTION ACTIVE
+            if (this.combatAction === 'punch') {
+                this.arm.rotation.x = -Math.PI / 2;
+                this.arm.scale.set(1, 1.8, 1);
+            } 
+            else if (this.combatAction === 'kick') {
+                this.leg.rotation.x = -Math.PI / 2.3; // Angkat kaki memutar kedepan
+                this.leg.scale.set(1, 1.5, 1);
+            } 
+            else if (this.combatAction === 'throw') {
+                this.arm.rotation.x = -Math.PI / 1.5;
+                this.mesh.position.x += this.facingRight ? 0.05 : -0.05;
+            }
+            else if (this.combatAction === 'fatality') {
+                this.arm.rotation.x = -Math.PI / 2;
+                this.arm.scale.set(1, 2.5, 1); // Pukulan pemungkas super panjang
+                this.mesh.position.y = 0.5;
+            }
+            else if (this.combatAction === 'airborne') {
+                // Animasi berputar di udara akibat dibanting
+                this.mesh.rotation.z += 0.3;
+                this.velY -= 0.012;
+                this.mesh.position.y += this.velY;
+                this.mesh.position.x += this.mesh.position.x > 0 ? -0.08 : 0.08;
+                if (this.mesh.position.y <= 0) {
+                    this.mesh.position.y = 0;
+                    this.velY = 0;
+                }
+            }
+        }
+
+        resetSkeleton() {
+            this.combatAction = 'idle';
+            this.arm.rotation.set(0, 0, 0);
+            this.arm.scale.set(1, 1, 1);
+            this.leg.rotation.set(0, 0, 0);
+            this.leg.scale.set(1, 1, 1);
+            this.mesh.rotation.z = 0;
         }
     }
 
@@ -491,28 +567,21 @@ function launchBattle() {
     battleLoop();
 }
 
+function triggerFinalVictory(winnerText) {
+    document.getElementById('announcer-text').innerText = winnerText;
+    document.getElementById('announcer-text').style.display = 'block';
+    setTimeout(() => {
+        document.getElementById('hud').style.display = 'none';
+        document.getElementById('three-canvas').style.display = 'none';
+        document.getElementById('announcer-text').style.display = 'none';
+        document.getElementById('menu-screen').style.display = 'flex';
+    }, 4000);
+}
+
 function battleLoop() {
     animationId = requestAnimationFrame(battleLoop);
-
-    if (!isBattleOver) {
-        p1Model.update(cpuModel);
-        cpuModel.update(p1Model);
-
-        // Validasi Pemenang Pertandingan Duel Ronde Selesai
-        if (p1Model.health <= 0 || cpuModel.health <= 0) {
-            isBattleOver = true;
-            setTimeout(() => {
-                alert(p1Model.health <= 0 ? "🏆 GAME OVER! CPU Menang Duel." : "🏆 VICTORY! Anda Menang Duel.");
-                
-                // Bersihkan Arena 3D dan Balikkan User ke Menu Utama Depan
-                document.getElementById('hud').style.display = 'none';
-                document.getElementById('three-canvas').style.display = 'none';
-                document.getElementById('menu-screen').style.display = 'flex';
-            }, 300);
-        }
-    }
-
-    // Kamera Mengikuti Titik Tengah Koordinat Antara 2 Stickman (Kamera Sinematik)
+    p1Model.update(cpuModel);
+    cpuModel.update(p1Model);
     camera.position.x = (p1Model.mesh.position.x + cpuModel.mesh.position.x) / 2;
     renderer.render(scene, camera);
 }
@@ -522,7 +591,15 @@ function battleLoop() {
 </html>
 """
 
-# Tampilkan seluruh susunan antarmuka game ke dalam jendela Streamlit Web
+# Tampilkan game ke Streamlit Web
 components.html(game_code, height=570, scrolling=False)
 
-st.info("💡 **Petunjuk Bermain:** Setelah menekan tombol **FIGHT!**, silakan klik kiri satu kali pada area panggung pertarungan hitam agar browser Anda fokus menerima input tombol **A, D, W, F**.")
+st.info("""
+🥋 **Daftar Kombo Tombol Baru (Klik layar game 1x agar aktif):**
+* **Tombol A / D:** Bergerak Kiri & Kanan
+* **Tombol W:** Melompat ke Udara
+* **Tombol F:** Pukulan Tangan (Damage kecil)
+* **Tombol G:** **Tendangan Memutar (Damage Besar!)**
+* **Tombol E:** **Bantingan Judo** (Hanya bekerja saat tubuh Anda menempel intim dengan CPU, musuh akan berputar salto dan terhempas ke lantai).
+* **Tombol R:** **Ekssekusi FATALITY!** (Tombol ini terkunci, baru bisa ditekan jika darah CPU sudah habis 0%, layar memancarkan teks merah **FINISH HIM!**, dan Anda berdiri dekat di depannya!).
+""")
