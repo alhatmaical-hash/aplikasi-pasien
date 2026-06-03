@@ -116,7 +116,7 @@ def init_db():
             ("blok_mes", "TEXT"), ("tgl_lahir", "TEXT"), ("alergi", "TEXT"),
             ("gol_darah", "TEXT"), ("lokasi_kerja", "TEXT"), ("lokasi_mcu", "TEXT"),
             ("is_authorized", "INTEGER DEFAULT 0"), ("jenis_kunjungan", "TEXT"),
-            ("tempat_lahir", "TEXT"), ("jenis_kelamin", "TEXT")
+            ("tempat_lahir", "TEXT"), ("jenis_kelamin", "TEXT"), ("dokter", "TEXT")
         ]
         
         for kolom, tipe in kolom_tambahan:
