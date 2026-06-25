@@ -349,7 +349,7 @@ elif choice == "👥 Manajemen Karyawan":
             # Memakai index=None agar dropdown bawaan kosong sampai dipilih pengguna
             pilih_jabatan = st.selectbox("Pilih Jabatan / Posisi", options=list_jabatan_db, index=None, placeholder="-- Silakan Pilih Jabatan --")
             pilih_perusahaan = st.selectbox("Pilih Perusahaan Induk", options=perusahaan_options, index=None, placeholder="-- Silakan Pilih Perusahaan --")
-            tipe_karyawan = st.selectbox("Tipe Karyawan", ["Crew", "Staff", "Supervisor"])
+            tipe_karyawan = st.selectbox("Tipe Karyawan", ["Crew", "Staff", "Superintendent", "Supervisor"])
             
             submit_karyawan = st.form_submit_button("Daftarkan Karyawan")
             
