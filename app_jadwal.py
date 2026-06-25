@@ -51,7 +51,7 @@ def init_db():
         jabatan_default = [
             "Supervisor Klinik", "Supervisor Paramedic", "Supervisor Pharmacy", 
             "Formen", "Paramedic Staff", "Medical Record Staff", 
-            "Pharmacy Staff", "Admin Klinik", "Translator Klinik", "Crew Klinik"
+            "Pharmacy Staff", "Admin Klinik", "Translator Klinik", "Crew Klinik", "Driver Ambulance", "Driver LV Klinik", "Medical Docter"
         ]
         cursor.executemany("INSERT INTO master_jabatan (nama_jabatan) VALUES (?)", [(j,) for j in jabatan_default])
         
