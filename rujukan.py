@@ -101,7 +101,7 @@ if menu == "Form Rujukan Baru":
             st.markdown("##### **Fasilitas Tujuan**")
             faskes_tujuan = st.selectbox(
                 "Fasilitas Kesehatan (Faskes) Tujuan",
-                options=["", "RSUD Jayapura", "RS Dian Harapan", "RS Bhayangkara", "RS Marthen Indey"],
+                options=["", "RSUD Labuha", "RSUD Dr. H. Chasan Boesoirie Ternate"],
                 index=0
             )
             dokter_merujuk = st.text_input("Dokter yang Merujuk", placeholder="Nama Dokter DPJP")
