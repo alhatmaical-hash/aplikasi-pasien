@@ -54,7 +54,7 @@ def generate_no_rujukan():
     conn.close()
     
     # Format penomoran menggunakan penulisan string Python yang aman dari SyntaxError oktal
-    return f"RJK/{today_str}/{count:04d}"
+    return f"Nomor Rujukan/{count:04d}/RUJUKAN EXT/{today_str}"
 
 # 3. Navigasi Menu Samping (Sidebar)
 menu = st.sidebar.radio("Navigasi Menu Rujukan", ["Form Rujukan Baru", "Data & Status Rujukan"])
