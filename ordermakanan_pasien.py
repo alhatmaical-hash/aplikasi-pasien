@@ -1,0 +1,218 @@
+import streamlit as st
+import sqlite3
+import pandas as pd
+from datetime import datetime
+import os
+from PIL import Image
+
+# ---------------------------------------------------------
+# KONFIGURASI HALAMAN
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="Order Makanan Pasien - Klinik Harita Obi",
+    page_icon="🍲",
+    layout="wide"
+)
+
+# Folder untuk menyimpan file ID Card yang diupload
+UPLOAD_DIR = "uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
+# ---------------------------------------------------------
+# DATABASE SETUP (SQLite)
+# ---------------------------------------------------------
+def init_db():
+    conn = sqlite3.connect("order_makanan.db")
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tgl_order DATE,
+            nama_pasien TEXT,
+            perusahaan TEXT,
+            jabatan TEXT,
+            departemen TEXT,
+            nik_idcard TEXT,
+            pilihan_makanan TEXT,
+            catatan_diet TEXT,
+            nama_pemesan TEXT,
+            unit_pemesan TEXT,
+            idcard_filename TEXT,
+            waktu_input TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# ---------------------------------------------------------
+# FUNGSI DATABASE
+# ---------------------------------------------------------
+def save_order(tgl_order, nama_pasien, perusahaan, jabatan, departemen, 
+               nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan, 
+               unit_pemesan, idcard_filename):
+    conn = sqlite3.connect("order_makanan.db")
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO orders (
+            tgl_order, nama_pasien, perusahaan, jabatan, departemen,
+            nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan,
+            unit_pemesan, idcard_filename, waktu_input
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (tgl_order, nama_pasien, perusahaan, jabatan, departemen,
+          nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan,
+          unit_pemesan, idcard_filename, datetime.now()))
+    conn.commit()
+    conn.close()
+
+def load_data():
+    conn = sqlite3.connect("order_makanan.db")
+    df = pd.read_sql_query("SELECT * FROM orders ORDER BY id DESC", conn)
+    conn.close()
+    return df
+
+# ---------------------------------------------------------
+# UI STREAMLIT
+# ---------------------------------------------------------
+st.title("🍲 Aplikasi Order Makanan Pasien")
+st.caption("Klinik Harita Feronikel Obi")
+
+# Tab Menu
+tab_form, tab_rekap = st.tabs(["📝 Form Order Makanan", "📊 Rekap & Monitoring Data"])
+
+# LIST PERUSAHAAN (Sesuai Entitas Resmi)
+LIST_PERUSAHAAN = [
+    "PT HALMAHERA JAYA FERONIKEL (HJF)",
+    "PT. KARUNIA PERMAI SENTOSA (KPS)",
+    "PT. OBI SINAR TIMUR (OST)",
+    "PT. CIPTA KEMAKMURAN MITRA (CKM)",
+    "Lainnya"
+]
+
+# =========================================================
+# TAB 1: FORM INPUT ORDER
+# =========================================================
+with tab_form:
+    st.subheader("Input Data Pemesanan Makanan Pasien")
+    
+    with st.form(key="form_order_makanan", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 👤 Data Pasien")
+            tgl_order = st.date_input("Tanggal Order", datetime.now())
+            nama_pasien = st.text_input("Nama Pasien*")
+            perusahaan = st.selectbox("Perusahaan*", LIST_PERUSAHAAN, index=None, placeholder="Pilih Perusahaan...")
+            jabatan = st.text_input("Jabatan")
+            departemen = st.text_input("Departemen")
+            nik_idcard = st.text_input("NIK / ID Card Pasien*")
+            uploaded_file = st.file_uploader("Upload Foto/Scan ID Card (JPG/PNG/PDF)*", type=["jpg", "jpeg", "png", "pdf"])
+
+        with col2:
+            st.markdown("### 🍱 Detail Pesanan & Pemesan")
+            pilihan_makanan = st.radio(
+                "Pilihan Menu Makanan*",
+                ["Bubur", "Pack Meal"],
+                index=None
+            )
+            catatan_diet = st.text_area("Catatan Tambahan / Diet Khusus (Opsional)", placeholder="Contoh: Diet Rendah Garam, Tidak Pedas, Alergi Udang")
+            
+            st.divider()
+            nama_pemesan = st.text_input("Nama Pemesan (Petugas)*")
+            unit_pemesan = st.text_input("Unit / Divisi Pemesan*")
+        
+        submit_btn = st.form_submit_button("🚀 Kirim Pesanan Makanan")
+        
+    if submit_btn:
+        # Validasi Input Wajib
+        if not nama_pasien or not perusahaan or not nik_idcard or not pilihan_makanan or not nama_pemesan or not unit_pemesan:
+            st.error("⚠️ Mohon lengkapi seluruh field yang wajib diisi (bertanda *)!")
+        elif uploaded_file is None:
+            st.error("⚠️ Mohon upload lampiran ID Card Pasien!")
+        else:
+            # Simpan File Upload
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_ext = os.path.splitext(uploaded_file.name)[1]
+            saved_filename = f"{nik_idcard}_{timestamp_str}{file_ext}"
+            file_path = os.path.join(UPLOAD_DIR, saved_filename)
+            
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+                
+            # Simpan ke DB
+            save_order(
+                tgl_order, nama_pasien, perusahaan, jabatan, departemen,
+                nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan,
+                unit_pemesan, saved_filename
+            )
+            
+            st.success(f"✅ Pesanan makanan untuk Pasien **{nama_pasien}** berhasil disimpan!")
+
+# =========================================================
+# TAB 2: REKAP & MONITORING DATA
+# =========================================================
+with tab_rekap:
+    st.subheader("Data Pesanan Masuk")
+    
+    df = load_data()
+    
+    if df.empty:
+        st.info("Belum ada data pemesanan yang masuk.")
+    else:
+        # Filter Data
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            filter_tgl = st.date_input("Filter Tanggal Order", None)
+        with col_f2:
+            filter_menu = st.multiselect("Filter Pilihan Menu", ["Bubur", "Pack Meal"])
+            
+        df_filtered = df.copy()
+        if filter_tgl:
+            df_filtered = df_filtered[df_filtered['tgl_order'] == str(filter_tgl)]
+        if filter_menu:
+            df_filtered = df_filtered[df_filtered['pilihan_makanan'].isin(filter_menu)]
+            
+        # Tampilkan Ringkasan
+        st.markdown(f"**Total Pesanan:** {len(df_filtered)} Order")
+        
+        # Tabel Data
+        st.dataframe(
+            df_filtered.drop(columns=['idcard_filename']),
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Preview ID Card & Download
+        st.divider()
+        st.markdown("### 🔍 Detail & Lihat ID Card Pasien")
+        selected_id = st.selectbox("Pilih ID Order / Nama Pasien untuk Lihat Detail ID Card:", 
+                                   options=df_filtered['id'].tolist(),
+                                   format_func=lambda x: f"ID Order #{x} - {df_filtered[df_filtered['id']==x]['nama_pasien'].values[0]} ({df_filtered[df_filtered['id']==x]['nik_idcard'].values[0]})")
+        
+        if selected_id:
+            row = df_filtered[df_filtered['id'] == selected_id].iloc[0]
+            filename = row['idcard_filename']
+            file_path = os.path.join(UPLOAD_DIR, filename)
+            
+            col_info, col_img = st.columns([1, 1])
+            with col_info:
+                st.write(f"**Nama Pasien:** {row['nama_pasien']}")
+                st.write(f"**NIK/ID Card:** {row['nik_idcard']}")
+                st.write(f"**Perusahaan:** {row['perusahaan']}")
+                st.write(f"**Menu:** {row['pilihan_makanan']}")
+                st.write(f"**Catatan:** {row['catatan_diet']}")
+                st.write(f"**Pemesan:** {row['nama_pemesan']} ({row['unit_pemesan']})")
+                
+            with col_img:
+                if os.path.exists(file_path):
+                    if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        image = Image.open(file_path)
+                        st.image(image, caption=f"ID Card: {filename}", use_column_width=True)
+                    else:
+                        st.write("📄 Dokument berupa PDF/File Non-Gambar.")
+                        with open(file_path, "rb") as f:
+                            st.download_button("📥 Download ID Card File", f, file_name=filename)
+                else:
+                    st.warning("File ID Card tidak ditemukan.")
