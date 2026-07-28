@@ -27,14 +27,15 @@ def init_db():
     conn = sqlite3.connect("order_makanan.db")
     c = conn.cursor()
     
-    # Tabel Users untuk Login & Register
+    # Tabel Users
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
             password TEXT,
             nama_lengkap TEXT,
-            unit_kerja TEXT
+            unit_kerja TEXT,
+            role TEXT DEFAULT 'user'
         )
     ''')
     
@@ -56,31 +57,68 @@ def init_db():
             waktu_input TIMESTAMP
         )
     ''')
+
+    # Tabel Master Data Dinamis (Perusahaan, Departemen, Jabatan)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS master_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kategori TEXT, -- 'perusahaan', 'departemen', 'jabatan'
+            nama TEXT UNIQUE
+        )
+    ''')
+    
+    # Inisialisasi Akun Admin Default jika belum ada (User: admin / Pass: admin123)
+    c.execute("SELECT * FROM users WHERE username = 'admin'")
+    if not c.fetchone():
+        admin_pass = hashlib.sha256("admin123".encode()).hexdigest()
+        c.execute("INSERT INTO users (username, password, nama_lengkap, unit_kerja, role) VALUES (?, ?, ?, ?, ?)",
+                  ('admin', admin_pass, 'Administrator Klinik', 'MEDICAL RECORD / IT', 'admin'))
+
+    # Inisialisasi Master Data Bawaan jika masih kosong
+    c.execute("SELECT COUNT(*) FROM master_data")
+    if c.fetchone()[0] == 0:
+        default_perusahaan = [
+            "PT HALMAHERA JAYA FERONIKEL (HJF)",
+            "PT. KARUNIA PERMAI SENTOSA (KPS)",
+            "PT. OBI SINAR TIMUR (OST)",
+            "PT. CIPTA KEMAKMURAN MITRA (CKM)"
+        ]
+        default_dept = [
+            "Medical / Klinik", "HRD / GA", "Operation / Produksi", 
+            "HSE / Safety", "Maintenance / Engineering", "Logistik / Warehouse"
+        ]
+        default_jabatan = [
+            "Staff / Karyawan", "Supervisor / Foreman", "Superintendent / Manager", 
+            "Dokter Umum", "Perawat / Medical Staff", "Bidan"
+        ]
+
+        for p in default_perusahaan:
+            c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES ('perusahaan', ?)", (p,))
+        for d in default_dept:
+            c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES ('departemen', ?)", (d,))
+        for j in default_jabatan:
+            c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES ('jabatan', ?)", (j,))
+
     conn.commit()
     conn.close()
 
 init_db()
 
 # ---------------------------------------------------------
-# FUNGSI BANTUAN (PASSWORD HASHING)
+# FUNGSI HELPER & DATABASE
 # ---------------------------------------------------------
 def make_hash(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
 def check_hash(password, hashed_text):
-    if make_hash(password) == hashed_text:
-        return True
-    return False
+    return make_hash(password) == hashed_text
 
-# ---------------------------------------------------------
-# FUNGSI DATABASE OPERASI
-# ---------------------------------------------------------
-def register_user(username, password, nama_lengkap, unit_kerja):
+def register_user(username, password, nama_lengkap, unit_kerja, role='user'):
     conn = sqlite3.connect("order_makanan.db")
     c = conn.cursor()
     try:
-        c.execute("INSERT INTO users (username, password, nama_lengkap, unit_kerja) VALUES (?, ?, ?, ?)",
-                  (username, make_hash(password), nama_lengkap, unit_kerja))
+        c.execute("INSERT INTO users (username, password, nama_lengkap, unit_kerja, role) VALUES (?, ?, ?, ?, ?)",
+                  (username, make_hash(password), nama_lengkap, unit_kerja, role))
         conn.commit()
         conn.close()
         return True
@@ -94,11 +132,35 @@ def login_user(username, password):
     c.execute("SELECT * FROM users WHERE username = ?", (username,))
     data = c.fetchone()
     conn.close()
-    if data:
-        # data[2] adalah password hash
-        if check_hash(password, data[2]):
-            return {"username": data[1], "nama_lengkap": data[3], "unit_kerja": data[4]}
+    if data and check_hash(password, data[2]):
+        return {
+            "username": data[1],
+            "nama_lengkap": data[3],
+            "unit_kerja": data[4],
+            "role": data[5] if len(data) > 5 else 'user'
+        }
     return None
+
+def get_master_list(kategori):
+    conn = sqlite3.connect("order_makanan.db")
+    c = conn.cursor()
+    c.execute("SELECT nama FROM master_data WHERE kategori = ? ORDER BY nama ASC", (kategori,))
+    res = [r[0] for r in c.fetchall()]
+    conn.close()
+    res.append("Lainnya")
+    return res
+
+def add_master_item(kategori, nama):
+    conn = sqlite3.connect("order_makanan.db")
+    c = conn.cursor()
+    try:
+        c.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", (kategori, nama.strip()))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False
 
 def save_order(tgl_order, nama_pasien, perusahaan, jabatan, departemen, 
                nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan, 
@@ -132,44 +194,11 @@ if 'user_info' not in st.session_state:
     st.session_state['user_info'] = {}
 
 # ---------------------------------------------------------
-# MASTER LIST DATA
-# ---------------------------------------------------------
-LIST_PERUSAHAAN = [
-    "PT HALMAHERA JAYA FERONIKEL (HJF)",
-    "PT. KARUNIA PERMAI SENTOSA (KPS)",
-    "PT. OBI SINAR TIMUR (OST)",
-    "PT. CIPTA KEMAKMURAN MITRA (CKM)",
-    "Lainnya"
-]
-
-LIST_DEPARTEMEN = [
-    "Medical / Klinik",
-    "HRD / GA",
-    "Operation / Produksi",
-    "HSE / Safety",
-    "Maintenance / Engineering",
-    "Logistik / Warehouse",
-    "Contractor / External",
-    "Lainnya"
-]
-
-LIST_JABATAN = [
-    "Staff / Karyawan",
-    "Supervisor / Foreman",
-    "Superintendent / Manager",
-    "Dokter Umum",
-    "Perawat / Medical Staff",
-    "Bidan",
-    "Kontraktor / Pekerja",
-    "Lainnya"
-]
-
-# ---------------------------------------------------------
 # TAMPILAN AUTENTIKASI (LOGIN / REGISTER)
 # ---------------------------------------------------------
 if not st.session_state['logged_in']:
     st.title("🔐 Login Sistem - Klinik Harita Obi")
-    st.markdown("Silakan masuk menggunakan akun Anda atau daftar akun baru untuk mengakses aplikasi pemesanan makanan.")
+    st.markdown("Silakan masuk menggunakan akun Anda atau daftar akun baru.")
     
     auth_tab1, auth_tab2 = st.tabs(["🔑 Login", "📝 Daftar Akun Baru"])
     
@@ -191,12 +220,12 @@ if not st.session_state['logged_in']:
                     st.error("⚠️ Username atau Password salah!")
                     
     with auth_tab2:
-        st.subheader("Pendaftaran Akun Petugas/Pemesan")
+        st.subheader("Pendaftaran Akun Mandiri")
         with st.form("register_form"):
             r_username = st.text_input("Buat Username Baru")
             r_password = st.text_input("Buat Password Baru", type="password")
             r_nama = st.text_input("Nama Lengkap & Gelar")
-            r_unit = st.text_input("Unit / Divisi Asal (Contoh: Klinik Utama, HRD)")
+            r_unit = st.text_input("Unit / Divisi Asal (Contoh: Medical Record, HRD)")
             r_submit = st.form_submit_button("Daftar Akun")
             
             if r_submit:
@@ -205,20 +234,22 @@ if not st.session_state['logged_in']:
                 else:
                     success = register_user(r_username, r_password, r_nama, r_unit)
                     if success:
-                        st.success("✅ Akun berhasil didaftarkan! Silakan pindah ke tab Login untuk masuk.")
+                        st.success("✅ Akun berhasil didaftarkan! Silakan login.")
                     else:
-                        st.error("⚠️ Username tersebut sudah digunakan. Pilih username lain.")
+                        st.error("⚠️ Username tersebut sudah digunakan.")
 
 else:
     # ---------------------------------------------------------
     # MAIN APPLICATION (AFTER LOGIN)
     # ---------------------------------------------------------
     user = st.session_state['user_info']
+    is_admin = user.get('role') == 'admin'
     
-    # Sidebar Info & Logout
+    # Sidebar Info
     with st.sidebar:
         st.write(f"👤 **{user['nama_lengkap']}**")
         st.write(f"🏢 Unit: {user['unit_kerja']}")
+        st.write(f"🛡️ Role: **{user.get('role', 'user').upper()}**")
         st.divider()
         if st.button("🚪 Keluar (Logout)"):
             st.session_state['logged_in'] = False
@@ -228,8 +259,14 @@ else:
     st.title("🍲 Aplikasi Order Makanan Pasien")
     st.caption("Klinik Harita Feronikel Obi")
 
-    # Tab Menu Utama
-    tab_form, tab_rekap = st.tabs(["📝 Form Order Makanan", "📊 Rekap & Monitoring Data"])
+    # DYNAMIC TAB SETTINGS (Tambahkan Tab Manajemen jika Admin)
+    tab_titles = ["📝 Form Order Makanan", "📊 Rekap & Monitoring Data"]
+    if is_admin:
+        tab_titles.append("⚙️ Manajemen Aplikasi")
+    
+    tabs = st.tabs(tab_titles)
+    tab_form = tabs[0]
+    tab_rekap = tabs[1]
 
     # =========================================================
     # TAB 1: FORM INPUT ORDER
@@ -245,42 +282,31 @@ else:
                 tgl_order = st.date_input("Tanggal Order", datetime.now())
                 nama_pasien = st.text_input("Nama Pasien*")
                 
-                # Dropdown Perusahaan sesuai request
-                perusahaan = st.selectbox("Perusahaan*", LIST_PERUSAHAAN, index=None, placeholder="Pilih Perusahaan...")
-                
-                # Dropdown Jabatan
-                jabatan = st.selectbox("Jabatan*", LIST_JABATAN, index=None, placeholder="Pilih Jabatan...")
-                
-                # Dropdown Departemen
-                departemen = st.selectbox("Departemen*", LIST_DEPARTEMEN, index=None, placeholder="Pilih Departemen...")
+                # Mengambil list dinamis dari DB
+                perusahaan = st.selectbox("Perusahaan*", get_master_list('perusahaan'), index=None, placeholder="Pilih Perusahaan...")
+                jabatan = st.selectbox("Jabatan*", get_master_list('jabatan'), index=None, placeholder="Pilih Jabatan...")
+                departemen = st.selectbox("Departemen*", get_master_list('departemen'), index=None, placeholder="Pilih Departemen...")
                 
                 nik_idcard = st.text_input("NIK / ID Card Pasien*")
                 uploaded_file = st.file_uploader("Upload Foto/Scan ID Card (JPG/PNG/PDF)*", type=["jpg", "jpeg", "png", "pdf"])
 
             with col2:
                 st.markdown("### 🍱 Detail Pesanan & Pemesan")
-                pilihan_makanan = st.radio(
-                    "Pilihan Menu Makanan*",
-                    ["Bubur", "Pack Meal"],
-                    index=None
-                )
+                pilihan_makanan = st.radio("Pilihan Menu Makanan*", ["Bubur", "Pack Meal"], index=None)
                 catatan_diet = st.text_area("Catatan Tambahan / Diet Khusus (Opsional)", placeholder="Contoh: Diet Rendah Garam, Tidak Pedas, Alergi Udang")
                 
                 st.divider()
-                # Default Nama Pemesan & Unit otomatis diisi dari akun yang login
                 nama_pemesan = st.text_input("Nama Pemesan (Petugas)*", value=user['nama_lengkap'])
                 unit_pemesan = st.text_input("Unit / Divisi Pemesan*", value=user['unit_kerja'])
             
             submit_btn = st.form_submit_button("🚀 Kirim Pesanan Makanan")
             
         if submit_btn:
-            # Validasi Input Wajib
             if not nama_pasien or not perusahaan or not jabatan or not departemen or not nik_idcard or not pilihan_makanan or not nama_pemesan or not unit_pemesan:
-                st.error("⚠️ Mohon lengkapi seluruh field wajib (bertanda *) termasuk pilihan perusahaan, jabatan, dan departemen!")
+                st.error("⚠️ Mohon lengkapi seluruh field wajib (bertanda *)!")
             elif uploaded_file is None:
                 st.error("⚠️ Mohon upload lampiran ID Card Pasien!")
             else:
-                # Simpan File Upload
                 timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
                 file_ext = os.path.splitext(uploaded_file.name)[1]
                 saved_filename = f"{nik_idcard}_{timestamp_str}{file_ext}"
@@ -289,12 +315,9 @@ else:
                 with open(file_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
                     
-                # Simpan ke DB
-                save_order(
-                    tgl_order, nama_pasien, perusahaan, jabatan, departemen,
-                    nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan,
-                    unit_pemesan, saved_filename
-                )
+                save_order(tgl_order, nama_pasien, perusahaan, jabatan, departemen,
+                           nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan,
+                           unit_pemesan, saved_filename)
                 
                 st.success(f"✅ Pesanan makanan untuk Pasien **{nama_pasien}** berhasil disimpan!")
 
@@ -303,13 +326,11 @@ else:
     # =========================================================
     with tab_rekap:
         st.subheader("Data Pesanan Masuk")
-        
         df = load_data()
         
         if df.empty:
             st.info("Belum ada data pemesanan yang masuk.")
         else:
-            # Filter Data
             col_f1, col_f2 = st.columns(2)
             with col_f1:
                 filter_tgl = st.date_input("Filter Tanggal Order", None)
@@ -322,24 +343,18 @@ else:
             if filter_menu:
                 df_filtered = df_filtered[df_filtered['pilihan_makanan'].isin(filter_menu)]
                 
-            # Tampilkan Ringkasan
             st.markdown(f"**Total Pesanan Ditampilkan:** {len(df_filtered)} Order")
+            st.dataframe(df_filtered.drop(columns=['idcard_filename']), use_container_width=True, hide_index=True)
             
-            # Tabel Data
-            st.dataframe(
-                df_filtered.drop(columns=['idcard_filename']),
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            # Preview ID Card & Download
             st.divider()
             st.markdown("### 🔍 Detail & Lihat ID Card Pasien")
             
             if not df_filtered.empty:
-                selected_id = st.selectbox("Pilih ID Order / Nama Pasien untuk Lihat Detail ID Card:", 
-                                           options=df_filtered['id'].tolist(),
-                                           format_func=lambda x: f"ID Order #{x} - {df_filtered[df_filtered['id']==x]['nama_pasien'].values[0]} ({df_filtered[df_filtered['id']==x]['nik_idcard'].values[0]})")
+                selected_id = st.selectbox(
+                    "Pilih ID Order / Nama Pasien untuk Lihat Detail ID Card:", 
+                    options=df_filtered['id'].tolist(),
+                    format_func=lambda x: f"ID Order #{x} - {df_filtered[df_filtered['id']==x]['nama_pasien'].values[0]} ({df_filtered[df_filtered['id']==x]['nik_idcard'].values[0]})"
+                )
                 
                 if selected_id:
                     row = df_filtered[df_filtered['id'] == selected_id].iloc[0]
@@ -367,5 +382,70 @@ else:
                                     st.download_button("📥 Download ID Card File", f, file_name=filename)
                         else:
                             st.warning("File ID Card tidak ditemukan.")
-            else:
-                st.info("Tidak ada data pada filter yang dipilih.")
+
+    # =========================================================
+    # TAB 3: MANAJEMEN APLIKASI (HANYA UNTUK ADMIN)
+    # =========================================================
+    if is_admin:
+        tab_admin = tabs[2]
+        with tab_admin:
+            st.subheader("⚙️ Panel Manajemen Admin")
+            
+            admin_sub_tab1, admin_sub_tab2 = st.tabs(["👥 Manajemen Akun", "🏷️ Kelola List Dropdown"])
+            
+            # --- SUB TAB 1: MANAJEMEN AKUN ---
+            with admin_sub_tab1:
+                st.markdown("### Buat Akun Baru")
+                with st.form("admin_create_user"):
+                    col_u1, col_u2 = st.columns(2)
+                    with col_u1:
+                        new_u_username = st.text_input("Username Baru")
+                        new_u_password = st.text_input("Password", type="password")
+                        new_u_nama = st.text_input("Nama Lengkap")
+                    with col_u2:
+                        new_u_unit = st.text_input("Unit / Divisi")
+                        new_u_role = st.selectbox("Role Akses", ["user", "admin"])
+                        st.write("")
+                        st.write("")
+                        submit_new_u = st.form_submit_button("➕ Tambahkan Akun")
+                        
+                    if submit_new_u:
+                        if new_u_username and new_u_password and new_u_nama:
+                            if register_user(new_u_username, new_u_password, new_u_nama, new_u_unit, new_u_role):
+                                st.success(f"Akun **{new_u_username}** ({new_u_role}) berhasil dibuat!")
+                            else:
+                                st.error("Username sudah terdaftar!")
+                        else:
+                            st.warning("Mohon lengkapi seluruh field data akun!")
+
+                st.divider()
+                st.markdown("### Daftar Seluruh Akun Terdaftar")
+                conn = sqlite3.connect("order_makanan.db")
+                df_users = pd.read_sql_query("SELECT id, username, nama_lengkap, unit_kerja, role FROM users", conn)
+                conn.close()
+                st.dataframe(df_users, use_container_width=True, hide_index=True)
+
+            # --- SUB TAB 2: KELOLA MASTER DROPDOWN ---
+            with admin_sub_tab2:
+                st.markdown("### Tambah Pilihan Baru ke Dropdown")
+                col_m1, col_m2 = st.columns([1, 2])
+                
+                with col_m1:
+                    kat_pilihan = st.selectbox("Pilih Kategori List", ["perusahaan", "departemen", "jabatan"])
+                    nama_baru = st.text_input("Nama Pilihan Baru")
+                    btn_add_master = st.button("➕ Tambah Pilihan")
+                    
+                    if btn_add_master:
+                        if nama_baru:
+                            if add_master_item(kat_pilihan, nama_baru):
+                                st.success(f"Berhasil menambahkan '{nama_baru}' ke list {kat_pilihan}!")
+                                st.rerun()
+                            else:
+                                st.error("Pilihan tersebut sudah ada dalam list.")
+                        else:
+                            st.warning("Nama opsi tidak boleh kosong.")
+
+                with col_m2:
+                    st.markdown(f"**List Current ({kat_pilihan.capitalize()}):**")
+                    current_items = get_master_list(kat_pilihan)
+                    st.write(current_items[:-1]) # Tidak menampilkan pilihan 'Lainnya'
