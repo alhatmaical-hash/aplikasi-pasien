@@ -21,25 +21,30 @@ if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
 # ---------------------------------------------------------
-# DATABASE SETUP (SQLite)
+# DATABASE SETUP (SQLite dengan Safe Migration)
 # ---------------------------------------------------------
 def init_db():
     conn = sqlite3.connect("order_makanan.db")
     c = conn.cursor()
     
-    # Tabel Users
+    # 1. Tabel Users
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
             password TEXT,
             nama_lengkap TEXT,
-            unit_kerja TEXT,
-            role TEXT DEFAULT 'user'
+            unit_kerja TEXT
         )
     ''')
     
-    # Tabel Orders Makanan
+    # Check & tambahkan kolom 'role' jika belum ada (Safe Migration)
+    c.execute("PRAGMA table_info(users)")
+    columns = [column[1] for column in c.fetchall()]
+    if 'role' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'")
+    
+    # 2. Tabel Orders Makanan
     c.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,23 +63,23 @@ def init_db():
         )
     ''')
 
-    # Tabel Master Data Dinamis (Perusahaan, Departemen, Jabatan)
+    # 3. Tabel Master Data Dinamis (Perusahaan, Departemen, Jabatan)
     c.execute('''
         CREATE TABLE IF NOT EXISTS master_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            kategori TEXT, -- 'perusahaan', 'departemen', 'jabatan'
+            kategori TEXT,
             nama TEXT UNIQUE
         )
     ''')
     
-    # Inisialisasi Akun Admin Default jika belum ada (User: admin / Pass: admin123)
+    # 4. Inisialisasi Akun Admin Default (User: admin / Pass: admin123)
     c.execute("SELECT * FROM users WHERE username = 'admin'")
     if not c.fetchone():
         admin_pass = hashlib.sha256("admin123".encode()).hexdigest()
         c.execute("INSERT INTO users (username, password, nama_lengkap, unit_kerja, role) VALUES (?, ?, ?, ?, ?)",
                   ('admin', admin_pass, 'Administrator Klinik', 'MEDICAL RECORD / IT', 'admin'))
 
-    # Inisialisasi Master Data Bawaan jika masih kosong
+    # 5. Inisialisasi Master Data Bawaan
     c.execute("SELECT COUNT(*) FROM master_data")
     if c.fetchone()[0] == 0:
         default_perusahaan = [
@@ -448,4 +453,4 @@ else:
                 with col_m2:
                     st.markdown(f"**List Current ({kat_pilihan.capitalize()}):**")
                     current_items = get_master_list(kat_pilihan)
-                    st.write(current_items[:-1]) # Tidak menampilkan pilihan 'Lainnya'
+                    st.write(current_items[:-1]) # Omit 'Lainnya' from raw list
