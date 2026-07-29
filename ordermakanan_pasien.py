@@ -89,12 +89,11 @@ def init_db():
             "PT. CIPTA KEMAKMURAN MITRA (CKM)"
         ]
         default_dept = [
-            "Medical / Klinik", "HRD / GA", "Operation / Produksi", 
-            "HSE / Safety", "Maintenance / Engineering", "Logistik / Warehouse"
+            "Dispatch", "Technical Support", "HR/GA", "Produksi", 
+            "HSE", "Kontraktor", "Logistik / Warehouse"
         ]
         default_jabatan = [
-            "Staff / Karyawan", "Supervisor / Foreman", "Superintendent / Manager", 
-            "Dokter Umum", "Perawat / Medical Staff", "Bidan"
+            "Staff", "Supervisor", "Supervisor"
         ]
 
         for p in default_perusahaan:
