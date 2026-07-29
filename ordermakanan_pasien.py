@@ -1,3 +1,16 @@
+Berikut adalah pembaruan kode `ordermakanan_pasien.py` yang sudah disesuaikan.
+
+### 💡 Perubahan yang dilakukan:
+
+1. **Menghapus Pendaftaran Akun Mandiri**: Tab *"📝 Daftar Akun Baru"* di halaman awal/login telah dihapus.
+2. **Pembuatan Akun Khusus Admin**: Pengguna baru kini **hanya bisa dibuat oleh Admin** melalui tab **`⚙️ Manajemen Aplikasi` ➔ `👥 Manajemen Akun**`.
+3. **Pemberitahuan di Halaman Login**: Ditambahkan petunjuk bagi pengguna biasa untuk menghubungi Admin jika belum memiliki akun.
+
+---
+
+### 📝 Salin & Tempel Seluruh Kode Berikut:
+
+```python
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -199,16 +212,15 @@ if 'user_info' not in st.session_state:
     st.session_state['user_info'] = {}
 
 # ---------------------------------------------------------
-# TAMPILAN AUTENTIKASI (LOGIN / REGISTER)
+# TAMPILAN AUTENTIKASI (HANYA LOGIN)
 # ---------------------------------------------------------
 if not st.session_state['logged_in']:
     st.title("🔐 Login Sistem - Klinik Harita Obi")
-    st.markdown("Silakan masuk menggunakan akun Anda atau daftar akun baru.")
+    st.markdown("Silakan masuk menggunakan akun yang telah terdaftar.")
     
-    auth_tab1, auth_tab2 = st.tabs(["🔑 Login", "📝 Daftar Akun Baru"])
-    
-    with auth_tab1:
-        st.subheader("Login Pengguna")
+    col_login, _ = st.columns([1, 1])
+    with col_login:
+        st.subheader("Form Login Pengguna")
         with st.form("login_form"):
             l_username = st.text_input("Username")
             l_password = st.text_input("Password", type="password")
@@ -223,25 +235,8 @@ if not st.session_state['logged_in']:
                     st.rerun()
                 else:
                     st.error("⚠️ Username atau Password salah!")
-                    
-    with auth_tab2:
-        st.subheader("Pendaftaran Akun Mandiri")
-        with st.form("register_form"):
-            r_username = st.text_input("Buat Username Baru")
-            r_password = st.text_input("Buat Password Baru", type="password")
-            r_nama = st.text_input("Nama Lengkap & Gelar")
-            r_unit = st.text_input("Unit / Divisi Asal (Contoh: Medical Record, HRD)")
-            r_submit = st.form_submit_button("Daftar Akun")
-            
-            if r_submit:
-                if not r_username or not r_password or not r_nama or not r_unit:
-                    st.warning("Semua field wajib diisi!")
-                else:
-                    success = register_user(r_username, r_password, r_nama, r_unit)
-                    if success:
-                        st.success("✅ Akun berhasil didaftarkan! Silakan login.")
-                    else:
-                        st.error("⚠️ Username tersebut sudah digunakan.")
+        
+        st.info("ℹ️ Belum memiliki akun? Silakan hubungi **Administrator Klinik / Tim IT** untuk dibuatkan akun baru.")
 
 else:
     # ---------------------------------------------------------
@@ -400,7 +395,7 @@ else:
             
             # --- SUB TAB 1: MANAJEMEN AKUN ---
             with admin_sub_tab1:
-                st.markdown("### Buat Akun Baru")
+                st.markdown("### Buat Akun Baru (Oleh Admin)")
                 with st.form("admin_create_user"):
                     col_u1, col_u2 = st.columns(2)
                     with col_u1:
@@ -418,6 +413,7 @@ else:
                         if new_u_username and new_u_password and new_u_nama:
                             if register_user(new_u_username, new_u_password, new_u_nama, new_u_unit, new_u_role):
                                 st.success(f"Akun **{new_u_username}** ({new_u_role}) berhasil dibuat!")
+                                st.rerun()
                             else:
                                 st.error("Username sudah terdaftar!")
                         else:
@@ -454,3 +450,5 @@ else:
                     st.markdown(f"**List Current ({kat_pilihan.capitalize()}):**")
                     current_items = get_master_list(kat_pilihan)
                     st.write(current_items[:-1]) # Omit 'Lainnya' from raw list
+
+```
