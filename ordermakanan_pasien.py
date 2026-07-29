@@ -7,6 +7,20 @@ from PIL import Image
 import hashlib
 
 # ---------------------------------------------------------
+# KONFIGURASI PATH PENYIMPANAN DI DRIVE D KOMPUTER
+# ---------------------------------------------------------
+BASE_DIR = r"D:\Data_Order_Makanan"
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+DB_DIR = os.path.join(BASE_DIR, "database")
+DB_PATH = os.path.join(DB_DIR, "order_makanan.db")
+
+# Buat folder penyimpanan di Drive D jika belum ada
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+if not os.path.exists(DB_DIR):
+    os.makedirs(DB_DIR, exist_ok=True)
+
+# ---------------------------------------------------------
 # KONFIGURASI HALAMAN
 # ---------------------------------------------------------
 st.set_page_config(
@@ -15,16 +29,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# Folder untuk menyimpan file ID Card yang diupload
-UPLOAD_DIR = "uploads"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
-
 # ---------------------------------------------------------
-# DATABASE SETUP (SQLite dengan Safe Migration)
+# DATABASE SETUP (SQLite di Drive D)
 # ---------------------------------------------------------
 def init_db():
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
     # 1. Tabel Users
@@ -94,7 +103,7 @@ def check_hash(password, hashed_text):
     return make_hash(password) == hashed_text
 
 def register_user(username, password, nama_lengkap, unit_kerja, role='user'):
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     try:
         c.execute("INSERT INTO users (username, password, nama_lengkap, unit_kerja, role) VALUES (?, ?, ?, ?, ?)",
@@ -107,14 +116,14 @@ def register_user(username, password, nama_lengkap, unit_kerja, role='user'):
         return False
 
 def delete_user(user_id):
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
 
 def login_user(username, password):
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE username = ?", (username,))
     data = c.fetchone()
@@ -129,7 +138,7 @@ def login_user(username, password):
     return None
 
 def get_master_list(kategori):
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT nama FROM master_data WHERE kategori = ? ORDER BY nama ASC", (kategori,))
     res = [r[0] for r in c.fetchall()]
@@ -138,7 +147,7 @@ def get_master_list(kategori):
     return res
 
 def add_master_item(kategori, nama):
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     try:
         c.execute("INSERT INTO master_data (kategori, nama) VALUES (?, ?)", (kategori, nama.strip()))
@@ -150,7 +159,7 @@ def add_master_item(kategori, nama):
         return False
 
 def delete_master_item(kategori, nama):
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("DELETE FROM master_data WHERE kategori = ? AND nama = ?", (kategori, nama))
     conn.commit()
@@ -159,7 +168,7 @@ def delete_master_item(kategori, nama):
 def save_order(tgl_order, nama_pasien, perusahaan, jabatan, departemen, 
                nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan, 
                unit_pemesan, idcard_filename):
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''
         INSERT INTO orders (
@@ -174,7 +183,7 @@ def save_order(tgl_order, nama_pasien, perusahaan, jabatan, departemen,
     conn.close()
 
 def delete_order(order_id):
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT idcard_filename FROM orders WHERE id = ?", (order_id,))
     row = c.fetchone()
@@ -191,7 +200,7 @@ def delete_order(order_id):
     conn.close()
 
 def load_data():
-    conn = sqlite3.connect("order_makanan.db")
+    conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("SELECT * FROM orders ORDER BY id DESC", conn)
     conn.close()
     return df
@@ -243,6 +252,7 @@ else:
         st.write(f"👤 **{user['nama_lengkap']}**")
         st.write(f"🏢 Unit: {user['unit_kerja']}")
         st.write(f"🛡️ Role: **{user.get('role', 'user').upper()}**")
+        st.caption(f"📂 Lokasi DB: `{DB_PATH}`")
         st.divider()
         if st.button("🚪 Keluar (Logout)"):
             st.session_state['logged_in'] = False
@@ -311,7 +321,7 @@ else:
                            nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan,
                            unit_pemesan, saved_filename)
                 
-                st.success(f"✅ Pesanan makanan untuk Pasien **{nama_pasien}** berhasil disimpan!")
+                st.success(f"✅ Pesanan makanan untuk Pasien **{nama_pasien}** berhasil disimpan di Drive D!")
 
     # =========================================================
     # TAB 2 & 3: REKAP DATA & MANAJEMEN APLIKASI (KHUSUS ADMIN)
@@ -370,7 +380,7 @@ else:
                             
                             st.divider()
                             st.markdown("#### 🗑️ Hapus Pesanan Ini")
-                            st.caption("Menghapus pesanan ini akan menghapus data dari database beserta file ID Card yang diupload.")
+                            st.caption("Menghapus pesanan ini akan menghapus data dari database beserta file ID Card di Drive D.")
                             
                             if st.button(f"🗑️ Hapus Order ID #{selected_id}", type="primary", key=f"del_order_{selected_id}"):
                                 delete_order(selected_id)
@@ -423,7 +433,7 @@ else:
 
                 st.divider()
                 st.markdown("### 📋 Daftar Seluruh Akun Terdaftar")
-                conn = sqlite3.connect("order_makanan.db")
+                conn = sqlite3.connect(DB_PATH)
                 df_users = pd.read_sql_query("SELECT id, username, nama_lengkap, unit_kerja, role FROM users", conn)
                 conn.close()
                 st.dataframe(df_users, use_container_width=True, hide_index=True)
