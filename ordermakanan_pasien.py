@@ -77,7 +77,7 @@ def init_db():
     if not c.fetchone():
         admin_pass = hashlib.sha256("admin123".encode()).hexdigest()
         c.execute("INSERT INTO users (username, password, nama_lengkap, unit_kerja, role) VALUES (?, ?, ?, ?, ?)",
-                  ('admin', admin_pass, 'Administrator Klinik', 'MEDICAL RECORD / IT', 'admin'))
+                  ('admin', admin_pass, 'Administrator Klinik', 'MEDICAL RECORD', 'admin'))
 
     # 5. Inisialisasi Master Data Bawaan
     c.execute("SELECT COUNT(*) FROM master_data")
