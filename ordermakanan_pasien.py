@@ -1,16 +1,3 @@
-Berikut adalah pembaruan kode `ordermakanan_pasien.py` yang sudah disesuaikan.
-
-### 💡 Perubahan yang dilakukan:
-
-1. **Menghapus Pendaftaran Akun Mandiri**: Tab *"📝 Daftar Akun Baru"* di halaman awal/login telah dihapus.
-2. **Pembuatan Akun Khusus Admin**: Pengguna baru kini **hanya bisa dibuat oleh Admin** melalui tab **`⚙️ Manajemen Aplikasi` ➔ `👥 Manajemen Akun**`.
-3. **Pemberitahuan di Halaman Login**: Ditambahkan petunjuk bagi pengguna biasa untuk menghubungi Admin jika belum memiliki akun.
-
----
-
-### 📝 Salin & Tempel Seluruh Kode Berikut:
-
-```python
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -450,5 +437,3 @@ else:
                     st.markdown(f"**List Current ({kat_pilihan.capitalize()}):**")
                     current_items = get_master_list(kat_pilihan)
                     st.write(current_items[:-1]) # Omit 'Lainnya' from raw list
-
-```
