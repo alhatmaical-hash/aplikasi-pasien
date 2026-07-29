@@ -201,7 +201,6 @@ def save_order(tgl_order, nama_pasien, perusahaan, jabatan, departemen,
 def delete_order(order_id):
     conn = sqlite3.connect("order_makanan.db")
     c = conn.cursor()
-    # Hapus file ID Card fisik dari server jika ada
     c.execute("SELECT idcard_filename FROM orders WHERE id = ?", (order_id,))
     row = c.fetchone()
     if row and row[0]:
@@ -212,7 +211,6 @@ def delete_order(order_id):
             except Exception:
                 pass
     
-    # Hapus data record dari DB
     c.execute("DELETE FROM orders WHERE id = ?", (order_id,))
     conn.commit()
     conn.close()
@@ -279,17 +277,19 @@ else:
     st.title("🍲 Aplikasi Order Makanan Pasien")
     st.caption("Klinik Harita Feronikel Obi")
 
-    # DYNAMIC TAB SETTINGS (Tambahkan Tab Manajemen jika Admin)
-    tab_titles = ["📝 Form Order Makanan", "📊 Rekap & Monitoring Data"]
+    # DYNAMIC TAB SETTINGS BERDASARKAN ROLE
+    # Jika Admin: tampilkan Form, Rekap Data, dan Manajemen Aplikasi
+    # Jika User: HANYA tampilkan Form Order Makanan
     if is_admin:
-        tab_titles.append("⚙️ Manajemen Aplikasi")
+        tab_titles = ["📝 Form Order Makanan", "📊 Rekap & Monitoring Data", "⚙️ Manajemen Aplikasi"]
+    else:
+        tab_titles = ["📝 Form Order Makanan"]
     
     tabs = st.tabs(tab_titles)
     tab_form = tabs[0]
-    tab_rekap = tabs[1]
 
     # =========================================================
-    # TAB 1: FORM INPUT ORDER
+    # TAB 1: FORM INPUT ORDER (AKSES: USER & ADMIN)
     # =========================================================
     with tab_form:
         st.subheader("Input Data Pemesanan Makanan Pasien")
@@ -302,7 +302,6 @@ else:
                 tgl_order = st.date_input("Tanggal Order", datetime.now())
                 nama_pasien = st.text_input("Nama Pasien*")
                 
-                # Mengambil list dinamis dari DB
                 perusahaan = st.selectbox("Perusahaan*", get_master_list('perusahaan'), index=None, placeholder="Pilih Perusahaan...")
                 jabatan = st.selectbox("Jabatan*", get_master_list('jabatan'), index=None, placeholder="Pilih Jabatan...")
                 departemen = st.selectbox("Departemen*", get_master_list('departemen'), index=None, placeholder="Pilih Departemen...")
@@ -342,82 +341,82 @@ else:
                 st.success(f"✅ Pesanan makanan untuk Pasien **{nama_pasien}** berhasil disimpan!")
 
     # =========================================================
-    # TAB 2: REKAP & MONITORING DATA
-    # =========================================================
-    with tab_rekap:
-        st.subheader("Data Pesanan Masuk")
-        df = load_data()
-        
-        if df.empty:
-            st.info("Belum ada data pemesanan yang masuk.")
-        else:
-            col_f1, col_f2 = st.columns(2)
-            with col_f1:
-                filter_tgl = st.date_input("Filter Tanggal Order", None)
-            with col_f2:
-                filter_menu = st.multiselect("Filter Pilihan Menu", ["Bubur", "Pack Meal"])
-                
-            df_filtered = df.copy()
-            if filter_tgl:
-                df_filtered = df_filtered[df_filtered['tgl_order'] == str(filter_tgl)]
-            if filter_menu:
-                df_filtered = df_filtered[df_filtered['pilihan_makanan'].isin(filter_menu)]
-                
-            st.markdown(f"**Total Pesanan Ditampilkan:** {len(df_filtered)} Order")
-            st.dataframe(df_filtered.drop(columns=['idcard_filename']), use_container_width=True, hide_index=True)
-            
-            st.divider()
-            st.markdown("### 🔍 Detail & Pengaturan Data Pesanan")
-            
-            if not df_filtered.empty:
-                selected_id = st.selectbox(
-                    "Pilih ID Order / Nama Pasien untuk Lihat Detail atau Hapus:", 
-                    options=df_filtered['id'].tolist(),
-                    format_func=lambda x: f"ID Order #{x} - {df_filtered[df_filtered['id']==x]['nama_pasien'].values[0]} ({df_filtered[df_filtered['id']==x]['nik_idcard'].values[0]})"
-                )
-                
-                if selected_id:
-                    row = df_filtered[df_filtered['id'] == selected_id].iloc[0]
-                    filename = row['idcard_filename']
-                    file_path = os.path.join(UPLOAD_DIR, filename)
-                    
-                    col_info, col_img = st.columns([1, 1])
-                    with col_info:
-                        st.write(f"**Nama Pasien:** {row['nama_pasien']}")
-                        st.write(f"**NIK/ID Card:** {row['nik_idcard']}")
-                        st.write(f"**Perusahaan:** {row['perusahaan']}")
-                        st.write(f"**Jabatan / Dept:** {row['jabatan']} / {row['departemen']}")
-                        st.write(f"**Menu:** {row['pilihan_makanan']}")
-                        st.write(f"**Catatan:** {row['catatan_diet']}")
-                        st.write(f"**Pemesan:** {row['nama_pemesan']} ({row['unit_pemesan']})")
-                        
-                        st.divider()
-                        # AREA HAPUS PESANAN
-                        st.markdown("#### 🗑️ Hapus Pesanan Ini")
-                        st.caption("Menghapus pesanan ini akan menghapus data dari database beserta file ID Card yang diupload.")
-                        
-                        if st.button(f"🗑️ Hapus Order ID #{selected_id}", type="primary", key=f"del_order_{selected_id}"):
-                            delete_order(selected_id)
-                            st.success(f"✅ Data pesanan untuk **{row['nama_pasien']}** (ID #{selected_id}) berhasil dihapus!")
-                            st.rerun()
-                        
-                    with col_img:
-                        if os.path.exists(file_path):
-                            if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-                                image = Image.open(file_path)
-                                st.image(image, caption=f"ID Card: {filename}", use_container_width=True)
-                            else:
-                                st.write("📄 Dokumen berupa PDF/File Non-Gambar.")
-                                with open(file_path, "rb") as f:
-                                    st.download_button("📥 Download ID Card File", f, file_name=filename)
-                        else:
-                            st.warning("File ID Card tidak ditemukan.")
-
-    # =========================================================
-    # TAB 3: MANAJEMEN APLIKASI (HANYA UNTUK ADMIN)
+    # TAB 2 & 3: REKAP DATA & MANAJEMEN APLIKASI (KHUSUS ADMIN)
     # =========================================================
     if is_admin:
+        tab_rekap = tabs[1]
         tab_admin = tabs[2]
+
+        # --- TAB 2: REKAP & MONITORING DATA ---
+        with tab_rekap:
+            st.subheader("Data Pesanan Masuk")
+            df = load_data()
+            
+            if df.empty:
+                st.info("Belum ada data pemesanan yang masuk.")
+            else:
+                col_f1, col_f2 = st.columns(2)
+                with col_f1:
+                    filter_tgl = st.date_input("Filter Tanggal Order", None)
+                with col_f2:
+                    filter_menu = st.multiselect("Filter Pilihan Menu", ["Bubur", "Pack Meal"])
+                    
+                df_filtered = df.copy()
+                if filter_tgl:
+                    df_filtered = df_filtered[df_filtered['tgl_order'] == str(filter_tgl)]
+                if filter_menu:
+                    df_filtered = df_filtered[df_filtered['pilihan_makanan'].isin(filter_menu)]
+                    
+                st.markdown(f"**Total Pesanan Ditampilkan:** {len(df_filtered)} Order")
+                st.dataframe(df_filtered.drop(columns=['idcard_filename']), use_container_width=True, hide_index=True)
+                
+                st.divider()
+                st.markdown("### 🔍 Detail & Pengaturan Data Pesanan")
+                
+                if not df_filtered.empty:
+                    selected_id = st.selectbox(
+                        "Pilih ID Order / Nama Pasien untuk Lihat Detail atau Hapus:", 
+                        options=df_filtered['id'].tolist(),
+                        format_func=lambda x: f"ID Order #{x} - {df_filtered[df_filtered['id']==x]['nama_pasien'].values[0]} ({df_filtered[df_filtered['id']==x]['nik_idcard'].values[0]})"
+                    )
+                    
+                    if selected_id:
+                        row = df_filtered[df_filtered['id'] == selected_id].iloc[0]
+                        filename = row['idcard_filename']
+                        file_path = os.path.join(UPLOAD_DIR, filename)
+                        
+                        col_info, col_img = st.columns([1, 1])
+                        with col_info:
+                            st.write(f"**Nama Pasien:** {row['nama_pasien']}")
+                            st.write(f"**NIK/ID Card:** {row['nik_idcard']}")
+                            st.write(f"**Perusahaan:** {row['perusahaan']}")
+                            st.write(f"**Jabatan / Dept:** {row['jabatan']} / {row['departemen']}")
+                            st.write(f"**Menu:** {row['pilihan_makanan']}")
+                            st.write(f"**Catatan:** {row['catatan_diet']}")
+                            st.write(f"**Pemesan:** {row['nama_pemesan']} ({row['unit_pemesan']})")
+                            
+                            st.divider()
+                            st.markdown("#### 🗑️ Hapus Pesanan Ini")
+                            st.caption("Menghapus pesanan ini akan menghapus data dari database beserta file ID Card yang diupload.")
+                            
+                            if st.button(f"🗑️ Hapus Order ID #{selected_id}", type="primary", key=f"del_order_{selected_id}"):
+                                delete_order(selected_id)
+                                st.success(f"✅ Data pesanan untuk **{row['nama_pasien']}** (ID #{selected_id}) berhasil dihapus!")
+                                st.rerun()
+                            
+                        with col_img:
+                            if os.path.exists(file_path):
+                                if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                                    image = Image.open(file_path)
+                                    st.image(image, caption=f"ID Card: {filename}", use_container_width=True)
+                                else:
+                                    st.write("📄 Dokumen berupa PDF/File Non-Gambar.")
+                                    with open(file_path, "rb") as f:
+                                        st.download_button("📥 Download ID Card File", f, file_name=filename)
+                            else:
+                                st.warning("File ID Card tidak ditemukan.")
+
+        # --- TAB 3: MANAJEMEN APLIKASI ---
         with tab_admin:
             st.subheader("⚙️ Panel Manajemen Admin")
             
@@ -472,7 +471,6 @@ else:
                         if st.button("🗑️ Hapus Akun Terpilih", type="primary"):
                             selected_username = df_users[df_users['id'] == user_to_delete]['username'].values[0]
                             
-                            # Proteksi agar tidak menghapus akun admin utama yang sedang digunakan
                             if selected_username == user['username']:
                                 st.error("⚠️ Anda tidak bisa menghapus akun yang sedang digunakan saat ini!")
                             elif selected_username == 'admin':
@@ -508,7 +506,6 @@ else:
                     st.markdown("### 🗑️ Hapus Pilihan Dropdown")
                     kat_hapus = st.selectbox("Pilih Kategori List (Hapus)", ["perusahaan", "departemen", "jabatan"], key="kat_del")
                     
-                    # Ambil list item murni dari DB (tanpa 'Lainnya')
                     raw_items = get_master_list(kat_hapus)[:-1] 
                     
                     if raw_items:
