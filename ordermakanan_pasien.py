@@ -198,6 +198,25 @@ def save_order(tgl_order, nama_pasien, perusahaan, jabatan, departemen,
     conn.commit()
     conn.close()
 
+def delete_order(order_id):
+    conn = sqlite3.connect("order_makanan.db")
+    c = conn.cursor()
+    # Hapus file ID Card fisik dari server jika ada
+    c.execute("SELECT idcard_filename FROM orders WHERE id = ?", (order_id,))
+    row = c.fetchone()
+    if row and row[0]:
+        file_path = os.path.join(UPLOAD_DIR, row[0])
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+    
+    # Hapus data record dari DB
+    c.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+    conn.commit()
+    conn.close()
+
 def load_data():
     conn = sqlite3.connect("order_makanan.db")
     df = pd.read_sql_query("SELECT * FROM orders ORDER BY id DESC", conn)
@@ -348,11 +367,11 @@ else:
             st.dataframe(df_filtered.drop(columns=['idcard_filename']), use_container_width=True, hide_index=True)
             
             st.divider()
-            st.markdown("### 🔍 Detail & Lihat ID Card Pasien")
+            st.markdown("### 🔍 Detail & Pengaturan Data Pesanan")
             
             if not df_filtered.empty:
                 selected_id = st.selectbox(
-                    "Pilih ID Order / Nama Pasien untuk Lihat Detail ID Card:", 
+                    "Pilih ID Order / Nama Pasien untuk Lihat Detail atau Hapus:", 
                     options=df_filtered['id'].tolist(),
                     format_func=lambda x: f"ID Order #{x} - {df_filtered[df_filtered['id']==x]['nama_pasien'].values[0]} ({df_filtered[df_filtered['id']==x]['nik_idcard'].values[0]})"
                 )
@@ -371,6 +390,16 @@ else:
                         st.write(f"**Menu:** {row['pilihan_makanan']}")
                         st.write(f"**Catatan:** {row['catatan_diet']}")
                         st.write(f"**Pemesan:** {row['nama_pemesan']} ({row['unit_pemesan']})")
+                        
+                        st.divider()
+                        # AREA HAPUS PESANAN
+                        st.markdown("#### 🗑️ Hapus Pesanan Ini")
+                        st.caption("Menghapus pesanan ini akan menghapus data dari database beserta file ID Card yang diupload.")
+                        
+                        if st.button(f"🗑️ Hapus Order ID #{selected_id}", type="primary", key=f"del_order_{selected_id}"):
+                            delete_order(selected_id)
+                            st.success(f"✅ Data pesanan untuk **{row['nama_pasien']}** (ID #{selected_id}) berhasil dihapus!")
+                            st.rerun()
                         
                     with col_img:
                         if os.path.exists(file_path):
