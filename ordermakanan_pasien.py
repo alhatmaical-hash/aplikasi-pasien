@@ -174,6 +174,13 @@ def add_master_item(kategori, nama):
         conn.close()
         return False
 
+def delete_master_item(kategori, nama):
+    conn = sqlite3.connect("order_makanan.db")
+    c = conn.cursor()
+    c.execute("DELETE FROM master_data WHERE kategori = ? AND nama = ?", (kategori, nama))
+    conn.commit()
+    conn.close()
+
 def save_order(tgl_order, nama_pasien, perusahaan, jabatan, departemen, 
                nik_idcard, pilihan_makanan, catatan_diet, nama_pemesan, 
                unit_pemesan, idcard_filename):
@@ -448,11 +455,12 @@ else:
 
             # --- SUB TAB 2: KELOLA MASTER DROPDOWN ---
             with admin_sub_tab2:
-                st.markdown("### Tambah Pilihan Baru ke Dropdown")
-                col_m1, col_m2 = st.columns([1, 2])
+                col_m1, col_m2 = st.columns([1, 1])
                 
+                # ➕ TAMBAH OPTION
                 with col_m1:
-                    kat_pilihan = st.selectbox("Pilih Kategori List", ["perusahaan", "departemen", "jabatan"])
+                    st.markdown("### ➕ Tambah Pilihan Dropdown")
+                    kat_pilihan = st.selectbox("Pilih Kategori List (Tambah)", ["perusahaan", "departemen", "jabatan"], key="kat_add")
                     nama_baru = st.text_input("Nama Pilihan Baru")
                     btn_add_master = st.button("➕ Tambah Pilihan")
                     
@@ -466,7 +474,26 @@ else:
                         else:
                             st.warning("Nama opsi tidak boleh kosong.")
 
+                # 🗑️ HAPUS OPTION
                 with col_m2:
-                    st.markdown(f"**List Current ({kat_pilihan.capitalize()}):**")
-                    current_items = get_master_list(kat_pilihan)
-                    st.write(current_items[:-1]) # Omit 'Lainnya' from raw list
+                    st.markdown("### 🗑️ Hapus Pilihan Dropdown")
+                    kat_hapus = st.selectbox("Pilih Kategori List (Hapus)", ["perusahaan", "departemen", "jabatan"], key="kat_del")
+                    
+                    # Ambil list item murni dari DB (tanpa 'Lainnya')
+                    raw_items = get_master_list(kat_hapus)[:-1] 
+                    
+                    if raw_items:
+                        item_to_delete = st.selectbox("Pilih Item yang Akan Dihapus:", options=raw_items)
+                        btn_del_master = st.button("🗑️ Hapus Pilihan", type="primary")
+                        
+                        if btn_del_master:
+                            delete_master_item(kat_hapus, item_to_delete)
+                            st.success(f"Berhasil menghapus '{item_to_delete}' dari list {kat_hapus}!")
+                            st.rerun()
+                    else:
+                        st.info("Belum ada pilihan data pada kategori ini.")
+
+                st.divider()
+                st.markdown(f"### 📋 List Current ({kat_pilihan.capitalize()})")
+                current_items = get_master_list(kat_pilihan)[:-1]
+                st.write(current_items)
