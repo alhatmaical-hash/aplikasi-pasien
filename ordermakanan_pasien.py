@@ -131,6 +131,13 @@ def register_user(username, password, nama_lengkap, unit_kerja, role='user'):
         conn.close()
         return False
 
+def delete_user(user_id):
+    conn = sqlite3.connect("order_makanan.db")
+    c = conn.cursor()
+    c.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
 def login_user(username, password):
     conn = sqlite3.connect("order_makanan.db")
     c = conn.cursor()
@@ -382,7 +389,7 @@ else:
             
             # --- SUB TAB 1: MANAJEMEN AKUN ---
             with admin_sub_tab1:
-                st.markdown("### Buat Akun Baru (Oleh Admin)")
+                st.markdown("### ➕ Buat Akun Baru (Oleh Admin)")
                 with st.form("admin_create_user"):
                     col_u1, col_u2 = st.columns(2)
                     with col_u1:
@@ -407,11 +414,37 @@ else:
                             st.warning("Mohon lengkapi seluruh field data akun!")
 
                 st.divider()
-                st.markdown("### Daftar Seluruh Akun Terdaftar")
+                st.markdown("### 📋 Daftar Seluruh Akun Terdaftar")
                 conn = sqlite3.connect("order_makanan.db")
                 df_users = pd.read_sql_query("SELECT id, username, nama_lengkap, unit_kerja, role FROM users", conn)
                 conn.close()
                 st.dataframe(df_users, use_container_width=True, hide_index=True)
+
+                st.divider()
+                st.markdown("### 🗑️ Hapus Akun Pengguna")
+                if not df_users.empty:
+                    col_del1, col_del2 = st.columns([2, 1])
+                    with col_del1:
+                        user_to_delete = st.selectbox(
+                            "Pilih Akun yang Akan Dihapus:",
+                            options=df_users['id'].tolist(),
+                            format_func=lambda x: f"{df_users[df_users['id']==x]['username'].values[0]} ({df_users[df_users['id']==x]['nama_lengkap'].values[0]} - Role: {df_users[df_users['id']==x]['role'].values[0]})"
+                        )
+                    with col_del2:
+                        st.write("")
+                        st.write("")
+                        if st.button("🗑️ Hapus Akun Terpilih", type="primary"):
+                            selected_username = df_users[df_users['id'] == user_to_delete]['username'].values[0]
+                            
+                            # Proteksi agar tidak menghapus akun admin utama yang sedang digunakan
+                            if selected_username == user['username']:
+                                st.error("⚠️ Anda tidak bisa menghapus akun yang sedang digunakan saat ini!")
+                            elif selected_username == 'admin':
+                                st.error("⚠️ Akun utama 'admin' tidak dapat dihapus!")
+                            else:
+                                delete_user(user_to_delete)
+                                st.success(f"✅ Akun **{selected_username}** berhasil dihapus!")
+                                st.rerun()
 
             # --- SUB TAB 2: KELOLA MASTER DROPDOWN ---
             with admin_sub_tab2:
