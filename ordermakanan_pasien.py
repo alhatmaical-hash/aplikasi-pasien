@@ -77,31 +77,7 @@ def init_db():
     if not c.fetchone():
         admin_pass = hashlib.sha256("admin123".encode()).hexdigest()
         c.execute("INSERT INTO users (username, password, nama_lengkap, unit_kerja, role) VALUES (?, ?, ?, ?, ?)",
-                  ('admin', admin_pass, 'Administrator Klinik', 'MEDICAL RECORD', 'admin'))
-
-    # 5. Inisialisasi Master Data Bawaan
-    c.execute("SELECT COUNT(*) FROM master_data")
-    if c.fetchone()[0] == 0:
-        default_perusahaan = [
-            "PT HALMAHERA JAYA FERONIKEL (HJF)",
-            "PT. KARUNIA PERMAI SENTOSA (KPS)",
-            "PT. OBI SINAR TIMUR (OST)",
-            "PT. CIPTA KEMAKMURAN MITRA (CKM)"
-        ]
-        default_dept = [
-            "Dispatch", "Technical Support", "HR/GA", "Produksi", 
-            "HSE", "Kontraktor", "Logistik / Warehouse"
-        ]
-        default_jabatan = [
-            "Staff", "Supervisor", "Supervisor"
-        ]
-
-        for p in default_perusahaan:
-            c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES ('perusahaan', ?)", (p,))
-        for d in default_dept:
-            c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES ('departemen', ?)", (d,))
-        for j in default_jabatan:
-            c.execute("INSERT OR IGNORE INTO master_data (kategori, nama) VALUES ('jabatan', ?)", (j,))
+                  ('admin', admin_pass, 'Administrator Klinik', 'MEDICAL RECORD / IT', 'admin'))
 
     conn.commit()
     conn.close()
@@ -277,8 +253,6 @@ else:
     st.caption("Klinik Harita Feronikel Obi")
 
     # DYNAMIC TAB SETTINGS BERDASARKAN ROLE
-    # Jika Admin: tampilkan Form, Rekap Data, dan Manajemen Aplikasi
-    # Jika User: HANYA tampilkan Form Order Makanan
     if is_admin:
         tab_titles = ["📝 Form Order Makanan", "📊 Rekap & Monitoring Data", "⚙️ Manajemen Aplikasi"]
     else:
